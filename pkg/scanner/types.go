@@ -55,6 +55,8 @@ type Report struct {
 	Devices     []Device  `json:"devices"`
 	Warnings    []string  `json:"warnings,omitempty"`
 	Cancelled   bool      `json:"cancelled,omitempty"`
+	// Error marks a failed scan with usable partial results, never an input-validation error.
+	Error string `json:"error,omitempty"`
 }
 
 // Event callbacks are serialized and synchronous. Device snapshots are owned by

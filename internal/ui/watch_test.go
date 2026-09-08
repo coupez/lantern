@@ -124,10 +124,12 @@ func TestKeyDecoderFragmentationAndPaste(t *testing.T) {
 	}
 }
 func TestWatchPartialReportDoesNotClaimMissing(t *testing.T) {
-	m := fixtureWatch()
-	m.accept(scanner.Report{Cancelled: true})
-	if len(m.changes) != 0 {
-		t.Fatal(m.changes)
+	for _, report := range []scanner.Report{{Cancelled: true}, {Error: "TCP probes failed"}} {
+		m := fixtureWatch()
+		m.accept(report)
+		if len(m.changes) != 0 {
+			t.Fatal(m.changes)
+		}
 	}
 }
 

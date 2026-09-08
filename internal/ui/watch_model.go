@@ -23,7 +23,7 @@ type watchModel struct {
 }
 
 func (m *watchModel) accept(r scanner.Report) {
-	if m.hasReport && !r.Cancelled {
+	if m.hasReport && !r.Cancelled && r.Error == "" {
 		for _, c := range scanner.Diff(m.report, r) {
 			m.changes = append(m.changes, fmt.Sprintf("%s  %s · %s %s", time.Now().Format("15:04:05"), c.Type, c.IP, c.Detail))
 		}

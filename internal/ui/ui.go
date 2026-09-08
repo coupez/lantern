@@ -174,6 +174,9 @@ func (u *UI) Report(r scanner.Report) {
 	for _, w := range r.Warnings {
 		fmt.Fprintf(u.Out, "  %s %s\n", u.style("38;5;220", "!"), scanner.CleanText(w))
 	}
+	if r.Error != "" {
+		fmt.Fprintln(u.Out, "  Scan failed; partial results shown:", scanner.CleanText(r.Error))
+	}
 	if r.Cancelled {
 		fmt.Fprintln(u.Out, "  Scan interrupted; partial results shown.")
 	}

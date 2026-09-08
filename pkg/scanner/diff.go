@@ -117,7 +117,7 @@ func Diff(before, after Report) []Change {
 			}
 			continue
 		}
-		if after.Cancelled || interfaceChanged {
+		if after.Cancelled || after.Error != "" || interfaceChanged {
 			continue
 		}
 		if presenceComparable {
@@ -151,7 +151,7 @@ func Diff(before, after Report) []Change {
 			add("changed", address, "kind", "type hint", one(previous.Kind), one(d.Kind))
 		}
 	}
-	if !after.Cancelled && presenceComparable {
+	if !after.Cancelled && after.Error == "" && presenceComparable {
 		for ip, d := range old {
 			if _, ok := now[ip]; !ok {
 				out = append(out, Change{Type: "missing", IP: ip.String(), Detail: CleanText(d.MAC)})

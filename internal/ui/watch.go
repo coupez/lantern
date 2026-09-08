@@ -103,13 +103,16 @@ func RunWatch(ctx context.Context, in, out *os.File, o WatchOptions) (err error)
 	var mailbox *watchMailbox
 	finish := func(r scanResult) error {
 		m.scanning = false
-		if r.err != nil {
+		if r.err != nil && r.report.Error == "" {
 			return r.err
 		}
 		if o.Complete != nil {
 			if e := o.Complete(r.report); e != nil {
-				return e
+				return errors.Join(r.err, e)
 			}
+		}
+		if r.err != nil {
+			return r.err
 		}
 		m.accept(r.report)
 		m.next = time.Now().Add(o.Interval)

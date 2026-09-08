@@ -474,7 +474,9 @@ func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, 
 	r.Probed = len(attempted)
 	event(Event{Type: "done", Completed: r.Probed, Total: len(hosts)})
 	if tcpAttempts > 0 && tcpErrors == tcpAttempts && !r.Cancelled {
-		return r, fmt.Errorf("all TCP probes failed; check network permissions (first errors: %v)", r.Warnings)
+		err := fmt.Errorf("all TCP probes failed; check network permissions (first errors: %v)", r.Warnings)
+		r.Error = err.Error()
+		return r, err
 	}
 	return r, nil
 }

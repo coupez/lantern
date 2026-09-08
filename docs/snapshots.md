@@ -2,6 +2,8 @@
 
 `lantern scan --save before.json`, `lantern watch --save latest.json`, and the core's `scanner.Save` write schema-1 JSON snapshots atomically. `lantern diff before.json after.json` prints a JSON array of changes. Watch mode uses the same `scanner.Diff` function for plain reports, JSONL change events, and dashboard activity.
 
+Reports with a fatal runtime scan failure retain observations and an optional `error` string. The CLI attempts `--save` before exiting with status 1, including when a JSONL pipe breaks; input validation failures leave an existing snapshot untouched. A saved failed or interrupted scan is a partial observation set.
+
 ## Observations, not physical-device verdicts
 
 An IP address is the comparison key; scoped IPv6 addresses remain distinct. `added` means an address appears in the later observation set, and `missing` means it does not. Neither proves that a physical device joined or left the network. A MAC change can reflect a different device, randomized addressing, proxying, or a changed cache observation.
@@ -22,7 +24,7 @@ New reports include an optional `coverage` object recording requested TCP ports 
 - Name/identity/workgroup/type comparisons are suppressed when their relevant probe or enrichment options differ.
 - Address additions, missing addresses, and response-state changes are suppressed when the known discovery configuration or target changes.
 - Switching between known interfaces suppresses device comparisons altogether, avoiding conflation of identical IPv4 addresses on separate networks. Target changes on the same interface still allow field comparisons for addresses present in both snapshots.
-- A cancelled later scan can add newly observed addresses but does not report changes or disappearance of existing records. Watch mode omits the cancelled cycle's change list.
+- A cancelled later scan, or one with a nonempty `error`, can add newly observed addresses but does not report changes or disappearance of existing records. Watch mode omits the cancelled/failed cycle's change list.
 - If coverage is absent in either snapshot, field comparisons fall back to observed values because the old probe plan cannot be reconstructed. Comparing known coverage with a legacy snapshot explicitly reports `unknown (legacy snapshot)`. Two legacy snapshots retain their prior observation-based behavior.
 
 Changes are ordered by numeric IP address, then field/type/detail; scan-level records come first. The comparator reads its inputs without modifying them. It builds the common TCP-port set once for the entire comparison, rather than once per device.

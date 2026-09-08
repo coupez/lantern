@@ -40,7 +40,7 @@ Use `./bin/lantern` until you put the binary on your PATH. Options work before o
 
 `lantern watch` opens a live dashboard when stdin and stdout are terminals on macOS or Linux. Use arrow keys or `j`/`k` to select a device, `Enter` to inspect its full record, `/` to search names, addresses, vendors, models, or services, and `a` for recent changes and scan warnings. Details and activity scroll with arrows, Page Up/Down, Home, and End. `Space` pauses automatic refresh, `r` scans once, and `q` or Ctrl-C exits. While typing a search, Enter applies it, Escape clears it, and Ctrl-C exits.
 
-The previous completed report stays visible during refresh; new addresses appear during the first scan. Pausing lets an active scan finish. Scans never overlap, and the interval starts after each scan completes. `--save` also saves partial results when an active scan is cancelled. The dashboard restores the cursor and original terminal mode on exit, scan errors, and save errors.
+The previous completed report stays visible during refresh; new addresses appear during the first scan. Pausing lets an active scan finish. Scans never overlap, and the interval starts after each scan completes. `--save` also saves partial results when an active scan is cancelled or fails. The dashboard restores the cursor and original terminal mode on exit, scan errors, and save errors.
 
 Use `watch --plain` for appended reports or `watch --jsonl` for a machine-readable stream. Redirected stdin/stdout and `TERM=dumb` automatically use appended reports. `--no-color` preserves keyboard navigation while disabling colors. The dashboard adapts to terminal resizing and requires at least 36 columns × 10 rows to display results; below that it shows a resize prompt. `demo --watch` requires an interactive terminal and never accesses the network.
 
@@ -48,7 +48,7 @@ Use `watch --plain` for appended reports or `watch --jsonl` for a machine-readab
 
 Lantern combines ICMP echo, TCP connect/refusal, the OS neighbor table, mDNS/DNS-SD, and SSDP. It scans common discovery ports across the target first, then checks requested ports on discovered devices. A single-IP target always checks all requested ports; `--all-hosts` does the same for every address in a subnet.
 
-The TCP worker pool defaults to 512 concurrent probes. Deadlines bound TCP and ICMP sends; large port ranges are produced incrementally rather than allocated as a host × port matrix. DNS enrichment uses its own bounded pool. Ctrl-C cancels sockets and returns partial results. Unicast ICMP finishes early when every target replies. Local send-queue failures get one bounded retry; JSON reports `icmp` counters for attempted/sent/failed addresses, retries, recovered sends, and responders.
+The TCP worker pool defaults to 512 concurrent probes. Deadlines bound TCP and ICMP sends; large port ranges are produced incrementally rather than allocated as a host × port matrix. DNS enrichment uses its own bounded pool. Ctrl-C cancels sockets and returns partial results. Fatal TCP failures preserve available results with a JSON `error` field and exit status 1. A broken JSONL pipe cancels work promptly and still attempts `--save`. Unicast ICMP finishes early when every target replies. Local send-queue failures get one bounded retry; JSON reports `icmp` counters for attempted/sent/failed addresses, retries, recovered sends, and responders.
 
 | Profile | Behavior |
 | --- | --- |

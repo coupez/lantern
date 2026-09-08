@@ -11,7 +11,7 @@
 
 Every observed device receives an initial event and one update before `done`. Updates are emitted as individual devices finish; they do not wait for all devices' DNS/banner/description work. Completion order can vary across devices. Event consumers should replace a device record by its scoped IP, rather than count an update as a new device. Ignore unrecognized event types for forward compatibility.
 
-A processed device is not necessarily fully identified. Protocols may be disabled, unavailable, or unanswered; cancellation can leave fields missing. Updates after cancellation retain whatever was observed. `Report.Cancelled`, coverage, warnings, and response evidence determine how results should be interpreted. Validation errors can return before any event is emitted; an engine error after work has started can still accompany a partial report.
+A processed device is not necessarily fully identified. Protocols may be disabled, unavailable, or unanswered; cancellation can leave fields missing. Updates after cancellation retain whatever was observed. `Report.Cancelled`, `Report.Error`, coverage, warnings, and response evidence determine how results should be interpreted. Validation errors can return before any event is emitted; an engine error after work has started can still accompany a partial report. When all TCP probes fail, the core returns that error and sets the report’s optional `error` string while retaining observations from other sources. `done` means workers finished, not that the scan succeeded.
 
 Device payloads have independent ownership. Consumers may retain or mutate an event's `Device`, including names, ports, advertisements/properties, identity claims, and model candidates, without altering another event or the final report. `Device.Clone()` offers the same deep-copy behavior for app-owned records. Consumers remain responsible for synchronization between their own goroutines accessing the same retained object.
 
@@ -35,3 +35,11 @@ report, err := (scanner.Engine{}).Scan(ctx, options, func(event scanner.Event) {
 ```
 
 The example's `storeDevice` must return promptly; queue sizing and backpressure are app responsibilities. Event callbacks are not an asynchronous transport, and the scanner does not start an unbounded goroutine or queue per event.
+
+## CLI failures and partial results
+
+JSON, JSONL, CSV, and plain scan output retain the aggregate when TCP scanning fails. The CLI exits with status 1 and explains the failure on stderr. JSON reports and snapshots carry the optional `error` field; CSV keeps its existing device columns, so consumers must check the exit status and stderr. Invalid options or target setup still return an error without publishing a report or replacing an existing snapshot.
+
+A JSONL write failure cancels the scan’s own context immediately. The CLI ignores SIGPIPE for this stream so a closed stdout pipe returns a write error instead of terminating before cleanup. It stops writing events, joins the scanner, and still attempts an independent `--save`. No final report can be delivered through a broken stream; the saved snapshot carries `cancelled: true` when work was interrupted. Watch stops on the failure instead of beginning another scan. Scanner, output, and save errors remain available together.
+
+For a normal Ctrl-C/SIGTERM interruption, JSONL still emits remaining updates, `done`, and the partial report when output remains writable. Existing cancellation exit behavior is unchanged. Interactive watch also saves reports marked with `error` before exiting and restoring the terminal. A save failure does not suppress printable results in plain/structured scan output.

@@ -70,9 +70,12 @@ func TestDiffInterruptedScanCannotEraseObservedValues(t *testing.T) {
 	old.Ports = []Port{{Number: 445}}
 	old.Identity = &Identity{Model: "NAS1"}
 	now := diffDevice("192.0.2.1")
-	changes := Diff(Report{Devices: []Device{old, diffDevice("192.0.2.2")}}, Report{Cancelled: true, Devices: []Device{now, diffDevice("192.0.2.3")}})
-	if len(changes) != 1 || changes[0].Type != "added" || changes[0].IP != "192.0.2.3" {
-		t.Fatal(changes)
+	for _, partial := range []Report{{Cancelled: true}, {Error: "TCP permission denied"}} {
+		partial.Devices = []Device{now, diffDevice("192.0.2.3")}
+		changes := Diff(Report{Devices: []Device{old, diffDevice("192.0.2.2")}}, partial)
+		if len(changes) != 1 || changes[0].Type != "added" || changes[0].IP != "192.0.2.3" {
+			t.Fatal(changes)
+		}
 	}
 }
 func TestDiffComparesOnlyCommonRequestedPorts(t *testing.T) {

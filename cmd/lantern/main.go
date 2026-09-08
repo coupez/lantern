@@ -294,6 +294,11 @@ func scan(args []string, watch bool) error {
 	o.Descriptions = !*noDescriptions
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
+	if *asJSONL {
+		// Return EPIPE so streaming scans can cancel, join workers, and save.
+		signal.Ignore(syscall.SIGPIPE)
+		defer signal.Reset(syscall.SIGPIPE)
+	}
 	u := ui.New(os.Stderr, *noColor)
 	human := formats == 0
 	if watch && human && !*plain && ui.CanWatch(os.Stdin, os.Stdout) {
@@ -324,56 +329,51 @@ func scan(args []string, watch bool) error {
 			}
 			u.Intro(label, *profile)
 		}
-		var outputErr error
-		var emit func(scanner.Event)
+		output := scanOutput{}
 		if (human && u.Color) || *asJSONL {
-			emit = func(e scanner.Event) {
+			output.Event = func(e scanner.Event) error {
 				if human {
 					u.Progress(e)
 				}
-				if *asJSONL && outputErr == nil {
-					outputErr = enc.Encode(e)
+				if *asJSONL {
+					return enc.Encode(e)
 				}
+				return nil
 			}
-		}
-		report, err := (scanner.Engine{}).Scan(ctx, o, emit)
-		if err != nil {
-			u.Clear()
-			return err
-		}
-		if human {
-			u.Clear()
-		}
-		if outputErr != nil {
-			return outputErr
 		}
 		if *save != "" {
-			if err = scanner.Save(*save, report); err != nil {
-				return err
-			}
+			output.Save = func(r scanner.Report) error { return scanner.Save(*save, r) }
 		}
-		if human {
-			view := ui.New(os.Stdout, *noColor)
-			view.Report(report)
-			if *details {
-				view.Details(report)
+		output.Report = func(report scanner.Report) error {
+			if human {
+				view := ui.New(os.Stdout, *noColor)
+				view.Report(report)
+				if *details {
+					view.Details(report)
+				}
+				return nil
 			}
-		} else if *asJSON {
-			enc.SetIndent("", "  ")
-			if err = enc.Encode(report); err != nil {
-				return err
+			if *asJSON {
+				enc.SetIndent("", "  ")
+				return enc.Encode(report)
 			}
-		} else if *asJSONL {
-			if err = enc.Encode(struct {
-				Type   string         `json:"type"`
-				Report scanner.Report `json:"report"`
-			}{"report", report}); err != nil {
-				return err
+			if *asJSONL {
+				return enc.Encode(struct {
+					Type   string         `json:"type"`
+					Report scanner.Report `json:"report"`
+				}{"report", report})
 			}
-		} else {
-			if err = writeCSV(os.Stdout, report); err != nil {
-				return err
+			return writeCSV(os.Stdout, report)
+		}
+		report, err := scanWithOutput(ctx, func(ctx context.Context, emit func(scanner.Event)) (scanner.Report, error) {
+			r, err := (scanner.Engine{}).Scan(ctx, o, emit)
+			if human {
+				u.Clear()
 			}
+			return r, err
+		}, output)
+		if err != nil {
+			return err
 		}
 		if previous != nil && !report.Cancelled {
 			changes := scanner.Diff(*previous, report)
