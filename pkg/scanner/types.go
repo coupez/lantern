@@ -26,15 +26,18 @@ type Device struct {
 	LatencyMS      float64         `json:"latency_ms,omitempty"`
 }
 type Report struct {
-	Schema     int       `json:"schema"`
-	Target     string    `json:"target"`
-	Started    time.Time `json:"started"`
-	DurationMS int64     `json:"duration_ms"`
-	Targets    int       `json:"targets"`
-	Probed     int       `json:"probed"`
-	Devices    []Device  `json:"devices"`
-	Warnings   []string  `json:"warnings,omitempty"`
-	Cancelled  bool      `json:"cancelled,omitempty"`
+	Interface string `json:"interface,omitempty"`
+	// AddressMode is enumerated for finite ranges or discovered for sparse IPv6.
+	AddressMode string    `json:"address_mode,omitempty"`
+	Schema      int       `json:"schema"`
+	Target      string    `json:"target"`
+	Started     time.Time `json:"started"`
+	DurationMS  int64     `json:"duration_ms"`
+	Targets     int       `json:"targets"`
+	Probed      int       `json:"probed"`
+	Devices     []Device  `json:"devices"`
+	Warnings    []string  `json:"warnings,omitempty"`
+	Cancelled   bool      `json:"cancelled,omitempty"`
 }
 type Event struct {
 	Type      string  `json:"type"`
@@ -44,6 +47,8 @@ type Event struct {
 	Message   string  `json:"message,omitempty"`
 }
 type Options struct {
+	// Interface selects local discovery and scopes link-local IPv6 probes.
+	Interface    string
 	Target       netip.Prefix
 	Ports        []uint16
 	Concurrency  int

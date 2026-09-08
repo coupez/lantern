@@ -25,3 +25,19 @@ func TestResponsiveReportFitsTerminal(t *testing.T) {
 		}
 	}
 }
+
+func TestIPv6ReportKeepsFullAddress(t *testing.T) {
+	ip := netip.MustParseAddr("fe80::1234:5678:abcd:ef12%en123")
+	for _, width := range []int{60, 80, 100, 140} {
+		var b bytes.Buffer
+		(&UI{Out: &b, Width: width}).Report(scanner.Report{AddressMode: "discovered", Devices: []scanner.Device{{IP: ip, Names: []string{"A very long device name that needs to fit within a narrow terminal"}}}})
+		if !strings.Contains(b.String(), ip.String()) {
+			t.Fatal("address truncated", b.String())
+		}
+		for _, line := range strings.Split(b.String(), "\n") {
+			if utf8.RuneCountInString(line) > width {
+				t.Fatalf("width %d overflow: %q", width, line)
+			}
+		}
+	}
+}

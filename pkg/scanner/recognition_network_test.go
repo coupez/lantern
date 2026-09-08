@@ -68,13 +68,18 @@ func TestDescriptionNetworkIntegration(t *testing.T) {
 	}
 }
 func TestMDNSSplitReplyNetworkIntegration(t *testing.T) {
+	for _, address := range []string{"127.0.0.1", "::1"} {
+		t.Run(address, func(t *testing.T) { testMDNSSplitReply(t, address) })
+	}
+}
+func testMDNSSplitReply(t *testing.T, address string) {
 	requireNetwork(t)
-	server, err := net.ListenUDP("udp4", &net.UDPAddr{IP: net.IPv4(127, 0, 0, 1)})
+	server, err := net.ListenUDP("udp", &net.UDPAddr{IP: net.ParseIP(address)})
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer server.Close()
-	client, err := net.ListenUDP("udp4", &net.UDPAddr{IP: net.IPv4(127, 0, 0, 1)})
+	client, err := net.ListenUDP("udp", &net.UDPAddr{IP: net.ParseIP(address)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -107,7 +112,11 @@ func TestMDNSSplitReplyNetworkIntegration(t *testing.T) {
 						body = &dnsmessage.TXTResource{TXT: []string{"model=Protocol Fixture"}}
 					}
 				case "office.local.":
-					body = &dnsmessage.AResource{A: [4]byte{127, 0, 0, 1}}
+					if q.Type == dnsmessage.TypeAAAA {
+						body = &dnsmessage.AAAAResource{AAAA: netip.MustParseAddr(address).As16()}
+					} else {
+						body = &dnsmessage.AResource{A: [4]byte{127, 0, 0, 1}}
+					}
 				}
 				if body == nil {
 					continue
@@ -118,10 +127,47 @@ func TestMDNSSplitReplyNetworkIntegration(t *testing.T) {
 			}
 		}
 	}()
-	hits, err := collectMDNS(context.Background(), client, server.LocalAddr().(*net.UDPAddr), netip.MustParsePrefix("127.0.0.1/32"))
+	target, _ := ParseTarget(address)
+	hits, err := collectMDNS(context.Background(), client, server.LocalAddr().(*net.UDPAddr), target)
 	server.Close()
 	<-done
 	if err != nil || len(hits) != 1 || len(hits[0].Ads) != 1 || hits[0].Ads[0].Service != "_lantern-test._tcp" || hits[0].Ads[0].Port != 8765 || hits[0].Ads[0].Properties["model"] != "Protocol Fixture" {
 		t.Fatalf("hits=%+v err=%v", hits, err)
+	}
+}
+
+func TestIPv6HTTPNetworkIntegration(t *testing.T) {
+	requireNetwork(t)
+	ln, err := net.Listen("tcp6", "[::1]:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	badHost := make(chan string, 2)
+	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Host != ln.Addr().String() {
+			badHost <- r.Host
+		}
+		w.Header().Set("Server", "Lantern IPv6 fixture")
+		fmt.Fprint(w, descriptionFixture)
+	}))
+	server.Listener.Close()
+	server.Listener = ln
+	server.Start()
+	defer server.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	ip := netip.MustParseAddr("::1")
+	data, err := fetchDescription(ctx, ip, server.URL)
+	if err != nil || len(data) != 2 {
+		t.Fatal(data, err)
+	}
+	banner := readBanner(ctx, ip, Port{Number: uint16(ln.Addr().(*net.TCPAddr).Port), Service: "http"}, time.Second)
+	if banner != "Lantern IPv6 fixture" {
+		t.Fatal(banner)
+	}
+	select {
+	case host := <-badHost:
+		t.Fatal("invalid HTTP Host", host)
+	default:
 	}
 }

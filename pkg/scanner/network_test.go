@@ -4,17 +4,21 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"net/netip"
 	"os"
 	"testing"
 	"time"
 )
 
 func TestNetworkIntegration(t *testing.T) {
+	for _, address := range []string{"127.0.0.1", "::1"} {
+		t.Run(address, func(t *testing.T) { testNetworkIntegration(t, address) })
+	}
+}
+func testNetworkIntegration(t *testing.T, address string) {
 	if os.Getenv("LANTERN_NETWORK_TESTS") != "1" {
 		t.Skip("set LANTERN_NETWORK_TESTS=1 for real loopback sockets")
 	}
-	ln, e := net.Listen("tcp4", "127.0.0.1:0")
+	ln, e := net.Listen("tcp", net.JoinHostPort(address, "0"))
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -34,7 +38,7 @@ func TestNetworkIntegration(t *testing.T) {
 	}()
 	port := uint16(ln.Addr().(*net.TCPAddr).Port)
 	o := Defaults()
-	o.Target = netip.MustParsePrefix("127.0.0.1/32")
+	o.Target, _ = ParseTarget(address)
 	o.Ports = []uint16{port}
 	o.Resolve = false
 	o.Multicast = false

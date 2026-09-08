@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"golang.org/x/net/dns/dnsmessage"
 	"golang.org/x/net/ipv4"
+	"golang.org/x/net/ipv6"
 	"net"
 	"net/netip"
 	"sort"
@@ -62,6 +63,19 @@ func (r *mdnsRecords) ingest(b []byte) bool {
 			if strings.HasSuffix(ptr, ".local.") && !contains(r.pointers[name], ptr) && len(r.pointers[name]) < 128 {
 				r.pointers[name] = append(r.pointers[name], ptr)
 			}
+		case *dnsmessage.AAAAResource:
+			a := netip.AddrFrom16(v.AAAA)
+			if !a.Is4In6() && len(r.addresses[name]) < 16 {
+				exists := false
+				for _, old := range r.addresses[name] {
+					if old == a {
+						exists = true
+					}
+				}
+				if !exists {
+					r.addresses[name] = append(r.addresses[name], a)
+				}
+			}
 		case *dnsmessage.AResource:
 			a := netip.AddrFrom4(v.A)
 			exists := false
@@ -93,7 +107,7 @@ func (r *mdnsRecords) hits(target netip.Prefix) []discoveryHit {
 	out := []discoveryHit{}
 	for name, ips := range r.addresses {
 		for _, ip := range ips {
-			if !target.Contains(ip) {
+			if !target.Contains(ip) || ip.IsUnspecified() || ip.IsMulticast() {
 				continue
 			}
 			h := discoveryHit{IP: ip, Names: []string{strings.TrimSuffix(r.display[name], ".")}, Evidence: "mdns"}
@@ -110,16 +124,28 @@ func (r *mdnsRecords) hits(target netip.Prefix) []discoveryHit {
 	return out
 }
 func multicastSocket(ctx context.Context, local netip.Addr, iface *net.Interface, timeout time.Duration) (*net.UDPConn, func(), error) {
-	c, err := net.ListenUDP("udp4", &net.UDPAddr{IP: net.IP(local.AsSlice())})
+	network := "udp4"
+	if local.Is6() {
+		network = "udp6"
+	}
+	c, err := net.ListenUDP(network, &net.UDPAddr{IP: net.IP(local.AsSlice()), Zone: local.Zone()})
 	if err != nil {
 		return nil, nil, err
 	}
-	pc := ipv4.NewPacketConn(c)
-	if err = pc.SetMulticastInterface(iface); err != nil {
-		c.Close()
-		return nil, nil, err
+	if local.Is6() {
+		pc := ipv6.NewPacketConn(c)
+		err = pc.SetMulticastInterface(iface)
+		if err == nil {
+			err = pc.SetMulticastHopLimit(255)
+		}
+	} else {
+		pc := ipv4.NewPacketConn(c)
+		err = pc.SetMulticastInterface(iface)
+		if err == nil {
+			err = pc.SetMulticastTTL(255)
+		}
 	}
-	if err = pc.SetMulticastTTL(255); err != nil {
+	if err != nil {
 		c.Close()
 		return nil, nil, err
 	}
@@ -128,23 +154,29 @@ func multicastSocket(ctx context.Context, local netip.Addr, iface *net.Interface
 	return c, func() { stop(); c.Close() }, nil
 }
 func localInterface(target netip.Prefix) (*net.Interface, netip.Addr) {
+	return localInterfaceOn(target, "")
+}
+func localInterfaceOn(target netip.Prefix, preferred string) (*net.Interface, netip.Addr) {
 	interfaces, _ := net.Interfaces()
 	for _, i := range interfaces {
-		if i.Flags&net.FlagUp == 0 || i.Flags&net.FlagMulticast == 0 {
+		if i.Flags&net.FlagUp == 0 || i.Flags&net.FlagMulticast == 0 || (preferred != "" && preferred != i.Name) {
 			continue
 		}
 		as, _ := i.Addrs()
 		for _, a := range as {
 			p, err := netip.ParsePrefix(a.String())
-			if err == nil && p.Addr().Is4() && p.Contains(target.Addr()) {
-				return &i, p.Addr()
+			if err == nil && p.Addr().Is6() == target.Addr().Is6() && target.Overlaps(p) {
+				return &i, scoped(p.Addr(), i.Name)
 			}
 		}
 	}
 	return nil, netip.Addr{}
 }
 func mdnsSweep(ctx context.Context, target netip.Prefix, timeout time.Duration) ([]discoveryHit, error) {
-	iface, local := localInterface(target)
+	return mdnsSweepOn(ctx, target, timeout, "")
+}
+func mdnsSweepOn(ctx context.Context, target netip.Prefix, timeout time.Duration, preferred string) ([]discoveryHit, error) {
+	iface, local := localInterfaceOn(target, preferred)
 	if iface == nil {
 		return nil, nil
 	}
@@ -153,7 +185,11 @@ func mdnsSweep(ctx context.Context, target netip.Prefix, timeout time.Duration) 
 		return nil, fmt.Errorf("mDNS: %w", err)
 	}
 	defer close()
-	return collectMDNS(ctx, c, &net.UDPAddr{IP: net.IPv4(224, 0, 0, 251), Port: 5353}, target)
+	destination := &net.UDPAddr{IP: net.IPv4(224, 0, 0, 251), Port: 5353}
+	if local.Is6() {
+		destination = &net.UDPAddr{IP: net.ParseIP("ff02::fb"), Port: 5353, Zone: iface.Name}
+	}
+	return collectMDNS(ctx, c, destination, target)
 }
 
 var mdnsKinds = []string{"_services._dns-sd._udp", "_workstation._tcp", "_http._tcp", "_https._tcp", "_ssh._tcp", "_smb._tcp", "_ipp._tcp", "_ipps._tcp", "_printer._tcp", "_pdl-datastream._tcp", "_airplay._tcp", "_raop._tcp", "_googlecast._tcp", "_hap._tcp", "_home-assistant._tcp", "_spotify-connect._tcp", "_device-info._tcp"}
@@ -168,7 +204,8 @@ func serviceType(name string) string {
 	}
 	return strings.Join(parts[n-3:], ".") + "."
 }
-func (r *mdnsRecords) followups() []dnsmessage.Question {
+func (r *mdnsRecords) followups(family6 ...bool) []dnsmessage.Question {
+	v6 := len(family6) > 0 && family6[0]
 	var out []dnsmessage.Question
 	add := func(raw string, t dnsmessage.Type) {
 		if !strings.HasSuffix(raw, ".local.") {
@@ -203,8 +240,18 @@ func (r *mdnsRecords) followups() []dnsmessage.Question {
 			continue
 		}
 		host := strings.ToLower(srv.Target.String())
-		if len(r.addresses[host]) == 0 {
-			add(host, dnsmessage.TypeA)
+		hasAddress := false
+		for _, a := range r.addresses[host] {
+			if a.Is6() == v6 {
+				hasAddress = true
+			}
+		}
+		if !hasAddress {
+			typ := dnsmessage.TypeA
+			if v6 {
+				typ = dnsmessage.TypeAAAA
+			}
+			add(host, typ)
 		}
 		if _, ok := r.txt[instance]; !ok {
 			add(instance, dnsmessage.TypeTXT)
@@ -249,11 +296,11 @@ func collectMDNS(ctx context.Context, c *net.UDPConn, destination *net.UDPAddr, 
 		if err != nil {
 			break
 		}
-		if peer.Port != destination.Port {
+		if peer.Port != destination.Port || (peer.Zone != "" && peer.Zone != destination.Zone) {
 			continue
 		}
 		ip, ok := netip.AddrFromSlice(peer.IP)
-		if !ok || !target.Contains(ip.Unmap()) {
+		if !ok || (!inTarget(target, ip.Unmap()) && !(target.Addr().Is6() && ip.IsLinkLocalUnicast() && destination.Zone != "")) {
 			continue
 		}
 		if !r.ingest(b[:n]) {
@@ -262,13 +309,20 @@ func collectMDNS(ctx context.Context, c *net.UDPConn, destination *net.UDPAddr, 
 		if len(sent) >= 128 {
 			continue
 		}
-		for _, q := range r.followups() {
+		for _, q := range r.followups(target.Addr().Is6()) {
 			if err := send(q); err != nil {
-				return r.hits(target), fmt.Errorf("mDNS follow-up: %w", err)
+				return scopedHits(r.hits(target), destination.Zone), fmt.Errorf("mDNS follow-up: %w", err)
 			}
 		}
 	}
-	return r.hits(target), nil
+	return scopedHits(r.hits(target), destination.Zone), nil
+}
+
+func scopedHits(hits []discoveryHit, zone string) []discoveryHit {
+	for i := range hits {
+		hits[i].IP = scoped(hits[i].IP, zone)
+	}
+	return hits
 }
 
 func parseSSDP(b []byte) (Advertisement, bool) {
@@ -294,7 +348,10 @@ func parseSSDP(b []byte) (Advertisement, bool) {
 	return Advertisement{Protocol: "ssdp", Service: props["st"], Properties: props}, true
 }
 func ssdpSweep(ctx context.Context, target netip.Prefix, timeout time.Duration) ([]discoveryHit, error) {
-	iface, local := localInterface(target)
+	return ssdpSweepOn(ctx, target, timeout, "")
+}
+func ssdpSweepOn(ctx context.Context, target netip.Prefix, timeout time.Duration, preferred string) ([]discoveryHit, error) {
+	iface, local := localInterfaceOn(target, preferred)
 	if iface == nil {
 		return nil, nil
 	}
@@ -303,8 +360,17 @@ func ssdpSweep(ctx context.Context, target netip.Prefix, timeout time.Duration) 
 		return nil, fmt.Errorf("SSDP: %w", err)
 	}
 	defer close()
-	query := "M-SEARCH * HTTP/1.1\r\nHOST: 239.255.255.250:1900\r\nMAN: \"ssdp:discover\"\r\nMX: 1\r\nST: ssdp:all\r\n\r\n"
-	if _, err = c.WriteToUDP([]byte(query), &net.UDPAddr{IP: net.IPv4(239, 255, 255, 250), Port: 1900}); err != nil {
+	destination := &net.UDPAddr{IP: net.IPv4(239, 255, 255, 250), Port: 1900}
+	host := "239.255.255.250:1900"
+	if local.Is6() {
+		destination = &net.UDPAddr{IP: net.ParseIP("ff02::c"), Port: 1900, Zone: iface.Name}
+		host = "[ff02::c]:1900"
+		ipv6.NewPacketConn(c).SetMulticastHopLimit(1)
+	} else {
+		ipv4.NewPacketConn(c).SetMulticastTTL(1)
+	}
+	query := "M-SEARCH * HTTP/1.1\r\nHOST: " + host + "\r\nMAN: \"ssdp:discover\"\r\nMX: 1\r\nST: ssdp:all\r\n\r\n"
+	if _, err = c.WriteToUDP([]byte(query), destination); err != nil {
 		return nil, fmt.Errorf("SSDP query: %w", err)
 	}
 	var hits []discoveryHit
@@ -315,12 +381,12 @@ func ssdpSweep(ctx context.Context, target netip.Prefix, timeout time.Duration) 
 			break
 		}
 		a, ok := netip.AddrFromSlice(peer.IP)
-		if !ok || !target.Contains(a.Unmap()) {
+		if !ok || !inTarget(target, a.Unmap()) || (peer.Zone != "" && peer.Zone != iface.Name) {
 			continue
 		}
 		ad, ok := parseSSDP(b[:n])
 		if ok {
-			hits = append(hits, discoveryHit{IP: a.Unmap(), Ads: []Advertisement{ad}, Evidence: "ssdp"})
+			hits = append(hits, discoveryHit{IP: scoped(a.Unmap(), iface.Name), Ads: []Advertisement{ad}, Evidence: "ssdp"})
 		}
 	}
 	return hits, nil

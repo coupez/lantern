@@ -80,12 +80,20 @@ func (u *UI) Report(r scanner.Report) {
 		}
 	}
 	fmt.Fprintf(u.Out, "\n  %s  %s  %s\n\n", u.style("1;38;5;158", fmt.Sprintf("%d devices", len(r.Devices))), u.style("38;5;81", fmt.Sprintf("%d open ports", open)), u.style("38;5;245", fmt.Sprintf("%.2fs · %d addresses", float64(r.DurationMS)/1000, r.Probed)))
+	if r.AddressMode == "discovered" {
+		fmt.Fprintln(u.Out, "  IPv6 discovery · observed addresses on this interface")
+		fmt.Fprintln(u.Out)
+	}
 	if len(r.Devices) == 0 {
 		fmt.Fprintln(u.Out, "  No devices observed. Try a longer --timeout or check your interface.")
 	}
-	wide := u.Width >= 100
+	addressWidth := 17
+	for _, d := range r.Devices {
+		addressWidth = max(addressWidth, len(d.IP.String())+2)
+	}
+	wide := u.Width >= 100+addressWidth-17
 	if wide {
-		fmt.Fprintf(u.Out, "  %s\n", u.style("38;5;245", fit("IP ADDRESS", 17)+fit("NAME / VENDOR", 31)+fit("MAC ADDRESS", 20)+"SERVICES"))
+		fmt.Fprintf(u.Out, "  %s\n", u.style("38;5;245", fit("IP ADDRESS", addressWidth)+fit("NAME / VENDOR", 31)+fit("MAC ADDRESS", 20)+"SERVICES"))
 		fmt.Fprintln(u.Out, u.style("38;5;238", "  "+strings.Repeat("─", min(u.Width-4, 112))))
 	}
 	for _, d := range r.Devices {
@@ -124,9 +132,10 @@ func (u *UI) Report(r scanner.Report) {
 			dot = u.style("38;5;220", "○")
 		}
 		if wide {
-			fmt.Fprintf(u.Out, "%s %s%s%s%s\n", dot, u.style("1", fit(d.IP.String(), 17)), fit(name, 31), u.style("38;5;245", fit(mac, 20)), u.style("38;5;81", fit(services, max(12, u.Width-72))))
+			fmt.Fprintf(u.Out, "%s %s%s%s%s\n", dot, u.style("1", fit(d.IP.String(), addressWidth)), fit(name, 31), u.style("38;5;245", fit(mac, 20)), u.style("38;5;81", fit(services, max(12, u.Width-55-addressWidth))))
 		} else {
-			fmt.Fprintf(u.Out, "  %s %s  %s\n", dot, u.style("1", d.IP.String()), fit(name, max(12, u.Width-24)))
+			fmt.Fprintf(u.Out, "  %s %s\n", dot, u.style("1", d.IP.String()))
+			fmt.Fprintf(u.Out, "    %s\n", fit(name, max(12, u.Width-6)))
 			fmt.Fprintf(u.Out, "    %s\n", u.style("38;5;245", fit(mac+" · "+services, max(12, u.Width-6))))
 		}
 		if d.Identity != nil && d.Identity.Model != "" {

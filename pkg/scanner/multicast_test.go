@@ -42,6 +42,8 @@ func FuzzMDNS(f *testing.F) {
 		r := newMDNSRecords()
 		r.ingest(b)
 		r.hits(netip.MustParsePrefix("192.168.1.0/24"))
+		r.hits(netip.MustParsePrefix("::/0"))
+		r.followups(true)
 	})
 }
 

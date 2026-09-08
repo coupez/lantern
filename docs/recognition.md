@@ -19,7 +19,7 @@ The CLI shows identity fields in `inspect` / `--details`; JSON and saved snapsho
 
 ## Discovery behavior and limits
 
-mDNS asks for common services plus the DNS-SD service-type enumeration record. PTR records lead to missing SRV/TXT queries, and SRV targets lead to missing A queries. Names and TXT records may arrive in separate packets. TXT keys are case-insensitive and the first occurrence of a duplicate key wins. Human-readable instance spelling is retained. Follow-ups stay in `.local.` and consume a fixed 128-query budget; the original socket deadline never extends. Advertised ports are not reported as verified open TCP ports.
+mDNS asks for common services plus the DNS-SD service-type enumeration record. PTR records lead to missing SRV/TXT queries, and SRV targets lead to missing A or AAAA queries for the scan’s address family. Names and TXT records may arrive in separate packets. TXT keys are case-insensitive and the first occurrence of a duplicate key wins. Human-readable instance spelling is retained. Follow-ups stay in `.local.` and consume a fixed 128-query budget; the original socket deadline never extends. Advertised ports are not reported as verified open TCP ports.
 
 UPnP description requests only accept HTTP URLs with a literal IP matching the SSDP responder. The transport pins that address and disables proxies and redirects. Four unique URLs share one per-device timeout. Response headers, body size (256 KiB), XML depth (32), device count (64), and field lengths are bounded. The USN's device UUID is matched to the description's UDN before attaching a model, so an embedded device does not silently inherit the root device's identity. Unknown, malformed, inaccessible, or unmatched descriptions leave the original SSDP advertisement intact.
 
@@ -34,4 +34,4 @@ Quick mode skips multicast and descriptions by default. Explicit boolean flags o
 - [PyChromecast model table](https://github.com/home-assistant-libs/pychromecast/blob/8f7f3bfaa3142614b04f04e885b43e7810872adb/pychromecast/const.py), imported as literal data without executing upstream code. Its MIT license is in `THIRD_PARTY_LICENSES`; the embedded JSON records commit, URL, content hash, and retrieval date. `scripts/build-cast-models.py` rebuilds it from the locally downloaded pinned source.
 - [pyatv AirPlay device-info parser](https://github.com/postlund/pyatv/blob/master/pyatv/protocols/airplay/__init__.py) for the advertised `model` field. No pyatv source or catalog is incorporated.
 
-These mappings do not cover every model. Proprietary cloud recognition, subnet-wide IPv6 discovery, direct ARP/NDP, additional discovery protocols, and broader real-device verification remain separate work.
+These mappings do not cover every model. Proprietary cloud recognition, direct ARP/NDP, additional discovery protocols, and broader real-device verification remain separate work.

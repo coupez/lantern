@@ -26,11 +26,52 @@ func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, 
 	if o.Timeout <= 0 || o.Timeout > 30*time.Second {
 		return r, fmt.Errorf("timeout must be >0 and <=30s")
 	}
-	hosts, err := Hosts(o.Target, o.MaxHosts)
+	if o.MaxHosts < 1 || o.MaxHosts > 65536 {
+		return r, fmt.Errorf("max-hosts must be between 1 and 65536")
+	}
+	if !o.Target.IsValid() || o.Target.Addr().Is4In6() || o.Target.Addr().IsMulticast() || (o.Target.Addr().IsUnspecified() && o.Target.Bits() == o.Target.Addr().BitLen()) {
+		return r, fmt.Errorf("valid native IP target required")
+	}
+	requestedPorts := make(map[uint16]bool, len(o.Ports))
+	for _, p := range o.Ports {
+		if p == 0 {
+			return r, fmt.Errorf("port must be between 1 and 65535")
+		}
+		requestedPorts[p] = true
+	}
+	sparse := sparseIPv6(o.Target, o.MaxHosts)
+	if o.Target.Addr().Is6() && !sparse && o.Target.Addr().IsLinkLocalUnicast() && o.Interface == "" {
+		return r, fmt.Errorf("link-local IPv6 target needs --interface or an %%interface zone")
+	}
+	if o.Target.Addr().Is6() && o.Interface != "" {
+		if _, err := net.InterfaceByName(o.Interface); err != nil {
+			return r, err
+		}
+	}
+	var hosts []netip.Addr
+	var seeds ipv6Seeds
+	var err error
+	if sparse {
+		seeds, err = discoverIPv6(ctx, o, e.NeighborSource)
+		hosts = seeds.hosts
+		o.Interface = seeds.iface
+		r.AddressMode = "discovered"
+	} else {
+		hosts, err = Hosts(o.Target, o.MaxHosts)
+		r.AddressMode = "enumerated"
+		for i := range hosts {
+			hosts[i] = scoped(hosts[i], o.Interface)
+		}
+	}
 	if err != nil {
 		return r, err
 	}
+	r.Interface = o.Interface
 	r.Targets = len(hosts)
+	targeted := make(map[netip.Addr]bool, len(hosts))
+	for _, ip := range hosts {
+		targeted[ip] = true
+	}
 	dialer := e.Dialer
 	if dialer == nil {
 		dialer = tcpDialer{}
@@ -95,17 +136,40 @@ func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, 
 			event(Event{Type: "device", Device: &snapshot})
 		}
 	}
-	requestedPorts := make(map[uint16]bool, len(o.Ports))
-	for _, p := range o.Ports {
-		if p == 0 {
-			return r, fmt.Errorf("port must be between 1 and 65535")
+	for _, err := range seeds.warnings {
+		warn(err)
+	}
+	if sparse {
+		for _, ip := range hosts {
+			if mac, ok := seeds.macs[ip]; ok {
+				add(ip, "neighbor-cache", 0, 0)
+				d := found[ip]
+				d.MAC = mac
+				d.Vendor, _ = vendors.Lookup(mac)
+			}
 		}
-		requestedPorts[p] = true
+		for _, h := range seeds.hits {
+			add(h.IP, h.Evidence, 0, 0)
+			d := found[h.IP]
+			for _, name := range h.Names {
+				if !contains(d.Names, name) {
+					d.Names = append(d.Names, name)
+				}
+			}
+			d.Advertisements = append(d.Advertisements, h.Ads...)
+		}
 	}
 	var discoveryWG sync.WaitGroup
 	var discovered []discoveryHit
-	if o.Multicast {
-		for _, sweep := range []func(context.Context, netip.Prefix, time.Duration) ([]discoveryHit, error){mdnsSweep, ssdpSweep} {
+	if o.Multicast && !sparse {
+		for _, sweep := range []func(context.Context, netip.Prefix, time.Duration) ([]discoveryHit, error){
+			func(ctx context.Context, p netip.Prefix, t time.Duration) ([]discoveryHit, error) {
+				return mdnsSweepOn(ctx, p, t, o.Interface)
+			},
+			func(ctx context.Context, p netip.Prefix, t time.Duration) ([]discoveryHit, error) {
+				return ssdpSweepOn(ctx, p, t, o.Interface)
+			},
+		} {
 			discoveryWG.Add(1)
 			go func(sweep func(context.Context, netip.Prefix, time.Duration) ([]discoveryHit, error)) {
 				defer discoveryWG.Done()
@@ -207,7 +271,11 @@ func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, 
 	// Neighbor entries are observations, not proof of current reachability.
 	source := e.NeighborSource
 	if source == nil {
-		source = neighbors
+		if o.Target.Addr().Is6() {
+			source = func(ctx context.Context) (map[netip.Addr]string, error) { return neighbors6(ctx, o.Interface) }
+		} else {
+			source = neighbors
+		}
 	}
 	table, err := source(ctx)
 	if ctx.Err() == nil {
@@ -223,9 +291,12 @@ func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, 
 	}
 	// The scanning machine may not have an entry in its own ARP table.
 	networks, _ := Networks()
+	if o.Target.Addr().Is6() {
+		networks, _ = Networks6()
+	}
 	for _, network := range networks {
 		ip, err := netip.ParseAddr(network.Address)
-		if err != nil || !o.Target.Contains(ip) {
+		if err != nil || !targeted[ip] || (o.Target.Addr().Is6() && o.Interface != "" && network.Interface != o.Interface) {
 			continue
 		}
 		add(ip, "local-interface", 0, 0)
@@ -237,7 +308,7 @@ func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, 
 	}
 	var scanHosts []netip.Addr
 	for _, ip := range hosts {
-		if found[ip] != nil || o.Target.Bits() == 32 || o.AllHosts {
+		if found[ip] != nil || o.Target.Bits() == o.Target.Addr().BitLen() || o.AllHosts {
 			scanHosts = append(scanHosts, ip)
 		}
 	}
@@ -264,7 +335,7 @@ func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, 
 			for d := range enrich {
 				if o.Resolve && ctx.Err() == nil {
 					c, cancel := context.WithTimeout(ctx, o.Timeout)
-					names, err := net.DefaultResolver.LookupAddr(c, d.IP.String())
+					names, err := net.DefaultResolver.LookupAddr(c, d.IP.WithZone("").String())
 					cancel()
 					if err == nil {
 						for _, name := range names {

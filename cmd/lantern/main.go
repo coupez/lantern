@@ -32,7 +32,7 @@ func main() {
 func run(args []string) error {
 	cmd := "scan"
 	if len(args) > 0 && !strings.HasPrefix(args[0], "-") {
-		if _, err := scanner.ParseTarget(args[0]); err != nil {
+		if _, _, err := scanner.ParseTargetSpec(args[0]); err != nil {
 			cmd = args[0]
 			args = args[1:]
 		}
@@ -49,8 +49,10 @@ func run(args []string) error {
 		if err != nil {
 			return err
 		}
+		n6, _ := scanner.Networks6()
+		n = append(n, n6...)
 		for _, v := range n {
-			fmt.Printf("%-12s %-19s %s\n", v.Interface, v.CIDR, v.MAC)
+			fmt.Printf("%-12s %-39s %s\n", v.Interface, v.CIDR, v.MAC)
 		}
 		return nil
 	case "vendors":
@@ -109,14 +111,14 @@ func run(args []string) error {
 	}
 }
 func help() {
-	fmt.Print(`
+	io.WriteString(os.Stdout, `
   ◈ LANTERN  ·  See your network clearly.
 
   lantern                         Discover your local network
   lantern scan [CIDR | IP]        Scan a network or single host
   lantern inspect IP              Detailed device and service inspection
   lantern watch [CIDR]            Repeat scans and report changes
-  lantern interfaces              List available IPv4 networks
+  lantern interfaces              List available IPv4/IPv6 networks
   lantern lookup MAC              Identify a MAC vendor offline
   lantern vendors [sources]       Database size and provenance
   lantern diff before.json after.json
@@ -129,7 +131,8 @@ func help() {
     --ports 22,80,443,8000-8100     Custom TCP ports (or none)
     --timeout 300ms                Per-probe deadline
     --concurrency 512              Maximum concurrent TCP probes
-    --interface en0                Select local network
+    --interface en0                Select local network / IPv6 zone
+    --ipv6                         Discover local IPv6 neighbors
     --json | --jsonl | --csv        Structured output
     --save scan.json               Save a snapshot atomically
     --no-dns | --no-icmp            Disable discovery components
@@ -143,6 +146,8 @@ func help() {
     --no-color                     Plain output (also NO_COLOR)
 
   Examples
+    lantern scan --ipv6 --interface en0
+    lantern scan fe80::1%en0
     lantern scan --profile quick
     lantern 192.168.1.0/24 --json > network.json
     lantern scan 192.168.1.42 --ports 1-65535 --banners
@@ -184,6 +189,7 @@ func scan(args []string, watch bool) error {
 	noColor := f.Bool("no-color", false, "")
 	details := f.Bool("details", false, "")
 	noDNS := f.Bool("no-dns", false, "")
+	ipv6 := f.Bool("ipv6", false, "discover IPv6 neighbors on the selected interface")
 	noICMP := f.Bool("no-icmp", false, "")
 	noMulticast := f.Bool("no-multicast", false, "")
 	noDescriptions := f.Bool("no-descriptions", false, "")
@@ -201,7 +207,7 @@ func scan(args []string, watch bool) error {
 		return err
 	}
 	if f.NArg() > 1 {
-		return errors.New("specify one IPv4 address or CIDR")
+		return errors.New("specify one IP address or CIDR")
 	}
 	formats := 0
 	for _, b := range []bool{*asJSON, *asJSONL, *asCSV} {
@@ -248,8 +254,21 @@ func scan(args []string, watch bool) error {
 			return err
 		}
 	}
+	o.Interface = *iface
 	if f.NArg() == 1 {
-		o.Target, err = scanner.ParseTarget(f.Arg(0))
+		var zone string
+		o.Target, zone, err = scanner.ParseTargetSpec(f.Arg(0))
+		if zone != "" {
+			if o.Interface != "" && o.Interface != zone {
+				return errors.New("target zone and --interface disagree")
+			}
+			o.Interface = zone
+		}
+		if err == nil && *ipv6 && !o.Target.Addr().Is6() {
+			return errors.New("--ipv6 requires an IPv6 target")
+		}
+	} else if *ipv6 {
+		o.Target, o.Interface, err = scanner.AutoTarget6(*iface)
 	} else {
 		o.Target, err = scanner.AutoTarget(*iface)
 	}
@@ -268,7 +287,11 @@ func scan(args []string, watch bool) error {
 	var previous *scanner.Report
 	for {
 		if human {
-			u.Intro(o.Target.String(), *profile)
+			label := o.Target.String()
+			if o.Interface != "" {
+				label += " on " + o.Interface
+			}
+			u.Intro(label, *profile)
 		}
 		var outputErr error
 		report, err := (scanner.Engine{}).Scan(ctx, o, func(e scanner.Event) {

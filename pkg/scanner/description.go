@@ -28,7 +28,7 @@ func descriptionURL(raw string, peer netip.Addr) (*url.URL, error) {
 		return nil, errors.New("description requires a credential-free HTTP URL")
 	}
 	host, err := netip.ParseAddr(u.Hostname())
-	if err != nil || host.Unmap() != peer.Unmap() {
+	if err != nil || host.Unmap().WithZone("") != peer.Unmap().WithZone("") || (host.Zone() != "" && host.Zone() != peer.Zone()) {
 		return nil, errors.New("description URL must name the responding device's IP")
 	}
 	if port := u.Port(); port != "" {

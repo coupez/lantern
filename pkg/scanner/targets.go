@@ -20,7 +20,9 @@ type Network struct {
 	MAC       string `json:"mac,omitempty"`
 }
 
-func Networks() ([]Network, error) {
+func Networks() ([]Network, error)  { return networksFor(false) }
+func Networks6() ([]Network, error) { return networksFor(true) }
+func networksFor(v6 bool) ([]Network, error) {
 	interfaces, err := net.Interfaces()
 	if err != nil {
 		return nil, err
@@ -33,10 +35,10 @@ func Networks() ([]Network, error) {
 		addrs, _ := i.Addrs()
 		for _, a := range addrs {
 			p, err := netip.ParsePrefix(a.String())
-			if err != nil || !p.Addr().Is4() {
+			if err != nil || p.Addr().Is6() != v6 {
 				continue
 			}
-			out = append(out, Network{i.Name, p.Addr().String(), p.Masked().String(), i.HardwareAddr.String()})
+			out = append(out, Network{i.Name, scoped(p.Addr(), i.Name).String(), p.Masked().String(), i.HardwareAddr.String()})
 		}
 	}
 	sort.SliceStable(out, func(i, j int) bool {
@@ -72,33 +74,61 @@ func AutoTarget(iface string) (netip.Prefix, error) {
 	}
 	return netip.ParsePrefix(matches[0].CIDR)
 }
+
+// ParseTarget parses an unscoped address/prefix. Use ParseTargetSpec for zones.
 func ParseTarget(s string) (netip.Prefix, error) {
-	if a, err := netip.ParseAddr(s); err == nil && a.Is4() {
-		return netip.PrefixFrom(a, 32), nil
+	p, zone, err := ParseTargetSpec(s)
+	if err == nil && zone != "" {
+		return netip.Prefix{}, fmt.Errorf("scoped target requires ParseTargetSpec and Options.Interface")
 	}
-	p, err := netip.ParsePrefix(s)
-	if err != nil || !p.Addr().Is4() {
-		return netip.Prefix{}, fmt.Errorf("expected IPv4 address or CIDR, got %q", s)
-	}
-	return p.Masked(), nil
+	return p, err
 }
-func Hosts(p netip.Prefix, max int) ([]netip.Addr, error) {
-	if !p.IsValid() || !p.Addr().Is4() {
-		return nil, fmt.Errorf("IPv4 target required")
+
+// ParseTargetSpec preserves an IPv6 zone separately for Options.Interface.
+func ParseTargetSpec(s string) (netip.Prefix, string, error) {
+	addrPart, bitsPart, hasPrefix := strings.Cut(s, "/")
+	a, err := netip.ParseAddr(addrPart)
+	if err != nil {
+		return netip.Prefix{}, "", fmt.Errorf("expected an IP address or CIDR, got %q", s)
 	}
-	count := uint64(1) << uint(32-p.Bits())
-	if p.Bits() < 31 {
-		count -= 2
+	if a.Is4In6() {
+		return netip.Prefix{}, "", fmt.Errorf("use a native IPv4 address instead of an IPv4-mapped IPv6 address")
 	}
-	if max < 1 || max > 65536 {
+	zone := a.Zone()
+	a = a.WithZone("")
+	bits := a.BitLen()
+	if hasPrefix {
+		bits, err = strconv.Atoi(bitsPart)
+		if err != nil || bits < 0 || bits > a.BitLen() {
+			return netip.Prefix{}, "", fmt.Errorf("invalid prefix length in %q", s)
+		}
+	}
+	if a.IsMulticast() || (a.IsUnspecified() && bits == a.BitLen()) {
+		return netip.Prefix{}, "", fmt.Errorf("target must be a unicast address or a network prefix")
+	}
+	return netip.PrefixFrom(a, bits).Masked(), zone, nil
+}
+func Hosts(p netip.Prefix, limit int) ([]netip.Addr, error) {
+	if !p.IsValid() || p.Addr().Is4In6() {
+		return nil, fmt.Errorf("valid native IPv4 or IPv6 target required")
+	}
+	if limit < 1 || limit > 65536 {
 		return nil, fmt.Errorf("max-hosts must be between 1 and 65536")
 	}
-	if count > uint64(max) {
-		return nil, fmt.Errorf("target has %d hosts; limit is %d (use --max-hosts deliberately)", count, max)
+	hostBits := p.Addr().BitLen() - p.Bits()
+	if hostBits > 16 {
+		return nil, fmt.Errorf("target is too large to enumerate; IPv6 scans use local discovery automatically")
+	}
+	count := uint64(1) << uint(hostBits)
+	if p.Addr().Is4() && p.Bits() < 31 {
+		count -= 2
+	}
+	if count > uint64(limit) {
+		return nil, fmt.Errorf("target has %d hosts; limit is %d (use --max-hosts deliberately)", count, limit)
 	}
 	out := make([]netip.Addr, 0, int(count))
 	a := p.Masked().Addr()
-	if p.Bits() < 31 {
+	if p.Addr().Is4() && p.Bits() < 31 {
 		a = a.Next()
 	}
 	for range count {
@@ -106,6 +136,36 @@ func Hosts(p netip.Prefix, max int) ([]netip.Addr, error) {
 		a = a.Next()
 	}
 	return out, nil
+}
+func sparseIPv6(p netip.Prefix, limit int) bool {
+	if !p.IsValid() || !p.Addr().Is6() {
+		return false
+	}
+	bits := 128 - p.Bits()
+	return bits > 16 || (uint64(1)<<uint(bits)) > uint64(limit)
+}
+func scoped(a netip.Addr, iface string) netip.Addr {
+	if a.Is6() && a.IsLinkLocalUnicast() && a.Zone() == "" && iface != "" {
+		return a.WithZone(iface)
+	}
+	return a
+}
+func inTarget(p netip.Prefix, a netip.Addr) bool { return p.Contains(a.WithZone("")) }
+
+// AutoTarget6 selects one interface, then discovers its IPv6 neighbors without
+// attempting to enumerate its full address space.
+func AutoTarget6(iface string) (netip.Prefix, string, error) {
+	if iface == "" {
+		iface = defaultInterfaceFor(true)
+		if iface == "" {
+			iface = defaultInterface()
+		}
+	}
+	selected, _, err := ipv6Interface(netip.MustParsePrefix("::/0"), iface)
+	if err != nil {
+		return netip.Prefix{}, "", err
+	}
+	return netip.MustParsePrefix("::/0"), selected.Name, nil
 }
 func ParsePorts(s string) ([]uint16, error) {
 	if s == "none" {
@@ -140,15 +200,24 @@ func ParsePorts(s string) ([]uint16, error) {
 	return out, nil
 }
 
-func defaultInterface() string {
+func defaultInterface() string { return defaultInterfaceFor(false) }
+func defaultInterfaceFor(v6 bool) string {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	var command *exec.Cmd
 	switch runtime.GOOS {
 	case "darwin":
-		command = exec.CommandContext(ctx, "/sbin/route", "-n", "get", "default")
+		args := []string{"-n", "get", "default"}
+		if v6 {
+			args = []string{"-n", "get", "-inet6", "default"}
+		}
+		command = exec.CommandContext(ctx, "/sbin/route", args...)
 	case "linux":
-		command = exec.CommandContext(ctx, "ip", "-4", "route", "show", "default")
+		family := "-4"
+		if v6 {
+			family = "-6"
+		}
+		command = exec.CommandContext(ctx, "ip", family, "route", "show", "default")
 	default:
 		return ""
 	}

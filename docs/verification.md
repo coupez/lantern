@@ -37,3 +37,12 @@ These checks establish functional behavior and one-network performance, not exha
 - Short fuzz runs: 354,405 description-parser cases and 589,287 mDNS cases; both passed. These runs predated the toolchain change below; the final patched build's full tests and controlled network checks also passed.
 - New HTTP/XML call paths made Go 1.26.3 standard-library advisories reachable to `govulncheck`. The project now requires patched **Go 1.26.8** (verified in the official Go release feed), and the final scan reports **no vulnerabilities found**. This supersedes the earlier toolchain requirement for the current build.
 - Added 40 exact Cast model/manufacturer mappings from a pinned MIT-licensed PyChromecast source, with content hash and license retention.
+
+## IPv6 expansion
+
+- All package tests passed with the race detector on Go 1.26.8; `go vet ./...` passed. Added checks for scoped target parsing, IPv6 range bounds, Darwin/Linux NDP parsing, local-prefix/interface filtering, candidate limits, early option validation, AAAA correlation, scope-safe description URLs, and full address rendering at 60–140 columns.
+- Controlled network tests passed on both IPv4 and IPv6: ICMP echo, TCP detection, SSH banners, split DNS-SD enumeration/PTR/SRV/TXT/A-or-AAAA replies. IPv6 HTTP tests verified bracketed Host headers, server banners, and UPnP descriptions.
+- Live IPv6 standard discovery on en1 took **1,464 ms**, retained and probed one address, and produced no warnings. The observed device was the scanning machine, with ICMP, mDNS, local-interface, neighbor-cache, and TCP evidence. This validates the local scoped path; it does **not** establish discovery coverage of other IPv6 devices. Private report: `research/results/ipv6-standard.json`.
+- mDNS fuzzing with IPv6 hit generation and AAAA follow-ups: **576,488 executions**, passed.
+- Large IPv6 prefixes use observed candidates instead of address enumeration. Reports explicitly record this distinction. IPv4 and IPv6 scans remain separate; direct ARP/NDP and Linux runtime validation remain outstanding.
+- Rebuilt all four release archives after IPv6 changes; macOS ARM64 archive executable smoke-tested. Linux artifacts remain cross-builds pending runtime verification.

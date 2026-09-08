@@ -23,7 +23,7 @@ func readBanner(ctx context.Context, ip netip.Addr, p Port, timeout time.Duratio
 	if p.Service != "ssh" && p.Service != "ftp" && p.Service != "smtp" && p.Service != "http" {
 		return ""
 	}
-	c, err := (&net.Dialer{Timeout: timeout}).DialContext(ctx, "tcp4", net.JoinHostPort(ip.String(), strconv.Itoa(int(p.Number))))
+	c, err := (&net.Dialer{Timeout: timeout}).DialContext(ctx, "tcp", net.JoinHostPort(ip.String(), strconv.Itoa(int(p.Number))))
 	if err != nil {
 		return ""
 	}
@@ -32,7 +32,7 @@ func readBanner(ctx context.Context, ip netip.Addr, p Port, timeout time.Duratio
 	defer stop()
 	c.SetDeadline(time.Now().Add(timeout))
 	if p.Service == "http" {
-		_, err = c.Write([]byte("HEAD / HTTP/1.0\r\nHost: " + ip.String() + "\r\nConnection: close\r\n\r\n"))
+		_, err = c.Write([]byte("HEAD / HTTP/1.0\r\nHost: " + net.JoinHostPort(ip.WithZone("").String(), strconv.Itoa(int(p.Number))) + "\r\nConnection: close\r\n\r\n"))
 		if err != nil {
 			return ""
 		}
