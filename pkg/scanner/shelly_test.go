@@ -54,13 +54,13 @@ func TestShellyIdentityAndSourceIsolation(t *testing.T) {
 	mdns := Advertisement{Protocol: "mdns", Service: "_shelly._tcp", Instance: "Shelly._shelly._tcp.local", Port: 80, Properties: map[string]string{"gen": "2", "model": "Mac16,9", "ver": "wrong"}}
 	before, _ := json.Marshal([]Advertisement{ad, mdns})
 	id := identify([]Advertisement{mdns, ad, ad})
-	if id == nil || id.Name != "Workshop relay" || id.Model != "SNSW-001X16EU" || id.Firmware != "Shelly" || id.FirmwareVersion != "1.4.0" || id.Manufacturer != "" || len(id.ModelNames) != 0 {
+	if id == nil || id.Name != "Workshop relay" || id.Model != "SNSW-001X16EU" || id.Firmware != "Shelly" || id.FirmwareVersion != "1.4.0" || id.Manufacturer != "Shelly" || len(id.ModelNames) != 1 || id.ModelNames[0] != "Shelly Plus 1" {
 		t.Fatal(id)
 	}
 	claims := map[string]string{}
 	for _, c := range id.Claims {
 		claims[c.Field] = c.Value
-		if strings.HasPrefix(c.Source, "shelly:") && (c.Reference != shellyInfoReference || c.Source != "shelly:"+fields["location"]+"#"+ad.Instance) {
+		if strings.HasPrefix(c.Source, "shelly:") && ((c.Basis != "catalog" && c.Reference != shellyInfoReference) || c.Source != "shelly:"+fields["location"]+"#"+ad.Instance) {
 			t.Fatal(c)
 		}
 	}
@@ -117,5 +117,44 @@ func TestShellyDiscoveryBoundaries(t *testing.T) {
 	ad.Port, ad.Protocol = 80, "ssdp"
 	if shellyDescriptionURL(netip.MustParseAddr("192.0.2.1"), ad) != "" || identify([]Advertisement{ad}) != nil {
 		t.Fatal("wrong protocol")
+	}
+}
+
+func TestShellyCatalogRequiresMatchingGenerationAndModelSource(t *testing.T) {
+	fields, _ := parseShellyDescription([]byte(shellyFixture))
+	fields["location"] = "http://192.0.2.1/shelly"
+	ad := Advertisement{Protocol: "shelly", Service: "device-info", Instance: fields["id"], Properties: fields}
+	for _, generation := range []string{"", "0", "1", "3", "5", "2\x00"} {
+		fields["gen"] = generation
+		id := identify([]Advertisement{ad})
+		if id.Model != fields["model"] || id.Manufacturer != "" || len(id.ModelNames) != 0 {
+			t.Fatal(generation, id)
+		}
+	}
+	fields["gen"] = "2"
+	for _, model := range []string{"Mac16,9", "SNSW-001X16EU\x00", "SNSW-001X16EU-extra"} {
+		fields["model"] = model
+		id := identify([]Advertisement{ad})
+		if id.Manufacturer != "" || len(id.ModelNames) != 0 {
+			t.Fatal(model, id)
+		}
+	}
+	fields["model"] = "SNSW-001X16EU"
+	for _, service := range []string{"_airplay._tcp", "_device-info._tcp", "_raop._tcp"} {
+		id := identify([]Advertisement{{Protocol: "mdns", Service: service, Properties: map[string]string{"model": fields["model"], "am": fields["model"]}}})
+		if id.Manufacturer != "" || len(id.ModelNames) != 0 {
+			t.Fatal("cross-catalog protocol match", service, id)
+		}
+	}
+	id := identify([]Advertisement{ad, {Protocol: "upnp", Instance: "uuid:other", Properties: map[string]string{"location": "http://192.0.2.1/device", "modelName": "Other device"}}})
+	if id.Model != "Other device" || id.Manufacturer != "" || len(id.ModelNames) != 0 {
+		t.Fatal("unselected model leaked catalog data", id)
+	}
+	retained := false
+	for _, claim := range id.Claims {
+		retained = retained || claim.Field == "model_name" && claim.Value == "Shelly Plus 1" && claim.Basis == "catalog"
+	}
+	if !retained {
+		t.Fatal("lost competing claim", id)
 	}
 }

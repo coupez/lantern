@@ -1,0 +1,15 @@
+{
+  "name": "aioshelly",
+  "url": "https://github.com/home-assistant-libs/aioshelly",
+  "commit": "8f1b2f9bf2fc154faf6c3d73213d59620a6e301c",
+  "license": "Apache-2.0",
+  "retrieved": "2026-09-08",
+  "source_sha256": "a24c482a0eb06e8f00f714490dfd256d4026c7cd24fb2921b9f20623b45c416d",
+  "license_sha256": "a265d325ac5d9090ecffdbe0198c15237c2349cf16f8409de7e35ae3c5b769bf",
+  "index_sha256": "08e9518eee5029098f341bf1629bb78c9a284438fe4c0879e917ebbc4cae29c7",
+  "input_records": 155,
+  "identifiers": 155,
+  "assignments": 155,
+  "ambiguous_identifiers": 0,
+  "selection": "DEVICES model identifier, name and generation; includes all catalog entries, irrespective of upstream control support. No firmware minimum, capability, control or Bluetooth-ID data imported."
+}

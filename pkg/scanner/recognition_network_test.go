@@ -179,7 +179,7 @@ func testMDNSSplitReply(t *testing.T, address, service, model string) {
 		enrichDescriptions(context.Background(), &d, time.Second)
 		normalizeAdvertisements(&d)
 		d.Identity = identify(d.Advertisements)
-		if shellyReads.Load() != 1 || d.Identity == nil || d.Identity.Name != "Workshop relay" || d.Identity.Model != "SNSW-001X16EU" || d.Identity.FirmwareVersion != "1.4.0" || inferKind(d) != "smart home device" || d.MAC != "" || len(d.Ports) != 0 {
+		if shellyReads.Load() != 1 || d.Identity == nil || d.Identity.Name != "Workshop relay" || d.Identity.Model != "SNSW-001X16EU" || len(d.Identity.ModelNames) != 1 || d.Identity.ModelNames[0] != "Shelly Plus 1" || d.Identity.Manufacturer != "Shelly" || d.Identity.FirmwareVersion != "1.4.0" || inferKind(d) != "smart home device" || d.MAC != "" || len(d.Ports) != 0 {
 			t.Fatal("packet-to-Shelly identity integration", d, shellyReads.Load())
 		}
 	}

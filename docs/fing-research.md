@@ -29,6 +29,10 @@ The binaries were scanned for valid embedded zlib streams. Nine streams were ext
 
 ## What this establishes
 
+A second static pass inspected ARM64 routines in the previously hashed native package. `EthernetOuis::initSingleton()` at `0x10519c` obtains the configurable filename, calls an input-file stream's `open`, loads properties, parses hexadecimal keys, and inserts entries into a hash index. This is stronger evidence for a file-backed loader than the earlier filename strings alone; it did not recover an embedded OUI table.
+
+The agent's `RecogCatalog::recogCatalogLookup` at `0x100187fb0` calls `FingAgentInfo::getUserProfile` and then `RemoteFingBox::recogCatalogLookup`. This supports a remote-client path for the inspected catalog lookup. It does not establish that every recognition path is cloud-only or rule out caches and other embedded data. The original binary hashes were rechecked against the inventory. Addresses, hash checks, and bounded conclusions are recorded in `research/fing-static-analysis.json`; raw disassembly stays in the ignored extraction directory. No app, lookup service, or runtime cache was used.
+
 The downloaded packages do not expose the requested standalone MAC mapping file. We have not recovered Fing's complete proprietary recognition catalog and do not claim to have done so. Additional compiled data or data downloaded at runtime remains possible. No credentials, cloud recognition endpoints, or paid services were used.
 
 Local research artifacts are under `research/downloads/` and `research/extracted/`, excluded by `.gitignore`. Lantern's code and generated datasets have no dependency on those proprietary resources.
@@ -42,6 +46,8 @@ Local research artifacts are under `research/downloads/` and `research/extracted
 | mDNS / DNS-SD | Hostname, advertised service, model/TXT properties | Bounded local discovery implemented |
 | SSDP | Advertised service, server, USN, description URL | Descriptions now read from the responder IP with limits; embedded devices matched by UDN |
 | PyChromecast model table (MIT) | Exact Cast model → manufacturer | 40 mappings embedded from a pinned commit |
+| AppleDB (MIT) | Hardware identifiers → product candidates | 606 identifiers, 886 assignments; ambiguity preserved |
+| aioshelly (Apache-2.0) | Shelly model identifiers + generation → product names | 155 records; generation-aware matching and offline lookup |
 | Reverse DNS | PTR names | Bounded optional lookup |
 | SSH / HTTP / FTP / SMTP responses | Device-reported software banners | Bounded explicit/deep inspection |
 | Wireshark manuf / Nmap fingerprints / community catalogs | Potential extra mappings and fingerprints | Not imported; provenance and applicable source terms need evaluation |

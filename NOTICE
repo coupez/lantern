@@ -29,3 +29,11 @@ in the index. The upstream license is reproduced in THIRD_PARTY_LICENSES.
 
 Terminal grapheme segmentation and cell widths use github.com/rivo/uniseg
 by Oliver Kuederle under MIT. Its license is reproduced in THIRD_PARTY_LICENSES.
+
+The Shelly model-name/generation catalog is adapted from aioshelly by Paulus
+Schoutsen and contributors under Apache-2.0. Only literal identifier/name/
+generation records are retained; implementation, control support, and firmware
+requirements are omitted. Pinned source/license/index hashes and selection rules
+are in pkg/models/data/shelly-sources.json. The upstream license is reproduced
+in THIRD_PARTY_LICENSES. The Shelly manufacturer field is a catalog brand label,
+separate from IEEE assignments and device-reported fields.

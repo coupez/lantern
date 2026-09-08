@@ -1,0 +1,39 @@
+{
+  "version": "4.0.5",
+  "files": [
+    {
+      "name": "liboverlook.dylib",
+      "sha256": "409b671ddd9db91eaf8410cb2122361915326a53cdbe18455477db7e6debe967"
+    },
+    {
+      "name": "fingagent.bin",
+      "sha256": "865649aa860837bf93b0bd3126d042d508f0d3846b5fdc7ca519e7299fd35e52"
+    }
+  ],
+  "method": "Static ARM64 symbol/disassembly inspection with nm and llvm-objdump; application not executed",
+  "findings": [
+    {
+      "binary": "liboverlook.dylib",
+      "function": "overlook::net::db::EthernetOuis::initSingleton()",
+      "address": "0x10519c",
+      "observed_calls": {
+        "0x105334": "Properties::getProperty",
+        "0x1053d0": "basic_ifstream::open",
+        "0x105464": "Properties::load",
+        "0x1055b8": "RawDataFormat::parse_base16"
+      },
+      "interpretation": "The inspected initializer reads a configurable properties file and inserts parsed hex-prefix entries into a hash index; no embedded OUI table was recovered."
+    },
+    {
+      "binary": "fingagent.bin",
+      "function": "overlook::fingagent::recog::RecogCatalog::recogCatalogLookup",
+      "address": "0x100187fb0",
+      "observed_calls": {
+        "0x100188030": "FingAgentInfo::getUserProfile",
+        "0x1001880ec": "RemoteFingBox::recogCatalogLookup"
+      },
+      "interpretation": "The inspected catalog lookup delegates through a remote-client path with user-profile context; this does not prove every recognition path is cloud-only."
+    }
+  ],
+  "limits": "No service contacted, credentials used, runtime caches read, recognition records recovered, or proprietary implementation/data incorporated."
+}

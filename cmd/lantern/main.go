@@ -58,14 +58,14 @@ func run(args []string) error {
 		return nil
 	case "models":
 		if len(args) == 0 {
-			fmt.Printf("%d offline AppleDB hardware identifiers · exact matches with all candidates\n", models.Count())
+			fmt.Printf("%d offline AppleDB/Shelly hardware identifiers · exact matches with all candidates\n", models.Count())
 			return nil
 		}
 		if len(args) != 1 {
 			return errors.New("usage: lantern models [IDENTIFIER | sources]")
 		}
 		if args[0] == "sources" {
-			return json.NewEncoder(os.Stdout).Encode(models.Provenance())
+			return json.NewEncoder(os.Stdout).Encode(models.Sources())
 		}
 		return json.NewEncoder(os.Stdout).Encode(models.Lookup(args[0]))
 	case "vendors":

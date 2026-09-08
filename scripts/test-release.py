@@ -40,7 +40,8 @@ required = {'lantern','LICENSE','NOTICE','THIRD_PARTY_LICENSES','README.md','doc
             'docs/snapshots.md','docs/discovery.md','docs/recognition.md','docs/verification.md',
             'docs/STATUS.md','docs/fing-research.md','research/fing-inventory.json',
             'pkg/models/data/sources.json','pkg/vendors/data/sources.json','pkg/scanner/data/sources.json',
-            'pkg/scanner/data/cast-models.json'}
+            'pkg/scanner/data/cast-models.json','pkg/models/data/shelly-models.json',
+            'pkg/models/data/shelly-sources.json','research/fing-static-analysis.json'}
 for system,arch in targets:
     filename = f'lantern-{version}-{system}-{arch}.tar.gz'
     path = dist/filename
@@ -60,6 +61,10 @@ for system,arch in targets:
             content[entry.name] = archive.extractfile(entry).read()
         assert b'github.com/rivo/uniseg' in content['THIRD_PARTY_LICENSES']
         assert b'AppleDB' in content['NOTICE']
+        assert b'aioshelly' in content['NOTICE'] and b'Apache License' in content['THIRD_PARTY_LICENSES']
+        shelly_source = json.loads(content['pkg/models/data/shelly-sources.json'])
+        assert hashlib.sha256(content['pkg/models/data/shelly-models.json']).hexdigest() == shelly_source['index_sha256']
+        assert shelly_source['license'] == 'Apache-2.0' and shelly_source['identifiers'] == 155
         for name,data in content.items():
             if name.endswith('.json'):
                 json.loads(data)
@@ -88,6 +93,8 @@ for system,arch in targets:
                 assert '4 devices' in run('demo','--no-color')
                 assert 'cisco' in json.loads(run('lookup','00:00:0c:12:34:56'))['name'].lower()
                 assert json.loads(run('models','Mac16,9'))
+                assert json.loads(run('models','SNSW-001X16EU'))[0]['name'] == 'Shelly Plus 1'
+                assert len(json.loads(run('models','sources'))) == 2
                 diagnostics = json.loads(run('doctor', '--json'))
                 assert diagnostics['os'] == system and diagnostics['arch'] == arch, diagnostics
                 assert diagnostics['version'] == version, diagnostics
@@ -115,6 +122,8 @@ with tempfile.TemporaryDirectory(prefix='lantern-archive-') as tmp:
     assert '4 devices' in run('demo', '--no-color')
     assert 'cisco' in json.loads(run('lookup', '00:00:0c:12:34:56'))['name'].lower()
     assert json.loads(run('models', 'Mac16,9'))
+    assert json.loads(run('models', 'SNSW-001X16EU'))[0]['name'] == 'Shelly Plus 1'
+    assert len(json.loads(run('models', 'sources'))) == 2
     report = json.loads(run('doctor', '--json'))
     assert report['os'] == 'linux' and report['arch'] == os.environ['LANTERN_EXPECT_GOARCH'], report
     assert report['version'] == os.environ['LANTERN_EXPECT_VERSION'], report

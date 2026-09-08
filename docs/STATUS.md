@@ -24,12 +24,14 @@ The workspace started empty. A runnable CLI and reusable discovery engine now ex
 - mDNS service-type enumeration and follow-up queries; bounded UPnP description reads with embedded-device matching; source-attributed names/models; 40 MIT-licensed Cast model/manufacturer mappings.
 - ESPHome discovery and firmware recognition with direct DNS-SD queries, friendly names, source-linked build/project claims, firmware exports/search/diffs, and separate IPv4/IPv6 socket fixtures. Physical ESPHome-device coverage remains pending.
 - Shelly discovery through direct DNS-SD queries and bounded read-only identity requests, with model/name/firmware provenance and shared UPnP request/time limits. Generation-1 and physical Shelly-device coverage remain pending.
+- 155 Apache-2.0 aioshelly model-name/generation records with pinned inputs, reproducible AST-only import, offline lookup, generation-aware recognition, and catalog/source isolation. AppleDB and Shelly together provide 761 offline identifiers.
 - HomeKit model/name recognition and 36 protocol category codes, with source-linked type hints, conflict preservation, exact service matching, and IPv4/IPv6 socket fixtures. Physical HomeKit-device coverage remains pending.
 - 606 MIT-licensed AppleDB hardware identifiers with 886 source assignments, ambiguity-preserving product names, RAOP model recognition, and an offline `models` lookup command.
 - JSON, JSONL, CSV, atomic snapshots, and snapshot/watch changes for identity and response evidence, with requested scan coverage, interruption handling, common-port comparisons, and interface isolation. Wake-on-LAN and a no-network demo.
 - MIT code license, upstream data notices, repeatable build and tests; local macOS/Linux ARM64/x86-64 release archives. All four packaged binaries passed socket/terminal/snapshot CLI fixtures; x86-64 ran through installed translation, not native Intel/AMD hardware.
 - Architecture-selectable Linux runtime suites with explicit platform assertions and separate images; full ARM64 and translated x86-64 suites passed, including raw ARP/NDP and denied-capability fixtures.
 - Official Fing 4.0.5 and 3.10.1 downloaded and inspected. No standalone MAC registry recovered; exact findings are documented.
+- Additional native Fing disassembly confirms a configurable file-loading OUI initializer and a remote-client path for the inspected catalog lookup. No complete recognition database was recovered; hash-checked evidence and limits are recorded.
 
 ## Still required before calling the broad goal finished
 

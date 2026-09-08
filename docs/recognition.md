@@ -12,7 +12,8 @@ Lantern combines independent MAC assignment records with device-reported protoco
 | `_airplay._tcp`, `_device-info._tcp`; `_raop._tcp` | `model`; `am` | Original advertised model identifier |
 | Pinned AppleDB hardware catalog | 606 identifiers → 886 assignments, including 124 ambiguous identifiers | Catalog-derived product-name candidates; all source variants retained |
 | `_esphomelib._tcp` (ESPHome) | Friendly name, firmware version, build board/platform, project metadata | Protocol-derived firmware label; advertised build details, without retail model/manufacturer inference |
-| `_shelly._tcp` → `/shelly` | Instance name; reported model, name, firmware version/build, generation, application/profile | Device-reported JSON; no manufacturer/catalog or link-layer MAC inference |
+| `_shelly._tcp` → `/shelly` | Instance name; reported model, name, firmware version/build, generation, application/profile | Device-reported JSON; no link-layer MAC inference |
+| Pinned aioshelly catalog (Apache-2.0) | 155 exact identifiers → names/generations | Catalog candidates and Shelly brand label; automatic matches require the reported generation |
 | `_hap._tcp` (HomeKit) | `md` model, instance name, `ci` category | Advertised name/model plus source-linked protocol category interpretation |
 | `_googlecast._tcp` | `md`, `fn` | Advertised model and friendly name |
 | Pinned PyChromecast catalog | 40 exact Cast model → manufacturer mappings | Catalog-derived, explicitly labeled |
@@ -28,11 +29,23 @@ Standard/deep mDNS discovery directly queries `_shelly._tcp`, including when ser
 
 With descriptions enabled, this exact service triggers one read-only `GET /shelly` on the discovered IP and advertised port. URL/path/host values in TXT cannot redirect the request. Generic HTTP services and hostname patterns do not trigger it. Shelly and UPnP together share at most four unique request targets and one per-device `--timeout`; duplicate Shelly advertisements reuse the endpoint result, including failures. `--no-descriptions` disables these reads. No authentication, control, update, or configuration endpoint is called.
 
-The JSON response must contain a generation of at least 2 and nonempty `id`/`model` strings. Its reported name and model populate identity fields; `ver` supplies the firmware version with a protocol-derived Shelly firmware label. Build, generation, application, profile, and reported MAC become provenance claims. Firmware/version selection stays tied to the same endpoint and device ID. These data do not supply a retail product-name catalog match or manufacturer, overwrite observed MACs, establish authentication/security state, or add a verified-open port to the TCP scan results.
+The JSON response must contain a generation of at least 2 and nonempty `id`/`model` strings. Its reported name and model populate identity fields; `ver` supplies the firmware version with a protocol-derived Shelly firmware label. Build, generation, application, profile, and reported MAC become provenance claims. Firmware/version selection stays tied to the same endpoint and device ID. A separate catalog can add a product-name candidate and brand label when both the model identifier and generation agree. These data never overwrite observed MACs, establish authentication/security state, or add a verified-open port to the TCP scan results.
 
 Reads use the same pinned-IP, no-proxy, no-redirect transport as UPnP. Headers are capped at 16 KiB; JSON at 16 KiB; selected strings at 2 KiB before display normalization. Duplicate top-level keys, invalid types, incomplete identities, trailing documents, and unsupported generation-1 replies are rejected. Unknown extension fields are ignored within the body cap. Failures leave the original mDNS record intact. Shelly Gen1 recognition and physical-device interoperability remain pending.
 
-Semantics were checked on 2026-09-08 against Shelly's official [mDNS documentation](https://shelly-api-docs.shelly.cloud/gen2/General/mDNS/) and [device-information endpoint](https://shelly-api-docs.shelly.cloud/gen2/ComponentsAndServices/Shelly/#http-endpoint-shelly). No upstream implementation or model database is incorporated.
+Semantics were checked on 2026-09-08 against Shelly's official [mDNS documentation](https://shelly-api-docs.shelly.cloud/gen2/General/mDNS/) and [device-information endpoint](https://shelly-api-docs.shelly.cloud/gen2/ComponentsAndServices/Shelly/#http-endpoint-shelly). No upstream API implementation is incorporated.
+
+### Shelly catalog
+
+The independent [aioshelly device table](https://github.com/home-assistant-libs/aioshelly/blob/8f1b2f9bf2fc154faf6c3d73213d59620a6e301c/aioshelly/const.py), under Apache-2.0, contributes 155 exact model-name/generation records. `SNSW-001X16EU` with generation 2, for example, gains the catalog candidate `Shelly Plus 1`. The original model code remains selected; name and manufacturer claims are labeled `catalog`, tied to the same endpoint/model claim, and retain the pinned URL and exact input identifier. `Shelly` is a catalog brand label, separate from a MAC registrant or a device-reported manufacturer.
+
+Missing/mismatched generations, unknown codes, generic HTTP TXT, and Apple protocol fields cannot trigger these matches. A competing model that wins selection cannot inherit another endpoint's Shelly catalog name or manufacturer. Apple protocol fields use the AppleDB namespace; the generic offline lookup covers both catalogs. Existing unknown devices keep their reported model and firmware without invented product names.
+
+The importer reads only Python AST literal constants and device-table fields, without importing/executing upstream code. It pins source/license SHA-256 values, keeps every name/generation record including entries whose control support is marked unavailable upstream, and omits implementation, firmware requirements, control capabilities, and Bluetooth IDs. Catalog inclusion does not prove discoverability or control support. Gen1 records are available offline, while automatic Shelly discovery still requires the implemented Gen2+ path.
+
+Rebuild with `python3 scripts/build-shelly-models.py --download --retrieved 2026-09-08`; omit `--download` for the pinned local inputs. The fixed retrieval date reproduces the index and metadata. `pkg/models/data/shelly-sources.json` records hashes, revision, license, counts, and selection rules; the Apache license is retained in `THIRD_PARTY_LICENSES` and adaptations are described in `NOTICE`.
+
+`lantern models SNSW-001X16EU` returns the offline match with generation and provenance. There are 761 identifiers across AppleDB and Shelly. `lantern models sources` now returns an array with both catalog sources. Core callers can use `models.Sources()`; the original `models.Provenance()` still returns AppleDB metadata. `models.LookupShelly(code, generation)` supports scoped lookups; generation zero means all catalog generations for explicit offline use.
 
 ## ESPHome recognition
 

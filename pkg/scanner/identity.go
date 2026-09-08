@@ -3,6 +3,7 @@ package scanner
 import (
 	"github.com/coupez/lantern/pkg/models"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -59,7 +60,7 @@ func identify(ads []Advertisement) *Identity {
 	}
 	add := func(field, key string, a Advertisement) { addValue(field, key, a.Properties[key], a) }
 	catalogModel := func(key string, a Advertisement) {
-		for _, match := range models.Lookup(a.Properties[key]) {
+		for _, match := range models.LookupApple(a.Properties[key]) {
 			claims = append(claims,
 				IdentityClaim{Field: "model_name", Value: match.Name, Source: "mdns:" + a.Instance, Key: key, Basis: "catalog", Catalog: match.Source, Identifier: match.Identifier},
 				IdentityClaim{Field: "manufacturer", Value: match.Manufacturer, Source: "mdns:" + a.Instance, Key: key, Basis: "catalog", Catalog: match.Source, Identifier: match.Identifier})
@@ -78,6 +79,14 @@ func identify(ads []Advertisement) *Identity {
 				add(field.field, field.key, a)
 			}
 			claims = append(claims, IdentityClaim{Field: "firmware", Value: "Shelly", Source: "shelly:" + a.Properties["location"] + "#" + a.Instance, Key: "service", Basis: "protocol", Reference: shellyInfoReference, Identifier: "device-info"})
+			if generation, err := strconv.Atoi(a.Properties["gen"]); err == nil && generation >= 2 {
+				for _, match := range models.LookupShelly(a.Properties["model"], generation) {
+					source := "shelly:" + a.Properties["location"] + "#" + a.Instance
+					claims = append(claims,
+						IdentityClaim{Field: "model_name", Value: match.Name, Source: source, Key: "model", Basis: "catalog", Catalog: match.Source, Identifier: match.Identifier},
+						IdentityClaim{Field: "manufacturer", Value: match.Manufacturer, Source: source, Key: "model", Basis: "catalog", Catalog: match.Source, Identifier: match.Identifier})
+				}
+			}
 		case "netbios":
 			if a.Service == "workstation" || a.Service == "file-server" {
 				add("name", "name", a)
