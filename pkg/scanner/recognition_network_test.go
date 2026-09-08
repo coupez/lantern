@@ -2,6 +2,7 @@ package scanner
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"golang.org/x/net/dns/dnsmessage"
 	"net"
@@ -194,5 +195,60 @@ func TestIPv6HTTPNetworkIntegration(t *testing.T) {
 	case host := <-badHost:
 		t.Fatal("invalid HTTP Host", host)
 	default:
+	}
+}
+
+// Close only after one actual datagram arrives, so the next receive fails on a
+// real closed socket while the collector still has an observation to retain.
+type closeAfterDiscoveryReply struct{ *net.UDPConn }
+
+func (c closeAfterDiscoveryReply) ReadFromUDP(b []byte) (int, *net.UDPAddr, error) {
+	n, peer, err := c.UDPConn.ReadFromUDP(b)
+	if err == nil {
+		c.UDPConn.Close()
+	}
+	return n, peer, err
+}
+
+func TestSSDPNetworkIntegration(t *testing.T) {
+	for _, address := range []string{"127.0.0.1", "::1"} {
+		t.Run(address, func(t *testing.T) {
+			requireNetwork(t)
+			server, err := net.ListenUDP("udp", &net.UDPAddr{IP: net.ParseIP(address)})
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer server.Close()
+			client, err := net.ListenUDP("udp", &net.UDPAddr{IP: net.ParseIP(address)})
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer client.Close()
+			server.SetDeadline(time.Now().Add(time.Second))
+			client.SetDeadline(time.Now().Add(time.Second))
+			served := make(chan error, 1)
+			go func() {
+				b := make([]byte, 4096)
+				n, peer, err := server.ReadFromUDP(b)
+				if err != nil {
+					served <- err
+					return
+				}
+				if !strings.HasPrefix(string(b[:n]), "M-SEARCH * HTTP/1.1\r\n") || !strings.Contains(string(b[:n]), "HOST: "+server.LocalAddr().String()+"\r\n") {
+					served <- fmt.Errorf("incorrect SSDP request: %q", b[:n])
+					return
+				}
+				_, err = server.WriteToUDP([]byte("HTTP/1.1 200 OK\r\nST: urn:schemas-upnp-org:device:MediaRenderer:1\r\nUSN: uuid:fixture\r\n\r\n"), peer)
+				served <- err
+			}()
+			target, _ := ParseTarget(address)
+			hits, err := collectSSDP(context.Background(), closeAfterDiscoveryReply{client}, server.LocalAddr().(*net.UDPAddr), target, "")
+			if len(hits) != 1 || hits[0].IP.String() != address || hits[0].Evidence != "ssdp" || len(hits[0].Ads) != 1 || !errors.Is(err, net.ErrClosed) || !strings.Contains(err.Error(), "SSDP receive") {
+				t.Fatal(hits, err)
+			}
+			if err := <-served; err != nil {
+				t.Fatal(err)
+			}
+		})
 	}
 }
