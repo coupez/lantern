@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Exercise the actual CLI against Debian's independent wsdd daemon."""
+import errno
 import json
+import socket
 from pathlib import Path
 import subprocess
 import sys
@@ -11,6 +13,9 @@ if not Path('/.dockerenv').exists():
     raise SystemExit('Requires the isolated Linux test container; --ipv6 also needs CAP_NET_ADMIN.')
 binary = str(Path(sys.argv[1] if len(sys.argv) > 1 else '/tmp/lantern').resolve())
 ipv6 = '--ipv6' in sys.argv[2:]
+unavailable_source = '--unavailable-source' in sys.argv[2:]
+if unavailable_source and not ipv6:
+    raise SystemExit('--unavailable-source requires --ipv6')
 identifier = '57b787e9-436b-40f7-990b-534ba5aa6be0'
 
 
@@ -27,6 +32,28 @@ try:
             run('ip', 'link', 'set', interface, 'addrgenmode', 'none')
             run('ip', 'link', 'set', interface, 'up')
             run('ip', '-6', 'addr', 'add', f'fe80::{suffix}/64', 'dev', interface, 'nodad')
+        if unavailable_source:
+            # Keep a real unusable address in the kernel inventory: its peer
+            # owns the address, so duplicate-address detection must reject it.
+            run('ip', '-6', 'addr', 'add', 'fe80::bad/64', 'dev', 'wsd1', 'nodad')
+            run('ip', '-6', 'addr', 'add', 'fe80::bad/64', 'dev', 'wsd0')
+            deadline = time.monotonic() + 4
+            while True:
+                inventory = json.loads(run('ip', '-j', '-6', 'addr', 'show', 'dev', 'wsd0').stdout)[0]['addr_info']
+                bad = next(a for a in inventory if a['local'] == 'fe80::bad')
+                if bad.get('dadfailed') or 'dadfailed' in bad.get('flags', []):
+                    break
+                assert time.monotonic() < deadline, inventory
+                time.sleep(0.05)
+            assert inventory[0]['local'] == 'fe80::bad', inventory
+            with socket.socket(socket.AF_INET6, socket.SOCK_DGRAM) as probe:
+                try:
+                    probe.bind(('fe80::bad', 0, 0, socket.if_nametoindex('wsd0')))
+                except OSError as error:
+                    assert error.errno == errno.EADDRNOTAVAIL, error
+                else:
+                    raise AssertionError('test source unexpectedly bindable')
+            print('Confirmed failed-DAD IPv6 source rejects bind with EADDRNOTAVAIL')
         interface, address = 'wsd0', 'fe80::10%wsd0'
     else:
         routes = json.loads(run('ip', '-j', '-4', 'route', 'show', 'default').stdout)
@@ -37,7 +64,7 @@ try:
     with tempfile.TemporaryDirectory(prefix='lantern-wsdd-') as tmp:
         tmp = Path(tmp)
         with (tmp / 'wsdd.log').open('w') as log:
-            child = subprocess.Popen(['wsdd', '-i', interface, '-6' if ipv6 else '-4', '-t',
+            child = subprocess.Popen(['wsdd', '-i', address.split('%')[0] if unavailable_source else interface, '-6' if ipv6 else '-4', '-t',
                                       '-U', identifier, '-n', 'LANTERN-WSDD', '-w', 'LANTERN-LAB', '-v'],
                                      stdout=log, stderr=subprocess.STDOUT)
             try:
@@ -77,6 +104,10 @@ try:
                     except AssertionError:
                         if attempt == 2:
                             raise
+                if unavailable_source:
+                    doctor = json.loads(run(binary, 'doctor', '--interface', interface, '--json').stdout)
+                    multicast = next(c for c in doctor['checks'] if c['name'] == 'multicast6')
+                    assert multicast['status'] == 'available' and address in multicast['detail'], multicast
                 second = scan()
                 second_ad = observed(second)
                 assert first_ad['properties']['message_id'] != second_ad['properties']['message_id'], 'did not get a fresh response'

@@ -123,13 +123,12 @@ func Diagnose(ctx context.Context, iface string) (Diagnostics, error) {
 			if err != nil {
 				return "", fmt.Errorf("target selection: %w", err)
 			}
-			link, local := localInterfaceOn(target, preferred)
-			if link == nil {
-				return "", fmt.Errorf("no multicast-capable interface matches the selected target")
-			}
-			_, closeSocket, err := multicastSocket(ctx, local, link, time.Second)
+			_, link, local, closeSocket, err := openMulticastSocket(ctx, target, preferred, time.Second)
 			if err != nil {
 				return "", err
+			}
+			if link == nil {
+				return "", fmt.Errorf("no multicast-capable interface matches the selected target")
 			}
 			closeSocket()
 			return fmt.Sprintf("multicast socket configured on %s (%s); no query sent", link.Name, local), nil

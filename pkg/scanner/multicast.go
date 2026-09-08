@@ -169,25 +169,7 @@ func multicastSocket(ctx context.Context, local netip.Addr, iface *net.Interface
 	stop := context.AfterFunc(ctx, func() { c.Close() })
 	return c, func() { stop(); c.Close() }, nil
 }
-func localInterface(target netip.Prefix) (*net.Interface, netip.Addr) {
-	return localInterfaceOn(target, "")
-}
-func localInterfaceOn(target netip.Prefix, preferred string) (*net.Interface, netip.Addr) {
-	interfaces, _ := net.Interfaces()
-	for _, i := range interfaces {
-		if i.Flags&net.FlagUp == 0 || i.Flags&net.FlagMulticast == 0 || (preferred != "" && preferred != i.Name) {
-			continue
-		}
-		as, _ := i.Addrs()
-		for _, a := range as {
-			p, err := netip.ParsePrefix(a.String())
-			if err == nil && p.Addr().Is6() == target.Addr().Is6() && target.Overlaps(p) {
-				return &i, scoped(p.Addr(), i.Name)
-			}
-		}
-	}
-	return nil, netip.Addr{}
-}
+
 func mdnsSweep(ctx context.Context, target netip.Prefix, timeout time.Duration) ([]discoveryHit, error) {
 	return mdnsSweepOn(ctx, target, timeout, "")
 }
@@ -195,13 +177,12 @@ func mdnsSweepOn(ctx context.Context, target netip.Prefix, timeout time.Duration
 	if ctx.Err() != nil {
 		return nil, nil
 	}
-	iface, local := localInterfaceOn(target, preferred)
-	if iface == nil {
-		return nil, nil
-	}
-	c, close, err := multicastSocket(ctx, local, iface, timeout)
+	c, iface, local, close, err := openMulticastSocket(ctx, target, preferred, timeout)
 	if err != nil {
 		return nil, discoveryCompletion(ctx, "mDNS", fmt.Errorf("mDNS socket: %w", err), 0, 0)
+	}
+	if iface == nil {
+		return nil, nil
 	}
 	defer close()
 	destination := &net.UDPAddr{IP: net.IPv4(224, 0, 0, 251), Port: 5353}
@@ -380,13 +361,12 @@ func ssdpSweepOn(ctx context.Context, target netip.Prefix, timeout time.Duration
 	if ctx.Err() != nil {
 		return nil, nil
 	}
-	iface, local := localInterfaceOn(target, preferred)
-	if iface == nil {
-		return nil, nil
-	}
-	c, close, err := multicastSocket(ctx, local, iface, timeout)
+	c, iface, local, close, err := openMulticastSocket(ctx, target, preferred, timeout)
 	if err != nil {
 		return nil, discoveryCompletion(ctx, "SSDP", fmt.Errorf("SSDP socket: %w", err), 0, 0)
+	}
+	if iface == nil {
+		return nil, nil
 	}
 	defer close()
 	destination := &net.UDPAddr{IP: net.IPv4(239, 255, 255, 250), Port: 1900}

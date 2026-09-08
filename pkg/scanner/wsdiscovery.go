@@ -67,13 +67,12 @@ func wsdSweepOn(ctx context.Context, target netip.Prefix, timeout time.Duration,
 	if ctx.Err() != nil {
 		return nil, nil
 	}
-	iface, local := localInterfaceOn(target, preferred)
-	if iface == nil {
-		return nil, nil
-	}
-	c, closeSocket, err := multicastSocket(ctx, local, iface, timeout)
+	c, iface, local, closeSocket, err := openMulticastSocket(ctx, target, preferred, timeout)
 	if err != nil {
 		return nil, discoveryCompletion(ctx, "WS-Discovery", err, 0, 0)
+	}
+	if iface == nil {
+		return nil, nil
 	}
 	defer closeSocket()
 	destination := &net.UDPAddr{IP: net.IPv4(239, 255, 255, 250), Port: 3702}
