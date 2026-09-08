@@ -11,6 +11,7 @@ The workspace started empty. A runnable CLI and reusable discovery engine now ex
 - Embedded 58,421-entry IEEE MAC database with /24, /28, /36 longest-prefix matching, private/multicast MAC handling, and registry provenance.
 - Embedded 5,889-entry IANA TCP service database, public-data refresh tooling.
 - mDNS service-type enumeration and follow-up queries; bounded UPnP description reads with embedded-device matching; source-attributed names/models; 40 MIT-licensed Cast model/manufacturer mappings.
+- 606 MIT-licensed AppleDB hardware identifiers with 886 source assignments, ambiguity-preserving product names, RAOP model recognition, and an offline `models` lookup command.
 - JSON, JSONL, CSV, atomic snapshots, snapshot diffs, watch mode, Wake-on-LAN, and a no-network demo.
 - MIT code license, upstream data notices, repeatable build and tests; local macOS/Linux ARM64/x86-64 release archives.
 - Official Fing 4.0.5 and 3.10.1 downloaded and inspected. No standalone MAC registry recovered; exact findings are documented.

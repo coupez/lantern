@@ -41,3 +41,30 @@ func TestIPv6ReportKeepsFullAddress(t *testing.T) {
 		}
 	}
 }
+
+func TestModelCandidateRendering(t *testing.T) {
+	for _, names := range [][]string{{"Mac Studio (M4 Max, 2025)"}, {"MacBook Pro Late 2013", "MacBook Pro Mid 2014"}} {
+		r := scanner.Report{Devices: []scanner.Device{{IP: netip.MustParseAddr("192.0.2.1"), Identity: &scanner.Identity{Model: "Model1,1", Manufacturer: "Apple", ModelNames: names}}}}
+		var b bytes.Buffer
+		u := &UI{Out: &b, Width: 80}
+		u.Report(r)
+		if len(names) == 1 && !strings.Contains(b.String(), names[0]) {
+			t.Fatal(b.String())
+		}
+		if len(names) > 1 && !strings.Contains(b.String(), "2 possible models") {
+			t.Fatal(b.String())
+		}
+		for _, line := range strings.Split(b.String(), "\n") {
+			if utf8.RuneCountInString(line) > 80 {
+				t.Fatal("overflow", line)
+			}
+		}
+		b.Reset()
+		u.Details(r)
+		for _, name := range names {
+			if !strings.Contains(b.String(), name) {
+				t.Fatal("lost candidate", name)
+			}
+		}
+	}
+}

@@ -1,0 +1,15 @@
+{
+  "name": "AppleDB",
+  "url": "https://github.com/littlebyteorg/appledb",
+  "commit": "95f799d28e45dc110ee2f25b7e3e6cf8c1124dae",
+  "license": "MIT",
+  "retrieved": "2026-09-08",
+  "archive_sha256": "7bac0c54bbf45aa5397a2f9c85a5409b91d4abf08a649e2798fdeaa98bed7098",
+  "license_sha256": "3adfabae22593bddd85f117ca55f6250ef115426f09dac48c1a8b2fc5fb53df3",
+  "index_sha256": "cf6cc019701e063d6ff7344415ca066ba7e1a6fd782bed634c657730d6830e81",
+  "input_records": 1905,
+  "identifiers": 606,
+  "assignments": 886,
+  "ambiguous_identifiers": 124,
+  "selection": "Public hardware identifiers in family,number form; internal, software, SDK, simulator, and virtual-machine entries excluded. Every source assignment retained."
+}

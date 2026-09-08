@@ -7,5 +7,6 @@ RUN go mod download
 COPY cmd ./cmd
 COPY internal ./internal
 COPY pkg ./pkg
+COPY LICENSE NOTICE THIRD_PARTY_LICENSES ./
 COPY scripts/test-linux-container.sh /usr/local/bin/lantern-test
 CMD ["sh", "/usr/local/bin/lantern-test"]

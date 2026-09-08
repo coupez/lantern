@@ -69,10 +69,13 @@ func TestDescriptionNetworkIntegration(t *testing.T) {
 }
 func TestMDNSSplitReplyNetworkIntegration(t *testing.T) {
 	for _, address := range []string{"127.0.0.1", "::1"} {
-		t.Run(address, func(t *testing.T) { testMDNSSplitReply(t, address) })
+		t.Run(address, func(t *testing.T) {
+			t.Run("unknown-service", func(t *testing.T) { testMDNSSplitReply(t, address, "_lantern-test._tcp", "Protocol Fixture") })
+			t.Run("catalog-model", func(t *testing.T) { testMDNSSplitReply(t, address, "_device-info._tcp", "Mac16,9") })
+		})
 	}
 }
-func testMDNSSplitReply(t *testing.T, address string) {
+func testMDNSSplitReply(t *testing.T, address, service, model string) {
 	requireNetwork(t)
 	server, err := net.ListenUDP("udp", &net.UDPAddr{IP: net.ParseIP(address)})
 	if err != nil {
@@ -102,14 +105,14 @@ func testMDNSSplitReply(t *testing.T, address string) {
 				var body dnsmessage.ResourceBody
 				switch strings.ToLower(q.Name.String()) {
 				case "_services._dns-sd._udp.local.":
-					body = &dnsmessage.PTRResource{PTR: dnsmessage.MustNewName("_lantern-test._tcp.local.")}
-				case "_lantern-test._tcp.local.":
-					body = &dnsmessage.PTRResource{PTR: dnsmessage.MustNewName("Office._lantern-test._tcp.local.")}
-				case "office._lantern-test._tcp.local.":
+					body = &dnsmessage.PTRResource{PTR: dnsmessage.MustNewName(service + ".local.")}
+				case service + ".local.":
+					body = &dnsmessage.PTRResource{PTR: dnsmessage.MustNewName("Office." + service + ".local.")}
+				case "office." + service + ".local.":
 					if q.Type == dnsmessage.TypeSRV {
 						body = &dnsmessage.SRVResource{Target: dnsmessage.MustNewName("Office.local."), Port: 8765}
 					} else if q.Type == dnsmessage.TypeTXT {
-						body = &dnsmessage.TXTResource{TXT: []string{"model=Protocol Fixture"}}
+						body = &dnsmessage.TXTResource{TXT: []string{"model=" + model}}
 					}
 				case "office.local.":
 					if q.Type == dnsmessage.TypeAAAA {
@@ -131,8 +134,14 @@ func testMDNSSplitReply(t *testing.T, address string) {
 	hits, err := collectMDNS(context.Background(), client, server.LocalAddr().(*net.UDPAddr), target)
 	server.Close()
 	<-done
-	if err != nil || len(hits) != 1 || len(hits[0].Ads) != 1 || hits[0].Ads[0].Service != "_lantern-test._tcp" || hits[0].Ads[0].Port != 8765 || hits[0].Ads[0].Properties["model"] != "Protocol Fixture" {
+	if err != nil || len(hits) != 1 || len(hits[0].Ads) != 1 || hits[0].Ads[0].Service != service || hits[0].Ads[0].Port != 8765 || hits[0].Ads[0].Properties["model"] != model {
 		t.Fatalf("hits=%+v err=%v", hits, err)
+	}
+	if service == "_device-info._tcp" {
+		id := identify(hits[0].Ads)
+		if id == nil || id.Model != "Mac16,9" || len(id.ModelNames) != 1 || id.ModelNames[0] != "Mac Studio (M4 Max, 2025)" {
+			t.Fatal("packet-to-catalog integration", id)
+		}
 	}
 }
 

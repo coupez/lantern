@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"lantern/internal/ui"
+	"lantern/pkg/models"
 	"lantern/pkg/scanner"
 	"lantern/pkg/vendors"
 	"net"
@@ -55,6 +56,18 @@ func run(args []string) error {
 			fmt.Printf("%-12s %-39s %s\n", v.Interface, v.CIDR, v.MAC)
 		}
 		return nil
+	case "models":
+		if len(args) == 0 {
+			fmt.Printf("%d offline AppleDB hardware identifiers · exact matches with all candidates\n", models.Count())
+			return nil
+		}
+		if len(args) != 1 {
+			return errors.New("usage: lantern models [IDENTIFIER | sources]")
+		}
+		if args[0] == "sources" {
+			return json.NewEncoder(os.Stdout).Encode(models.Provenance())
+		}
+		return json.NewEncoder(os.Stdout).Encode(models.Lookup(args[0]))
 	case "vendors":
 		if len(args) > 0 && args[0] == "sources" {
 			fmt.Print(vendors.Sources)
@@ -120,6 +133,7 @@ func help() {
   lantern watch [CIDR]            Repeat scans and report changes
   lantern interfaces              List available IPv4/IPv6 networks
   lantern lookup MAC              Identify a MAC vendor offline
+  lantern models [IDENTIFIER]     Look up hardware model candidates offline
   lantern vendors [sources]       Database size and provenance
   lantern diff before.json after.json
   lantern wake MAC [broadcast-IP] Send a Wake-on-LAN packet
@@ -372,7 +386,7 @@ func scan(args []string, watch bool) error {
 }
 func writeCSV(w io.Writer, r scanner.Report) error {
 	c := csv.NewWriter(w)
-	if err := c.Write([]string{"ip", "mac", "vendor", "names", "ports", "evidence", "reported_name", "manufacturer", "model"}); err != nil {
+	if err := c.Write([]string{"ip", "mac", "vendor", "names", "ports", "evidence", "reported_name", "manufacturer", "model", "model_candidates"}); err != nil {
 		return err
 	}
 	for _, d := range r.Devices {
@@ -382,9 +396,9 @@ func writeCSV(w io.Writer, r scanner.Report) error {
 		}
 		row := []string{d.IP.String(), d.MAC, d.Vendor.Name, strings.Join(d.Names, ";"), strings.Join(p, ";"), strings.Join(d.Evidence, ";")}
 		if d.Identity != nil {
-			row = append(row, d.Identity.Name, d.Identity.Manufacturer, d.Identity.Model)
+			row = append(row, d.Identity.Name, d.Identity.Manufacturer, d.Identity.Model, strings.Join(d.Identity.ModelNames, ";"))
 		} else {
-			row = append(row, "", "", "")
+			row = append(row, "", "", "", "")
 		}
 		for i, s := range row {
 			if len(s) > 0 && strings.ContainsAny(s[:1], "=+-@\t\r") {

@@ -140,6 +140,11 @@ func (u *UI) Report(r scanner.Report) {
 		}
 		if d.Identity != nil && d.Identity.Model != "" {
 			label := d.Identity.Model
+			if len(d.Identity.ModelNames) == 1 {
+				label = d.Identity.ModelNames[0] + " · " + label
+			} else if len(d.Identity.ModelNames) > 1 {
+				label += fmt.Sprintf(" · %d possible models", len(d.Identity.ModelNames))
+			}
 			if d.Identity.Manufacturer != "" {
 				label += " · " + d.Identity.Manufacturer
 			}
@@ -179,8 +184,22 @@ func (u *UI) Details(r scanner.Report) {
 			field("Reported name", d.Identity.Name)
 			field("Maker", d.Identity.Manufacturer)
 			field("Model", d.Identity.Model)
+			for _, name := range d.Identity.ModelNames {
+				label := "Catalog model"
+				if len(d.Identity.ModelNames) > 1 {
+					label = "Candidate"
+				}
+				field(label, name)
+			}
 			for _, c := range d.Identity.Claims {
-				field("Source", c.Field+" = "+c.Value+" · "+c.Source+" ["+c.Key+"; "+c.Basis+"]")
+				detail := c.Field + " = " + c.Value + " · " + c.Source + " [" + c.Key + "; " + c.Basis + "]"
+				if c.Identifier != "" {
+					detail += " · " + c.Identifier
+				}
+				if c.Catalog != "" {
+					detail += " · " + c.Catalog
+				}
+				field("Source", detail)
 			}
 		}
 		field("Type hint", d.Kind)

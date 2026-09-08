@@ -21,3 +21,8 @@ recognition tables are included in the Lantern build or source distribution.
 The Cast model registry is adapted from PyChromecast by Paulus Schoutsen and
 contributors, under MIT. Its pinned source and hash are in cast-models.json;
 the license is reproduced in THIRD_PARTY_LICENSES.
+
+The hardware model identifier catalog is adapted from AppleDB by emiyl and
+contributors under MIT. Its pinned revision, input hashes, and selection rules
+are recorded in pkg/models/data/sources.json; per-record hashes are embedded
+in the index. The upstream license is reproduced in THIRD_PARTY_LICENSES.

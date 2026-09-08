@@ -87,3 +87,56 @@ func TestCastModelCatalogRequiresExactProtocolAndModel(t *testing.T) {
 		t.Fatal("wrong protocol matched", got)
 	}
 }
+
+func TestAppleCatalogPreservesIdentifierAndCandidates(t *testing.T) {
+	ad := Advertisement{Protocol: "mdns", Service: "_device-info._tcp", Instance: "Studio._device-info._tcp.local", Properties: map[string]string{"model": "Mac16,9"}}
+	id := identify([]Advertisement{ad, ad})
+	if id.Model != "Mac16,9" || len(id.ModelNames) != 1 || id.ModelNames[0] != "Mac Studio (M4 Max, 2025)" || id.Manufacturer != "Apple" || len(id.Claims) != 3 {
+		t.Fatal(id)
+	}
+	for _, c := range id.Claims {
+		if c.Field == "model_name" && (c.Basis != "catalog" || c.Identifier != "Mac16,9" || !strings.Contains(c.Catalog, "95f799d28e45dc110ee2f25b7e3e6cf8c1124dae")) {
+			t.Fatal(c)
+		}
+	}
+	ad.Properties["model"] = "MacBookPro11,3"
+	id = identify([]Advertisement{ad})
+	if id.Model != "MacBookPro11,3" || len(id.ModelNames) != 2 || len(id.Claims) != 5 {
+		t.Fatal(id)
+	}
+	ad.Service = "_http._tcp"
+	if identify([]Advertisement{ad}) != nil {
+		t.Fatal("arbitrary TXT interpreted")
+	}
+	ad.Service = "_device-info._tcp"
+	ad.Properties["model"] = "Mac16,9 Clone"
+	id = identify([]Advertisement{ad})
+	if len(id.ModelNames) != 0 || id.Manufacturer != "" {
+		t.Fatal("fuzzy catalog match", id)
+	}
+	ad.Properties["model"] = "Mac16,9\x00"
+	if len(identify([]Advertisement{ad}).ModelNames) != 0 {
+		t.Fatal("control removal created a match")
+	}
+}
+func TestCatalogMetadataFollowsSelectedModel(t *testing.T) {
+	ad := Advertisement{Protocol: "mdns", Service: "_airplay._tcp", Instance: "AirPlay._airplay._tcp.local", Properties: map[string]string{"model": "Mac16,9"}}
+	explicit := Advertisement{Protocol: "upnp", Instance: "uuid:device", Properties: map[string]string{"modelName": "Other Device", "location": "http://192.0.2.1/device"}}
+	a := identify([]Advertisement{ad, explicit})
+	b := identify([]Advertisement{explicit, ad})
+	x, _ := json.Marshal(a)
+	y, _ := json.Marshal(b)
+	if string(x) != string(y) || a.Model != "Other Device" || a.Manufacturer != "" || len(a.ModelNames) != 0 || len(a.Claims) != 4 {
+		t.Fatal(a, b)
+	}
+	explicit.Properties["manufacturer"] = "Reported Brand"
+	if identify([]Advertisement{ad, explicit}).Manufacturer != "Reported Brand" {
+		t.Fatal("catalog overrode advertised maker")
+	}
+}
+func TestRAOPModelCatalog(t *testing.T) {
+	id := identify([]Advertisement{{Protocol: "mdns", Service: "_raop._tcp", Instance: "Speaker._raop._tcp.local", Properties: map[string]string{"am": "AirPort10,115"}}})
+	if id == nil || id.Model != "AirPort10,115" || len(id.ModelNames) != 1 || id.ModelNames[0] != "AirPort Express 802.11n (2nd generation)" {
+		t.Fatal(id)
+	}
+}

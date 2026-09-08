@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/csv"
 	"lantern/pkg/scanner"
 	"lantern/pkg/vendors"
 	"net/netip"
@@ -43,5 +44,17 @@ func TestCSVIncludesIdentity(t *testing.T) {
 	}
 	if !strings.Contains(b.String(), "reported_name,manufacturer,model") || !strings.Contains(b.String(), "Living Room,Example,Model 42") {
 		t.Fatal(b.String())
+	}
+}
+
+func TestCSVCatalogCandidates(t *testing.T) {
+	var b bytes.Buffer
+	r := scanner.Report{Devices: []scanner.Device{{IP: netip.MustParseAddr("192.0.2.1"), Identity: &scanner.Identity{Model: "AppleTV14,1", ModelNames: []string{"Wi-Fi", "Wi-Fi + Ethernet"}}}}}
+	if err := writeCSV(&b, r); err != nil {
+		t.Fatal(err)
+	}
+	rows, err := csv.NewReader(&b).ReadAll()
+	if err != nil || len(rows) != 2 || len(rows[1]) != 10 || rows[0][9] != "model_candidates" || rows[1][8] != "AppleTV14,1" || rows[1][9] != "Wi-Fi;Wi-Fi + Ethernet" {
+		t.Fatal(rows, err)
 	}
 }
