@@ -39,4 +39,22 @@ with tempfile.TemporaryDirectory(prefix='lantern-diff-') as directory:
     del after['coverage']
     fields = {c['field']:c for c in compare(before,after)}
     assert fields['ports']['before'] == ['80','443'], fields
-print('PASS snapshot CLI: structured identity changes, common-port coverage, cancellation, legacy files')
+    partial = copy.deepcopy(after)
+    partial['incomplete_methods'] = ['tcp']
+    partial['devices'].append({'ip':'192.0.2.3'})
+    original = copy.deepcopy(before)
+    original['devices'].append({'ip':'192.0.2.2'})
+    changes = compare(original,partial)
+    assert not any(c['type'] == 'missing' or c.get('field') == 'ports' for c in changes), changes
+    assert any(c['type'] == 'added' and c['ip'] == '192.0.2.3' for c in changes), changes
+    fields = {c.get('field'):c for c in changes}
+    assert fields['incomplete_methods']['after'] == ['tcp'] and fields['incomplete_methods']['type'] == 'scan', fields
+    assert fields['identity.model']['after'] == ['Model2'], fields
+    partial['incomplete_methods'] = ['multicast']
+    fields = {c.get('field'):c for c in compare(original,partial)}
+    assert 'identity.model' not in fields and fields['ports']['before'] == ['80','443'], fields
+    recovered = copy.deepcopy(partial)
+    del recovered['incomplete_methods']
+    changes = compare(partial,recovered)
+    assert len(changes) == 1 and changes[0]['field'] == 'incomplete_methods' and not changes[0].get('after'), changes
+print('PASS snapshot CLI: structured identity changes, common-port coverage, cancellation, legacy files, partial discovery and recovery')

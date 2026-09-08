@@ -105,6 +105,7 @@ func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, 
 	var mu sync.Mutex
 	found := map[netip.Addr]*Device{}
 	warnings := map[string]bool{}
+	incomplete := map[string]bool{}
 	attempted := map[netip.Addr]bool{}
 	tcpAttempts, tcpErrors := 0, 0
 	markAttempt := func(ip netip.Addr) { mu.Lock(); attempted[ip] = true; mu.Unlock() }
@@ -113,9 +114,14 @@ func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, 
 			emit(v)
 		}
 	} // Concurrent producers hold mu; phase/done events follow producer joins.
-	warn := func(err error) {
+	warn := func(method string, err error) {
 		if err != nil {
 			mu.Lock()
+			// Keep structured failures even when human-readable warnings hit
+			// their cap. Cancellation is recorded independently on the report.
+			if ctx.Err() == nil {
+				incomplete[method] = true
+			}
 			message := err.Error()
 			if len(warnings) < 16 {
 				warnings[message] = true
@@ -155,8 +161,8 @@ func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, 
 			event(Event{Type: "device", Device: &snapshot})
 		}
 	}
-	for _, err := range seeds.warnings {
-		warn(err)
+	for _, w := range seeds.warnings {
+		warn(w.method, w.err)
 	}
 	if sparse {
 		for _, ip := range hosts {
@@ -193,7 +199,7 @@ func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, 
 			go func(sweep func(context.Context, netip.Prefix, time.Duration) ([]discoveryHit, error)) {
 				defer discoveryWG.Done()
 				hits, err := sweep(ctx, o.Target, max(o.Timeout, time.Second))
-				warn(err)
+				warn("multicast", err)
 				mu.Lock()
 				discovered = append(discovered, hits...)
 				mu.Unlock()
@@ -213,7 +219,7 @@ func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, 
 			var err error
 			netbiosResult, err = source(ctx, hosts, o.Timeout)
 			if ctx.Err() == nil {
-				warn(err)
+				warn("netbios", err)
 			}
 		}()
 	}
@@ -230,7 +236,7 @@ func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, 
 			var err error
 			arpResult, err = source(ctx, o, hosts)
 			if ctx.Err() == nil {
-				warn(err)
+				warn("arp", err)
 			}
 		}()
 	}
@@ -247,7 +253,7 @@ func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, 
 			var err error
 			ndpResult, err = source(ctx, o, hosts)
 			if ctx.Err() == nil {
-				warn(err)
+				warn("ndp", err)
 			}
 		}()
 	}
@@ -258,7 +264,7 @@ func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, 
 			defer pingWG.Done()
 			stats, err := pingSweep(ctx, hosts, o.Timeout, func(h pingHit) { add(h.IP, "icmp", h.RTT, 0) }, markAttempt)
 			r.ICMP = &stats
-			warn(err)
+			warn("icmp", err)
 		}()
 	}
 	type job struct {
@@ -283,7 +289,7 @@ func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, 
 					markAttempt(j.ip)
 					alive, open, rtt, err := dialer.Probe(ctx, j.ip, j.port, o.Timeout)
 					if err != nil {
-						warn(err)
+						warn("tcp", err)
 					}
 					if alive {
 						var port uint16
@@ -393,7 +399,7 @@ func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, 
 	}
 	table, err := source(ctx)
 	if ctx.Err() == nil {
-		warn(err)
+		warn("neighbors", err)
 	}
 	for _, ip := range hosts {
 		if mac, ok := table[ip]; ok {
@@ -500,6 +506,10 @@ func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, 
 		r.Warnings = append(r.Warnings, w)
 	}
 	sort.Strings(r.Warnings)
+	for method := range incomplete {
+		r.IncompleteMethods = append(r.IncompleteMethods, method)
+	}
+	sort.Strings(r.IncompleteMethods)
 	r.Cancelled = ctx.Err() != nil
 	r.DurationMS = time.Since(start).Milliseconds()
 	r.Probed = len(attempted)

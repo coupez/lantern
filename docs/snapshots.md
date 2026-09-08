@@ -18,7 +18,7 @@ Name sets ignore order, duplicates, DNS letter case, and a terminal DNS dot. MAC
 
 New reports include an optional `coverage` object recording requested TCP ports and the ICMP, ARP, NDP, multicast, NetBIOS, reverse-DNS, UPnP-description, banner, and all-hosts options. It records configuration, not a guarantee that every probe completed or every protocol answered. Reports still use schema 1; older snapshots without coverage continue to load.
 
-`scan` changes have an empty `ip` and report changed target, interface, or requested coverage. They explain when two snapshots differ in how they were collected:
+`scan` changes have an empty `ip` and report changed target, interface, requested coverage, or incomplete discovery methods. They explain when two snapshots differ in how they were collected:
 
 - TCP port changes compare only ports requested by both scans. Scanning fewer ports does not manufacture disappearing services; newly requested ports have no prior comparable baseline.
 - Name/identity/workgroup/type comparisons are suppressed when their relevant probe or enrichment options differ.
@@ -29,8 +29,27 @@ New reports include an optional `coverage` object recording requested TCP ports 
 
 Changes are ordered by numeric IP address, then field/type/detail; scan-level records come first. The comparator reads its inputs without modifying them. It builds the common TCP-port set once for the entire comparison, rather than once per device.
 
+## Partial discovery
+
+Reports include optional `incomplete_methods`: a sorted, deduplicated list of discovery methods that reported errors or exhausted collection budgets. Human-readable `warnings` retain the reasons; their text cap does not discard structured method markers. Normal unanswered probes do not mark a method incomplete. Cancellation has its separate `cancelled` marker.
+
+Any listed method in the later report suppresses missing-address and response-state changes. Newly observed addresses remain reportable under the existing scope/configuration rules. For addresses in both snapshots, comparisons are suppressed selectively:
+
+| Incomplete method | Suppressed field comparisons |
+| --- | --- |
+| `tcp` | TCP ports and type hint |
+| `arp`, `ndp`, `neighbors` | MAC and registered vendor |
+| `multicast` | Names, selected identity fields, and type hint |
+| `netbios` | Names, workgroups, selected identity fields, and type hint |
+| `icmp`, `candidates` | No additional fields; retained addresses still receive independent field probes |
+| Unknown future method | All device fields |
+
+Multiple failures combine these restrictions. `multicast` covers both mDNS and SSDP; `neighbors` covers OS cache reads; `candidates` marks sparse IPv6 candidate truncation. `incomplete_methods` scan changes record failure or recovery even when device comparisons are suppressed. Once a later scan completes without reported discovery errors, normal comparisons resume, including newly recovered observations. This does not establish a physical change during the partial cycle.
+
+An absent list does not prove completeness. Silent/filtered hosts, packet loss without a reported collector error, and unsuccessful reverse DNS, banner, or description enrichment can still leave observations empty. Those enrichment failures are not currently tracked by this field. Older snapshots without the field retain observational behavior; warning text is not parsed to guess a failure's source.
+
 ## Verification
 
-`go test -race ./...` covers configuration-aware comparisons, interrupted scans, normalized sets, typed values/JSON round trips, identity and response changes, numeric/scoped address ordering, interface isolation, legacy files, and immutable coverage capture. `python3 scripts/test-snapshot-cli.py` checks the built CLI against real saved JSON artifacts without network access. The same script runs in CI and the Linux container suite.
+`go test -race ./...` covers configuration-aware comparisons, interrupted scans, per-method failure suppression and recovery, warning caps, partial-result persistence, normalized sets, typed values/JSON round trips, identity and response changes, numeric/scoped address ordering, interface isolation, legacy files, and immutable coverage capture. `python3 scripts/test-snapshot-cli.py` checks the built CLI against real saved JSON artifacts without network access. The same script runs in CI and the Linux container suite. The Linux NDP fixture also verifies that actual raw-socket permission denial produces an `ndp` marker while successful exchanges leave it absent.
 
 Automatic IPv4 CLI scans now retain their selected interface in the report. An older snapshot with an empty interface retains legacy observational comparison behavior and cannot establish same-link scope. Two reports with different recorded interface names produce an interface-coverage change and suppress host comparisons.

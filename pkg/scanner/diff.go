@@ -57,6 +57,9 @@ func sameIdentity(a, b *ScanCoverage) bool {
 // scan configuration changes are reported separately. Ports are compared only
 // where both scans requested them. A cancelled after-scan adds newly observed
 // addresses but cannot establish changes or disappearance of existing records.
+// Reported discovery failures in the after-scan suppress missing addresses and
+// comparisons of fields that depend on those methods. Newly observed values in
+// a later complete scan remain reportable, including recovery from partial data.
 func Diff(before, after Report) []Change {
 	out := []Change{}
 	add := func(kind, ip, field, label string, a, b []string) {
@@ -96,8 +99,10 @@ func Diff(before, after Report) []Change {
 	if a != nil && b != nil && (!samePorts || coverageFlags(a) != coverageFlags(b)) {
 		add("scan", "", "coverage", "requested coverage", coverageKey(a), coverageKey(b))
 	}
-	namesComparable, identityComparable := sameNames(a, b), sameIdentity(a, b)
-	kindComparable := identityComparable && samePorts
+	add("scan", "", "incomplete_methods", "incomplete discovery methods", stringSet(before.IncompleteMethods), stringSet(after.IncompleteMethods))
+	complete := comparisonsAfter(after.IncompleteMethods)
+	namesComparable, identityComparable := sameNames(a, b) && complete.names, sameIdentity(a, b) && complete.identity
+	kindComparable := identityComparable && samePorts && complete.ports
 	old, now := make(map[netip.Addr]*Device, len(before.Devices)), make(map[netip.Addr]*Device, len(after.Devices))
 	for i := range before.Devices {
 		d := &before.Devices[i]
@@ -120,16 +125,20 @@ func Diff(before, after Report) []Change {
 		if after.Cancelled || after.Error != "" || interfaceChanged {
 			continue
 		}
-		if presenceComparable {
+		if presenceComparable && complete.presence {
 			add("changed", address, "reachability", "response evidence", one(responseLabel(previous)), one(responseLabel(d)))
 		}
-		add("changed", address, "mac", "MAC observed", one(macKey(previous.MAC)), one(macKey(d.MAC)))
-		add("changed", address, "vendor", "registered vendor", one(previous.Vendor.Name), one(d.Vendor.Name))
-		if a == nil || b == nil || a.NetBIOS == b.NetBIOS {
+		if complete.mac {
+			add("changed", address, "mac", "MAC observed", one(macKey(previous.MAC)), one(macKey(d.MAC)))
+			add("changed", address, "vendor", "registered vendor", one(previous.Vendor.Name), one(d.Vendor.Name))
+		}
+		if complete.workgroups && (a == nil || b == nil || a.NetBIOS == b.NetBIOS) {
 			add("changed", address, "workgroups", "workgroups observed", workgroups(previous), workgroups(d))
 		}
-		portsBefore, portsAfter := comparablePorts(previous, d, common)
-		add("changed", address, "ports", "TCP ports observed", portsBefore, portsAfter)
+		if complete.ports {
+			portsBefore, portsAfter := comparablePorts(previous, d, common)
+			add("changed", address, "ports", "TCP ports observed", portsBefore, portsAfter)
+		}
 		if namesComparable {
 			add("changed", address, "names", "names observed", nameValues(previous.Names), nameValues(d.Names))
 		}
@@ -153,7 +162,7 @@ func Diff(before, after Report) []Change {
 			add("changed", address, "kind", "type hint", one(previous.Kind), one(d.Kind))
 		}
 	}
-	if !after.Cancelled && after.Error == "" && presenceComparable {
+	if !after.Cancelled && after.Error == "" && presenceComparable && complete.presence {
 		for ip, d := range old {
 			if _, ok := now[ip]; !ok {
 				out = append(out, Change{Type: "missing", IP: ip.String(), Detail: CleanText(d.MAC)})
@@ -180,6 +189,38 @@ func Diff(before, after Report) []Change {
 	})
 	return out
 }
+
+type fieldComparisons struct {
+	presence, mac, ports, names, identity, workgroups bool
+}
+
+func comparisonsAfter(methods []string) fieldComparisons {
+	c := fieldComparisons{true, true, true, true, true, true}
+	for _, method := range methods {
+		if method == "" {
+			continue
+		}
+		c.presence = false
+		switch method {
+		case "tcp":
+			c.ports = false
+		case "arp", "ndp", "neighbors":
+			c.mac = false
+		case "multicast":
+			c.names, c.identity = false, false
+		case "netbios":
+			c.names, c.identity, c.workgroups = false, false, false
+		case "icmp", "candidates":
+			// Retained devices still receive their independent field probes.
+		default:
+			// A newer producer can add a method whose dependencies we do not
+			// know. Preserve additions but avoid misleading field comparisons.
+			return fieldComparisons{}
+		}
+	}
+	return c
+}
+
 func targetKey(s string) string {
 	if p, err := netip.ParsePrefix(s); err == nil {
 		return p.Masked().String()

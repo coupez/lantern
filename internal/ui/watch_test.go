@@ -169,6 +169,21 @@ func TestWatchActivityReportsIdentityChanges(t *testing.T) {
 	}
 }
 
+func TestWatchActivityExplainsIncompleteDiscovery(t *testing.T) {
+	m := watchModel{}
+	ip := netip.MustParseAddr("192.0.2.1")
+	m.accept(scanner.Report{Devices: []scanner.Device{
+		{IP: ip, Identity: &scanner.Identity{Name: "Printer"}},
+		{IP: netip.MustParseAddr("192.0.2.2")},
+	}})
+	m.accept(scanner.Report{IncompleteMethods: []string{"multicast"}, Devices: []scanner.Device{
+		{IP: ip, Ports: []scanner.Port{{Number: 80}}},
+	}})
+	if len(m.changes) != 2 || !strings.Contains(m.changes[0], "incomplete discovery methods") || !strings.Contains(m.changes[1], "TCP ports observed") {
+		t.Fatal(m.changes)
+	}
+}
+
 func TestWatchMailboxShowsEnrichedSnapshotsDuringFirstScan(t *testing.T) {
 	ip := netip.MustParseAddr("192.0.2.1")
 	mailbox := watchMailbox{discovered: map[string]scanner.Device{}}

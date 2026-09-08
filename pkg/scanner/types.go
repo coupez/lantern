@@ -56,6 +56,11 @@ type Report struct {
 	Devices     []Device  `json:"devices"`
 	Warnings    []string  `json:"warnings,omitempty"`
 	Cancelled   bool      `json:"cancelled,omitempty"`
+	// IncompleteMethods names discovery passes with reported errors or exhausted
+	// budgets: tcp, icmp, arp, ndp, multicast, netbios, neighbors, candidates.
+	// Sorted and unique. Absence is not proof of exhaustive discovery; silent
+	// hosts and unsuccessful optional enrichment can still leave fields empty.
+	IncompleteMethods []string `json:"incomplete_methods,omitempty"`
 	// Error marks a failed scan with usable partial results, never an input-validation error.
 	Error string `json:"error,omitempty"`
 }

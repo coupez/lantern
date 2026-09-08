@@ -30,7 +30,7 @@ try:
                                  '--timeout', timeout, '--json'], capture_output=True, text=True, timeout=8, check=True)
         assert not result.stderr, result.stderr
         report = json.loads(result.stdout)
-        assert not report.get('warnings') and report['coverage']['ndp'], report
+        assert not report.get('warnings') and not report.get('incomplete_methods') and report['coverage']['ndp'], report
         return report
 
     if '--without-raw' in sys.argv[2:]:
@@ -42,6 +42,7 @@ try:
         assert report['probed'] == 0 and len(report['devices']) == 1, report
         assert report['devices'][0]['evidence'] == ['neighbor-cache'], report
         assert any('NDP unavailable' in w and 'operation not permitted' in w.lower() for w in report['warnings']), report
+        assert report.get('incomplete_methods') == ['ndp'], report
         doctor = subprocess.run([binary, 'doctor', '--interface', 'ndp0', '--json'], capture_output=True, text=True, timeout=5, check=True)
         diagnostics = json.loads(doctor.stdout)
         if os.environ.get('LANTERN_EXPECT_GOARCH'):

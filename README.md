@@ -99,7 +99,7 @@ Use `lantern models Mac16,9` to look up a hardware code offline, `lantern models
 
 ### Useful watch activity
 
-Watch and snapshot diffs report name/model/vendor/workgroup changes, open-port observations, and transitions from responsive to cached-only evidence. New snapshots record requested scan coverage: changing profiles or scanning fewer ports does not fabricate disappearing services. Interrupted scans do not erase existing observations. Changes are address-based observations, not proof that a physical device joined or went offline. See [snapshot comparison semantics](docs/snapshots.md) for structured fields and legacy-file behavior.
+Watch and snapshot diffs report name/model/vendor/workgroup changes, open-port observations, and transitions from responsive to cached-only evidence. New snapshots record requested scan coverage: changing profiles or scanning fewer ports does not fabricate disappearing services. Interrupted scans do not erase existing observations. Reported discovery failures suppress missing-address claims and comparisons of dependent fields; optional `incomplete_methods` metadata records which methods failed or reached collection limits. Changes are address-based observations, not proof that a physical device joined or went offline. See [snapshot comparison semantics](docs/snapshots.md) for structured fields and legacy-file behavior.
 
 ## Open data and Fing inspection
 
