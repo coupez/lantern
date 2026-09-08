@@ -34,4 +34,4 @@ Quick mode skips multicast and descriptions by default. Explicit boolean flags o
 - [PyChromecast model table](https://github.com/home-assistant-libs/pychromecast/blob/8f7f3bfaa3142614b04f04e885b43e7810872adb/pychromecast/const.py), imported as literal data without executing upstream code. Its MIT license is in `THIRD_PARTY_LICENSES`; the embedded JSON records commit, URL, content hash, and retrieval date. `scripts/build-cast-models.py` rebuilds it from the locally downloaded pinned source.
 - [pyatv AirPlay device-info parser](https://github.com/postlund/pyatv/blob/master/pyatv/protocols/airplay/__init__.py) for the advertised `model` field. No pyatv source or catalog is incorporated.
 
-These mappings do not cover every model. Proprietary cloud recognition, direct ARP/NDP, additional discovery protocols, and broader real-device verification remain separate work.
+These mappings do not cover every model. Proprietary cloud recognition, direct NDP, additional discovery protocols, and broader real-device verification remain separate work.

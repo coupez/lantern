@@ -2,7 +2,7 @@
 
 **See your network clearly.** A fast, local-first network scanner with a modern terminal interface and a reusable Go engine. No account, cloud recognition, telemetry, or background daemon.
 
-> Early development. macOS is exercised on real networks; Linux builds but still needs live network validation.
+> Early development. macOS is exercised on a local network. Linux ARM64 passes controlled container network tests; broader hardware coverage is still needed.
 
 ```sh
 make build
@@ -10,7 +10,7 @@ make build
 ./bin/lantern demo        # preview the interface without sending packets
 ```
 
-Go 1.26.8 or newer is required to build. Go can download the project-required toolchain automatically. The resulting executable contains the vendor and service databases and runs offline. macOS scanning works without root. Linux requires `ip` from iproute2 for neighbor discovery; ICMP permissions depend on the host's ping socket configuration.
+Go 1.26.8 or newer is required to build. Go can download the project-required toolchain automatically. The resulting executable contains the vendor and service databases and runs offline. Default macOS scanning works without root. Linux requires `ip` from iproute2 for neighbor discovery; ICMP permissions depend on the host's ping socket configuration.
 
 ## Everyday commands
 
@@ -52,12 +52,12 @@ The initial live macOS benchmark scanned **1,022 addresses in 2.39 seconds** in 
 
 ## Know what the results mean
 
-- **● Responsive** means a TCP/ICMP/mDNS/SSDP response or a local interface was observed. **○ Cached neighbor** means the OS has an address mapping; it does not prove the device is awake.
+- **● Responsive** means a TCP/ICMP/ARP/mDNS/SSDP response or a local interface was observed. **○ Cached neighbor** means the OS has an address mapping; it does not prove the device is awake.
 - MAC vendors are registered IEEE organizations, which may differ from the device's retail brand. Randomized/private MACs are labeled explicitly and do not receive a guessed vendor.
 - Device types are hints based on services. An RTSP port can belong to a camera or another media device. Port names come from IANA/common conventions; a name does not prove which application is running there.
 - Device names and models are extracted from UPnP descriptions and known Bonjour printing, AirPlay, and Cast TXT fields. A pinned MIT-licensed catalog adds manufacturers for **40 exact Cast model names**. The JSON `identity.claims` records whether each field is advertised or catalog-derived, its source, and conflicting values; MAC ownership stays separate.
 - Advertisements and banners are device-reported, untrusted information. Advertised ports are separate from verified open TCP ports. Terminal control characters are removed before rendering.
-- Discovery can miss filtered, isolated, sleeping, or slow devices. MAC addresses normally exist only for hosts on the same link. Privileged active ARP/NDP, OS fingerprinting, and a persistent service are not implemented yet.
+- Discovery can miss filtered, isolated, sleeping, or slow devices. MAC addresses normally exist only for hosts on the same link. Direct NDP, OS fingerprinting, and a persistent service are not implemented yet.
 
 Use on networks you own or are authorized to inspect. Lantern makes ordinary discovery requests and connections; it does not log in to devices or execute remote commands.
 
@@ -66,6 +66,8 @@ UPnP descriptions are enabled in standard/deep mode. `--no-descriptions` disable
 [Recognition sources and rules](docs/recognition.md) describe the supported mappings and limitations.
 
 IPv6 single addresses and small prefixes support TCP, ICMPv6, DNS, banners, and the same device recognition paths. Link-local targets need a zone (`fe80::1%en0`) or `--interface`. `--ipv6` discovers neighbors on one selected interface using all-nodes echo, IPv6 mDNS/SSDP, the NDP cache, and local addresses. Large IPv6 prefixes use this sparse discovery automatically: Lantern never enumerates a /64. `--max-hosts` caps the candidate list; `--all-hosts` checks all discovered candidates, not the entire IPv6 address space. JSON reports distinguish `address_mode: "discovered"` from `"enumerated"` and retain the interface scope. IPv4 and IPv6 currently use separate scans, and a dual-stack device can appear under multiple addresses.
+
+`--arp` adds direct IPv4 ARP requests on a matching local Ethernet interface, concurrently with the other discovery methods. It is disabled by default: macOS needs access to `/dev/bpf*` (normally administrator access), and Linux needs `CAP_NET_RAW`. If access is unavailable, a warning explains the missing capability and the remaining scan methods continue. Replies are marked `arp`, even if every IP probe is blocked. Direct ARP was verified on Linux ARM64; macOS BPF live exchange still needs privileged verification. See [discovery details](docs/discovery.md).
 
 ## Open data and Fing inspection
 
@@ -93,5 +95,7 @@ LANTERN_NETWORK_TESTS=1 go test -race ./pkg/scanner -run NetworkIntegration -v
 go test ./pkg/vendors -bench BenchmarkLookup -benchmem -run '^$'
 python3 scripts/update-data.py && make build # refresh the public indexes
 ```
+
+To reproduce Linux runtime verification, run `make linux-test` with Docker available. The container receives only `NET_RAW`, has no host mounts or published ports, and probes its own bridge gateway for the ARP check.
 
 The network integration test uses controlled IPv4/IPv6 localhost servers to verify ICMP, port detection, SSH/HTTP banners, DNS-SD follow-ups, and UPnP description boundaries. Regular tests don't send scan traffic. See [status and remaining work](docs/STATUS.md).

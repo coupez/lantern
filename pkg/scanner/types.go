@@ -48,13 +48,15 @@ type Event struct {
 }
 type Options struct {
 	// Interface selects local discovery and scopes link-local IPv6 probes.
-	Interface    string
-	Target       netip.Prefix
-	Ports        []uint16
-	Concurrency  int
-	Timeout      time.Duration
-	Resolve      bool
-	ICMP         bool
+	Interface   string
+	Target      netip.Prefix
+	Ports       []uint16
+	Concurrency int
+	Timeout     time.Duration
+	Resolve     bool
+	ICMP        bool
+	// ARP enables direct IPv4 neighbor discovery; requires raw link access.
+	ARP          bool
 	Banners      bool
 	Descriptions bool
 	Multicast    bool

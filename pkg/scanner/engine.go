@@ -15,6 +15,8 @@ import (
 type Engine struct {
 	Dialer         Dialer
 	NeighborSource func(context.Context) (map[netip.Addr]string, error)
+	// ARPSource optionally replaces native ARP exchange for integrations/tests.
+	ARPSource func(context.Context, Options, []netip.Addr) (ARPResult, error)
 }
 
 func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, error) {
@@ -31,6 +33,9 @@ func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, 
 	}
 	if !o.Target.IsValid() || o.Target.Addr().Is4In6() || o.Target.Addr().IsMulticast() || (o.Target.Addr().IsUnspecified() && o.Target.Bits() == o.Target.Addr().BitLen()) {
 		return r, fmt.Errorf("valid native IP target required")
+	}
+	if o.ARP && !o.Target.Addr().Is4() {
+		return r, fmt.Errorf("ARP requires an IPv4 target; IPv6 uses neighbor discovery")
 	}
 	requestedPorts := make(map[uint16]bool, len(o.Ports))
 	for _, p := range o.Ports {
@@ -181,6 +186,23 @@ func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, 
 			}(sweep)
 		}
 	}
+	var arpWG sync.WaitGroup
+	var arpResult ARPResult
+	if o.ARP {
+		arpWG.Add(1)
+		go func() {
+			defer arpWG.Done()
+			source := e.ARPSource
+			if source == nil {
+				source = arpSweep
+			}
+			var err error
+			arpResult, err = source(ctx, o, hosts)
+			if ctx.Err() == nil {
+				warn(err)
+			}
+		}()
+	}
 	var pingWG sync.WaitGroup
 	if o.ICMP {
 		pingWG.Add(1)
@@ -258,6 +280,25 @@ func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, 
 	run(hosts, discovery)
 	pingWG.Wait()
 	discoveryWG.Wait()
+	arpWG.Wait()
+	for _, ip := range arpResult.Probed {
+		if targeted[ip] {
+			markAttempt(ip)
+		}
+	}
+	for _, n := range arpResult.Neighbors {
+		if !targeted[n.IP] {
+			continue
+		}
+		mac, err := net.ParseMAC(n.MAC)
+		if err != nil || !validEthernetMAC(mac) {
+			continue
+		}
+		add(n.IP, "arp", n.RTT, 0)
+		d := found[n.IP]
+		d.MAC = mac.String()
+		d.Vendor, _ = vendors.Lookup(d.MAC)
+	}
 	for _, h := range discovered {
 		add(h.IP, h.Evidence, 0, 0)
 		d := found[h.IP]
@@ -285,8 +326,10 @@ func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, 
 		if mac, ok := table[ip]; ok {
 			add(ip, "neighbor-cache", 0, 0)
 			d := found[ip]
-			d.MAC = mac
-			d.Vendor, _ = vendors.Lookup(mac)
+			if !contains(d.Evidence, "arp") {
+				d.MAC = mac
+				d.Vendor, _ = vendors.Lookup(mac)
+			}
 		}
 	}
 	// The scanning machine may not have an entry in its own ARP table.
