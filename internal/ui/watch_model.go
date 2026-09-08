@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/coupez/lantern/pkg/scanner"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -20,6 +21,22 @@ type watchModel struct {
 	completed, total, discovered, offset                      int
 	started, next                                             time.Time
 	changes                                                   []string
+	// Device-derived views live only until a completed report or first-scan
+	// device update replaces their inputs. Progress-only updates keep them.
+	viewReady   bool
+	viewQuery   string
+	viewDevices []scanner.Device
+	searchText  []string
+	detailIP    string
+	detailWidth int
+	detailLines []string
+}
+
+func (m *watchModel) invalidateDeviceView() {
+	m.viewReady = false
+	m.viewDevices = nil
+	m.searchText = nil
+	m.detailLines = nil
 }
 
 func (m *watchModel) accept(r scanner.Report) {
@@ -32,6 +49,7 @@ func (m *watchModel) accept(r scanner.Report) {
 		}
 	}
 	m.report = r
+	m.invalidateDeviceView()
 	m.hasReport = true
 	m.devices()
 }
@@ -57,28 +75,70 @@ func deviceName(d scanner.Device) string {
 	return "Unknown device"
 }
 func deviceServices(d scanner.Device) string {
-	var ports []string
+	var ports strings.Builder
 	for _, p := range d.Ports {
-		ports = append(ports, fmt.Sprintf("%d/%s", p.Number, p.Service))
+		if ports.Len() > 0 {
+			ports.WriteByte(' ')
+		}
+		ports.WriteString(strconv.Itoa(int(p.Number)))
+		ports.WriteByte('/')
+		ports.WriteString(p.Service)
 	}
-	if len(ports) == 0 {
+	if ports.Len() == 0 {
 		return "—"
 	}
-	return strings.Join(ports, " ")
+	return ports.String()
 }
-func (m *watchModel) devices() []scanner.Device {
-	out := make([]scanner.Device, 0, len(m.report.Devices))
-	query := strings.ToLower(m.query)
-	for _, d := range m.report.Devices {
-		haystack := d.IP.String() + " " + d.MAC + " " + d.Vendor.Name + " " + strings.Join(d.Names, " ") + " " + deviceName(d) + " " + deviceServices(d)
-		if d.Identity != nil {
-			haystack += " " + d.Identity.Manufacturer + " " + d.Identity.Model + " " + d.Identity.Firmware + " " + d.Identity.FirmwareVersion + " " + strings.Join(d.Identity.ModelNames, " ")
+
+// Build only enough service tokens to decide the visible prefix and ellipsis.
+// Search and the inspector retain the full port list.
+func deviceServicesPreview(d scanner.Device, width int) string {
+	if width <= 0 {
+		return ""
+	}
+	if len(d.Ports) == 0 {
+		return fit("—", width)
+	}
+	var text strings.Builder
+	cells := 0
+	for _, p := range d.Ports {
+		if text.Len() > 0 {
+			text.WriteByte(' ')
+			cells++
 		}
-		if query == "" || strings.Contains(strings.ToLower(scanner.CleanText(haystack)), query) {
-			out = append(out, d)
+		token := strconv.Itoa(int(p.Number)) + "/" + scanner.CleanText(p.Service)
+		text.WriteString(token)
+		cells += uniseg.StringWidth(token)
+		if cells > width {
+			break
 		}
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i].IP.Compare(out[j].IP) < 0 })
+	return fit(text.String(), width)
+}
+
+func (m *watchModel) devices() []scanner.Device {
+	query := strings.ToLower(m.query)
+	if !m.viewReady || m.viewQuery != query {
+		out := make([]scanner.Device, 0, len(m.report.Devices))
+		if query != "" && m.searchText == nil {
+			m.searchText = make([]string, len(m.report.Devices))
+			for i, d := range m.report.Devices {
+				haystack := d.IP.String() + " " + d.MAC + " " + d.Vendor.Name + " " + strings.Join(d.Names, " ") + " " + deviceName(d) + " " + deviceServices(d)
+				if d.Identity != nil {
+					haystack += " " + d.Identity.Manufacturer + " " + d.Identity.Model + " " + d.Identity.Firmware + " " + d.Identity.FirmwareVersion + " " + strings.Join(d.Identity.ModelNames, " ")
+				}
+				m.searchText[i] = strings.ToLower(scanner.CleanText(haystack))
+			}
+		}
+		for i, d := range m.report.Devices {
+			if query == "" || strings.Contains(m.searchText[i], query) {
+				out = append(out, d)
+			}
+		}
+		sort.Slice(out, func(i, j int) bool { return out[i].IP.Compare(out[j].IP) < 0 })
+		m.viewDevices, m.viewQuery, m.viewReady = out, query, true
+	}
+	out := m.viewDevices
 	for _, d := range out {
 		if d.IP.String() == m.selected {
 			return out
@@ -265,12 +325,16 @@ func (m *watchModel) frame(u *UI, width, height int, now time.Time) string {
 					break
 				}
 			}
-			var b bytes.Buffer
-			(&UI{Out: &b, Width: width}).Details(scanner.Report{Devices: []scanner.Device{selected}})
-			var detailLines []string
-			for _, s := range strings.Split(strings.TrimRight(b.String(), "\n"), "\n") {
-				detailLines = append(detailLines, wrapCells(s, width)...)
+			if m.detailLines == nil || m.detailIP != m.selected || m.detailWidth != width {
+				var b bytes.Buffer
+				(&UI{Out: &b, Width: width}).Details(scanner.Report{Devices: []scanner.Device{selected}})
+				m.detailLines = nil
+				for _, s := range strings.Split(strings.TrimRight(b.String(), "\n"), "\n") {
+					m.detailLines = append(m.detailLines, wrapCells(s, width)...)
+				}
+				m.detailIP, m.detailWidth = m.selected, width
 			}
+			detailLines := m.detailLines
 			m.offset = min(m.offset, max(0, len(detailLines)-bodyHeight))
 			for _, line := range detailLines[m.offset:min(len(detailLines), m.offset+bodyHeight)] {
 				add("", line)
@@ -310,7 +374,7 @@ func (m *watchModel) frame(u *UI, width, height int, now time.Time) string {
 				}
 				label := prefix + d.IP.String() + "  " + deviceName(d)
 				if wide {
-					label = prefix + fit(d.IP.String(), ipWidth) + fit(deviceName(d), 26) + deviceServices(d)
+					label = prefix + fit(d.IP.String(), ipWidth) + fit(deviceName(d), 26) + deviceServicesPreview(d, width-3-ipWidth-26)
 				}
 				add(code, label)
 			}

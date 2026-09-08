@@ -39,6 +39,7 @@ type watchMailbox struct {
 	completed, total int
 	phase            string
 	discovered       map[string]scanner.Device
+	devicesChanged   bool
 }
 
 func (b *watchMailbox) emit(e scanner.Event) {
@@ -51,6 +52,7 @@ func (b *watchMailbox) emit(e scanner.Event) {
 		// Also isolate custom WatchOptions.Scan implementations from UI ownership.
 		d := e.Device.Clone()
 		b.discovered[d.IP.String()] = d
+		b.devicesChanged = true
 	}
 }
 func (b *watchMailbox) update(m *watchModel) {
@@ -58,11 +60,13 @@ func (b *watchMailbox) update(m *watchModel) {
 	defer b.Unlock()
 	m.completed, m.total, m.phase = b.completed, b.total, b.phase
 	m.discovered = len(b.discovered)
-	if !m.hasReport {
+	if !m.hasReport && b.devicesChanged {
 		m.report.Devices = m.report.Devices[:0]
 		for _, d := range b.discovered {
 			m.report.Devices = append(m.report.Devices, d)
 		}
+		m.invalidateDeviceView()
+		b.devicesChanged = false
 	}
 }
 

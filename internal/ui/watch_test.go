@@ -67,7 +67,9 @@ func TestWatchSelectionSearchAndRefresh(t *testing.T) {
 	if selected != ds[1].IP.String() {
 		t.Fatal(selected)
 	}
-	m.report.Devices = append([]scanner.Device{{IP: netip.MustParseAddr("10.0.0.1")}}, m.report.Devices...)
+	r := m.report
+	r.Devices = append([]scanner.Device{{IP: netip.MustParseAddr("10.0.0.1")}}, r.Devices...)
+	m.accept(r)
 	m.devices()
 	if m.selected != selected {
 		t.Fatal("selection shifted on insertion")
