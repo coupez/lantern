@@ -10,10 +10,11 @@ import (
 	"unicode"
 )
 
-// CleanText removes terminal control characters from untrusted network strings.
+// CleanText removes terminal and directional controls from untrusted strings.
+// Preserve joiners used by ordinary text shaping and emoji graphemes.
 func CleanText(s string) string {
 	return strings.Map(func(r rune) rune {
-		if unicode.IsControl(r) || unicode.In(r, unicode.Cf) || r == 0x1b {
+		if unicode.IsControl(r) || (unicode.In(r, unicode.Cf) && r != 0x200c && r != 0x200d) || r == 0x1b {
 			return -1
 		}
 		return r

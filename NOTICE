@@ -26,3 +26,6 @@ The hardware model identifier catalog is adapted from AppleDB by emiyl and
 contributors under MIT. Its pinned revision, input hashes, and selection rules
 are recorded in pkg/models/data/sources.json; per-record hashes are embedded
 in the index. The upstream license is reproduced in THIRD_PARTY_LICENSES.
+
+Terminal grapheme segmentation and cell widths use github.com/rivo/uniseg
+by Oliver Kuederle under MIT. Its license is reproduced in THIRD_PARTY_LICENSES.

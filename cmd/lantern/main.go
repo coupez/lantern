@@ -111,10 +111,7 @@ func run(args []string) error {
 	case "wake":
 		return wake(args)
 	case "demo":
-		u := ui.New(os.Stdout, false)
-		u.Intro("192.168.1.0/24", "DEMO · synthetic data")
-		u.Report(demo())
-		return nil
+		return demoCommand(args)
 	case "inspect":
 		return scan(append([]string{"--profile", "deep", "--details"}, args...), false)
 	case "scan", "watch":
@@ -130,7 +127,7 @@ func help() {
   lantern                         Discover your local network
   lantern scan [CIDR | IP]        Scan a network or single host
   lantern inspect IP              Detailed device and service inspection
-  lantern watch [CIDR]            Repeat scans and report changes
+  lantern watch [CIDR]            Live dashboard and network changes
   lantern interfaces              List available IPv4/IPv6 networks
   lantern lookup MAC              Identify a MAC vendor offline
   lantern models [IDENTIFIER]     Look up hardware model candidates offline
@@ -138,7 +135,7 @@ func help() {
   lantern diff before.json after.json
   lantern wake MAC [broadcast-IP] Send a Wake-on-LAN packet
   lantern doctor                  Check local capabilities
-  lantern demo                    Preview the CLI with sample data
+  lantern demo [--watch]          Preview with synthetic data; no network use
 
   Scan options
     --profile quick|standard|deep  Default: standard
@@ -156,9 +153,10 @@ func help() {
     --details                      Show full device records
     --banners                      Read SSH/HTTP/service banners
     --all-hosts                    Scan ports even on silent hosts
+    --plain                        Append watch reports without a dashboard
     --interval 10s                 Delay between watch scans
     --max-hosts 4096               Maximum target addresses
-    --no-color                     Plain output (also NO_COLOR)
+    --no-color                     Disable colors (also NO_COLOR)
 
   Examples
     lantern scan --ipv6 --interface en0
@@ -202,6 +200,7 @@ func scan(args []string, watch bool) error {
 	asJSONL := f.Bool("jsonl", false, "")
 	asCSV := f.Bool("csv", false, "")
 	noColor := f.Bool("no-color", false, "")
+	plain := f.Bool("plain", false, "append watch reports without a dashboard")
 	details := f.Bool("details", false, "")
 	noDNS := f.Bool("no-dns", false, "")
 	ipv6 := f.Bool("ipv6", false, "discover IPv6 neighbors on the selected interface")
@@ -299,6 +298,24 @@ func scan(args []string, watch bool) error {
 	defer cancel()
 	u := ui.New(os.Stderr, *noColor)
 	human := formats == 0
+	if watch && human && !*plain && ui.CanWatch(os.Stdin, os.Stdout) {
+		label := o.Target.String()
+		if o.Interface != "" {
+			label += " on " + o.Interface
+		}
+		return ui.RunWatch(ctx, os.Stdin, os.Stdout, ui.WatchOptions{
+			Target: label, Profile: *profile, Interval: *interval, NoColor: *noColor, Details: *details,
+			Scan: func(ctx context.Context, emit func(scanner.Event)) (scanner.Report, error) {
+				return (scanner.Engine{}).Scan(ctx, o, emit)
+			},
+			Complete: func(r scanner.Report) error {
+				if *save != "" {
+					return scanner.Save(*save, r)
+				}
+				return nil
+			},
+		})
+	}
 	enc := json.NewEncoder(os.Stdout)
 	var previous *scanner.Report
 	for {
@@ -449,4 +466,53 @@ func demo() scanner.Report {
 	data := `[{"ip":"192.168.1.1","mac":"00:11:22:33:44:55","names":["gateway.home"],"vendor":{"name":"Example Networks"},"ports":[{"port":80,"service":"http"},{"port":443,"service":"https"}],"evidence":["icmp"]},{"ip":"192.168.1.12","mac":"ac:de:48:12:34:56","names":["studio-mac.local"],"ports":[{"port":22,"service":"ssh"}],"evidence":["tcp-open"]},{"ip":"192.168.1.24","mac":"02:12:34:56:78:90","vendor":{"private":true},"evidence":["neighbor-cache"]},{"ip":"192.168.1.40","mac":"00:80:77:12:34:56","names":["office-printer.local"],"ports":[{"port":631,"service":"ipp"},{"port":9100,"service":"printer"}],"evidence":["tcp-open"]}]`
 	json.Unmarshal([]byte(data), &r.Devices)
 	return r
+}
+
+func demoCommand(args []string) error {
+	f := flag.NewFlagSet("demo", flag.ContinueOnError)
+	watch := f.Bool("watch", false, "preview the interactive dashboard without scanning")
+	noColor := f.Bool("no-color", false, "disable color")
+	if err := f.Parse(args); err != nil {
+		if err == flag.ErrHelp {
+			return nil
+		}
+		return err
+	}
+	if f.NArg() != 0 {
+		return errors.New("usage: lantern demo [--watch] [--no-color]")
+	}
+	if !*watch {
+		u := ui.New(os.Stdout, *noColor)
+		u.Intro("192.168.1.0/24", "DEMO · synthetic data")
+		u.Report(demo())
+		return nil
+	}
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer cancel()
+	cycle := 0
+	return ui.RunWatch(ctx, os.Stdin, os.Stdout, ui.WatchOptions{Target: "192.168.1.0/24", Profile: "DEMO · synthetic data", Interval: 3 * time.Second, NoColor: *noColor,
+		Scan: func(ctx context.Context, emit func(scanner.Event)) (scanner.Report, error) {
+			r := demo()
+			r.Started = time.Now()
+			cycle++
+			if cycle%2 == 0 {
+				r.Devices = r.Devices[:3]
+			}
+			for i := range r.Devices {
+				timer := time.NewTimer(120 * time.Millisecond)
+				select {
+				case <-ctx.Done():
+					timer.Stop()
+					r.Devices = r.Devices[:i]
+					r.Cancelled = true
+					r.DurationMS = time.Since(r.Started).Milliseconds()
+					return r, nil
+				case <-timer.C:
+				}
+				emit(scanner.Event{Type: "device", Device: &r.Devices[i]})
+				emit(scanner.Event{Type: "progress", Completed: i + 1, Total: len(r.Devices)})
+			}
+			r.DurationMS = time.Since(r.Started).Milliseconds()
+			return r, nil
+		}})
 }

@@ -8,6 +8,7 @@
 make build
 ./bin/lantern             # select the default-route network automatically
 ./bin/lantern demo        # preview the interface without sending packets
+./bin/lantern demo --watch # try the interactive dashboard with synthetic data
 ```
 
 Go 1.26.8 or newer is required to build. Go can download the project-required toolchain automatically. The resulting executable contains the vendor and service databases and runs offline. Default macOS scanning works without root. Linux requires `ip` from iproute2 for neighbor discovery; ICMP permissions depend on the host's ping socket configuration.
@@ -32,7 +33,13 @@ lantern interfaces
 lantern wake 00:11:22:33:44:55 192.168.1.255
 ```
 
-Use `./bin/lantern` until you put the binary on your PATH. Options work before or after the target. `lantern help` lists every option. `NO_COLOR=1` disables terminal styling. Redirected output is plain text; JSON and CSV contain no progress messages.
+Use `./bin/lantern` until you put the binary on your PATH. Options work before or after the target. `lantern help` lists every option. `NO_COLOR=1` disables colors. Redirected output is plain text; JSON and CSV contain no progress messages.
+
+`lantern watch` opens a live dashboard when stdin and stdout are terminals on macOS or Linux. Use arrow keys or `j`/`k` to select a device, `Enter` to inspect its full record, `/` to search names, addresses, vendors, models, or services, and `a` for recent changes and scan warnings. Details and activity scroll with arrows, Page Up/Down, Home, and End. `Space` pauses automatic refresh, `r` scans once, and `q` or Ctrl-C exits. While typing a search, Enter applies it, Escape clears it, and Ctrl-C exits.
+
+The previous completed report stays visible during refresh; new addresses appear during the first scan. Pausing lets an active scan finish. Scans never overlap, and the interval starts after each scan completes. `--save` also saves partial results when an active scan is cancelled. The dashboard restores the cursor and original terminal mode on exit, scan errors, and save errors.
+
+Use `watch --plain` for appended reports or `watch --jsonl` for a machine-readable stream. Redirected stdin/stdout and `TERM=dumb` automatically use appended reports. `--no-color` preserves keyboard navigation while disabling colors. The dashboard adapts to terminal resizing and requires at least 36 columns × 10 rows to display results; below that it shows a resize prompt. `demo --watch` requires an interactive terminal and never accesses the network.
 
 ## Discovery and speed
 

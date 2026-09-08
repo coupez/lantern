@@ -2,14 +2,15 @@ package ui
 
 import (
 	"fmt"
-	"golang.org/x/term"
 	"io"
 	"lantern/pkg/scanner"
 	"os"
 	"sort"
 	"strings"
 	"time"
-	"unicode/utf8"
+
+	"github.com/rivo/uniseg"
+	"golang.org/x/term"
 )
 
 type UI struct {
@@ -59,15 +60,24 @@ func (u *UI) Clear() {
 	}
 }
 func fit(s string, n int) string {
-	s = scanner.CleanText(s)
-	r := []rune(s)
-	if len(r) > n {
-		if n < 2 {
-			return ""
-		}
-		return string(r[:n-1]) + "…"
+	if n <= 0 {
+		return ""
 	}
-	return s + strings.Repeat(" ", n-utf8.RuneCountInString(s))
+	s = scanner.CleanText(s)
+	if width := uniseg.StringWidth(s); width <= n {
+		return s + strings.Repeat(" ", n-width)
+	}
+	var out strings.Builder
+	used := 0
+	g := uniseg.NewGraphemes(s)
+	for g.Next() {
+		if used+g.Width() > n-1 {
+			break
+		}
+		out.WriteString(g.Str())
+		used += g.Width()
+	}
+	return out.String() + "…" + strings.Repeat(" ", n-used-1)
 }
 func (u *UI) Report(r scanner.Report) {
 	u.Clear()

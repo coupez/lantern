@@ -10,6 +10,7 @@ export LANTERN_ARP_TARGET LANTERN_ARP_INTERFACE LANTERN_NETWORK_TESTS=1
 test -n "$LANTERN_ARP_TARGET"
 go test -race ./pkg/scanner -run NetworkIntegration -v
 go build -trimpath -o /tmp/lantern ./cmd/lantern
+python3 /usr/local/bin/test-watch-pty.py /tmp/lantern
 /tmp/lantern version
 /tmp/lantern demo --no-color
 /tmp/lantern scan "$LANTERN_ARP_TARGET" --interface "$LANTERN_ARP_INTERFACE" --arp --ports none --no-icmp --no-multicast --no-dns --json

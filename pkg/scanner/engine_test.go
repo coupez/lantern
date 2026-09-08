@@ -150,3 +150,10 @@ func TestKindIsIndependentOfProbeCompletionOrder(t *testing.T) {
 		t.Fatal("missed advertised printer")
 	}
 }
+
+func TestCleanTextPreservesJoinersButRejectsDirectionControls(t *testing.T) {
+	const text = "👩‍💻 فارسی\u200cمتن"
+	if got := CleanText(text + "\u202e\u2066\u2069\u200b\x1b\u009b"); got != text {
+		t.Fatalf("%q", got)
+	}
+}
