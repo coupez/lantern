@@ -64,7 +64,8 @@ type Event struct {
 	Message   string  `json:"message,omitempty"`
 }
 type Options struct {
-	// Interface selects local discovery and scopes link-local IPv6 probes.
+	// Interface selects local discovery and neighbor/local-address evidence,
+	// and scopes link-local IPv6 probes. TCP connects use normal OS routing.
 	Interface   string
 	Target      netip.Prefix
 	Ports       []uint16

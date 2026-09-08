@@ -12,24 +12,31 @@ import (
 	"time"
 )
 
-var arpLine = regexp.MustCompile(`\(([^)]+)\) at ([0-9a-fA-F:]+)`)
+var arpLine = regexp.MustCompile(`\(([^)]+)\) at ([0-9a-fA-F:]+)(?:\s+on\s+(\S+))?`)
 
-func parseNeighbors(s string) map[netip.Addr]string {
+func parseNeighbors(s string) map[netip.Addr]string { return parseNeighborsOn(s, "") }
+func parseNeighborsOn(s, iface string) map[netip.Addr]string {
 	out := map[netip.Addr]string{}
 	for _, line := range strings.Split(s, "\n") {
-		var addr, mac string
+		var addr, mac, device string
 		if m := arpLine.FindStringSubmatch(line); m != nil {
-			addr, mac = m[1], m[2]
+			addr, mac, device = m[1], m[2], m[3]
 		} else {
 			f := strings.Fields(line)
 			if len(f) > 0 {
 				addr = f[0]
+			}
+			if len(f) >= 3 && f[1] == "dev" {
+				device = f[2]
 			}
 			for i, v := range f {
 				if v == "lladdr" && i+1 < len(f) {
 					mac = f[i+1]
 				}
 			}
+		}
+		if iface != "" && device != iface {
+			continue
 		}
 		parts := strings.Split(mac, ":")
 		if len(parts) != 6 {
@@ -49,7 +56,7 @@ func parseNeighbors(s string) map[netip.Addr]string {
 	}
 	return out
 }
-func neighbors(ctx context.Context) (map[netip.Addr]string, error) {
+func neighborsOn(ctx context.Context, iface string) (map[netip.Addr]string, error) {
 	ctx, cancel := context.WithTimeout(ctx, time.Second)
 	defer cancel()
 	var cmd *exec.Cmd
@@ -57,6 +64,8 @@ func neighbors(ctx context.Context) (map[netip.Addr]string, error) {
 	case "darwin":
 		cmd = exec.CommandContext(ctx, "/usr/sbin/arp", "-an")
 	case "linux":
+		// ip omits the dev column when filtered by interface. Keep provenance
+		// in the command output and apply the requested filter while parsing.
 		cmd = exec.CommandContext(ctx, "ip", "-4", "neigh", "show")
 	default:
 		return nil, fmt.Errorf("neighbor lookup unsupported on %s", runtime.GOOS)
@@ -65,7 +74,7 @@ func neighbors(ctx context.Context) (map[netip.Addr]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("neighbor lookup: %w", err)
 	}
-	return parseNeighbors(string(b)), nil
+	return parseNeighborsOn(string(b), iface), nil
 }
 
 func parseNeighbors6(s, iface string) map[netip.Addr]string {
@@ -122,11 +131,8 @@ func neighbors6(ctx context.Context, iface string) (map[netip.Addr]string, error
 	case "darwin":
 		cmd = exec.CommandContext(ctx, "/usr/sbin/ndp", "-an")
 	case "linux":
-		args := []string{"-6", "neigh", "show"}
-		if iface != "" {
-			args = append(args, "dev", iface)
-		}
-		cmd = exec.CommandContext(ctx, "ip", args...)
+		// Keep the dev column: interface-filtered ip output omits it.
+		cmd = exec.CommandContext(ctx, "ip", "-6", "neigh", "show")
 	default:
 		return nil, fmt.Errorf("IPv6 neighbor lookup unsupported on %s", runtime.GOOS)
 	}

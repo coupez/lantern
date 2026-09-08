@@ -12,7 +12,7 @@ Doctor inspects interface addresses, automatic IPv4/IPv6 target selection, ICMP 
 
 A denied optional capability does not make doctor exit unsuccessfully. Invalid flags/interfaces, cancellation, and output errors return a nonzero exit status. After cancellation, JSON retains completed checks and sets `cancelled: true`.
 
-The JSON report has `schema: 1`, platform/version information, offline database counts, selected-interface inventory, elapsed milliseconds, and named checks. The core exposes the same local checks through `scanner.Diagnose(ctx, interfaceName)`; CLI version/database fields are added by the command. An empty interface name uses the scanner's automatic target selection. IPv4 and IPv6 may choose different interfaces. Explicit selection filters the reported network inventory; IPv4 neighbor-cache access remains a system-wide read.
+The JSON report has `schema: 1`, platform/version information, offline database counts, selected-interface inventory, elapsed milliseconds, and named checks. The core exposes the same local checks through `scanner.Diagnose(ctx, interfaceName)`; CLI version/database fields are added by the command. An empty interface name uses the scanner's automatic target selection. IPv4 and IPv6 may choose different interfaces. Explicit selection filters the reported network inventory and returned IPv4/IPv6 neighbor mappings. OS tables are read with their interface columns intact, then filtered.
 
 ## Interpreting common results
 

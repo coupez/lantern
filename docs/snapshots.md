@@ -30,3 +30,5 @@ Changes are ordered by numeric IP address, then field/type/detail; scan-level re
 ## Verification
 
 `go test -race ./...` covers configuration-aware comparisons, interrupted scans, normalized sets, typed values/JSON round trips, identity and response changes, numeric/scoped address ordering, interface isolation, legacy files, and immutable coverage capture. `python3 scripts/test-snapshot-cli.py` checks the built CLI against real saved JSON artifacts without network access. The same script runs in CI and the Linux container suite.
+
+Automatic IPv4 CLI scans now retain their selected interface in the report. An older snapshot with an empty interface retains legacy observational comparison behavior and cannot establish same-link scope. Two reports with different recorded interface names produce an interface-coverage change and suppress host comparisons.

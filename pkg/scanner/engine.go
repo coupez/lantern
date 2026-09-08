@@ -59,7 +59,7 @@ func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, 
 	if o.Target.Addr().Is6() && !sparse && o.Target.Addr().IsLinkLocalUnicast() && o.Interface == "" {
 		return r, fmt.Errorf("link-local IPv6 target needs --interface or an %%interface zone")
 	}
-	if o.Target.Addr().Is6() && o.Interface != "" {
+	if o.Interface != "" {
 		if _, err := net.InterfaceByName(o.Interface); err != nil {
 			return r, err
 		}
@@ -359,7 +359,7 @@ func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, 
 		if o.Target.Addr().Is6() {
 			source = func(ctx context.Context) (map[netip.Addr]string, error) { return neighbors6(ctx, o.Interface) }
 		} else {
-			source = neighbors
+			source = func(ctx context.Context) (map[netip.Addr]string, error) { return neighborsOn(ctx, o.Interface) }
 		}
 	}
 	table, err := source(ctx)
@@ -383,7 +383,7 @@ func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, 
 	}
 	for _, network := range networks {
 		ip, err := netip.ParseAddr(network.Address)
-		if err != nil || !targeted[ip] || (o.Target.Addr().Is6() && o.Interface != "" && network.Interface != o.Interface) {
+		if err != nil || !targeted[ip] || (o.Interface != "" && network.Interface != o.Interface) {
 			continue
 		}
 		add(ip, "local-interface", 0, 0)

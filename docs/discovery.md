@@ -2,6 +2,14 @@
 
 Lantern keeps observed address mappings separate from active responses. An OS neighbor-cache entry is useful evidence but may be stale. TCP connection acceptance/refusal, a matching echo reply, a discovery advertisement, or a solicited ARP reply counts as a response. Proxy ARP, shared devices, and multiple IP addresses mean the number of reported addresses is not necessarily the number of physical devices. All network claims remain unauthenticated.
 
+## Interface selection
+
+An automatic IPv4 CLI scan retains both the selected subnet and its interface, including when a default-route adapter shares a subnet with a virtual adapter. Reports and saved snapshots record that interface. Core callers can use `AutoTarget4(interfaceName)` to obtain the prefix and interface together, then pass both in `Options`; `AutoTarget` remains available for callers needing only the prefix.
+
+`--interface` selects the link used by local multicast and ARP discovery, filters OS neighbor mappings and local-address evidence, and scopes link-local IPv6 probes. Unknown interface names fail before scanning for both address families. Ordinary TCP connects still follow OS routing; the option does not bind all TCP sockets to a device or bypass VPN routing.
+
+IPv4/IPv6 neighbor rows from another interface are excluded when an interface is selected, even if the same IP exists on both links. A row with no interface provenance is excluded from a scoped lookup. On Linux the full table is read before filtering because `ip neigh show dev NAME` removes the interface column from its output. A custom `Engine.NeighborSource` must provide observations already appropriate for the requested interface; its IP-to-MAC map has no separate interface field.
+
 ## TCP probes and service banners
 
 The core deduplicates requested TCP ports without modifying the caller's slice. Port zero is rejected before network work. Host/port jobs are produced incrementally, including full `1-65535` scans; the engine does not allocate the complete host-by-port product. `--concurrency` limits simultaneous TCP probes.

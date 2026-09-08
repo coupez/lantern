@@ -280,7 +280,7 @@ func scan(args []string, watch bool) error {
 	} else if *ipv6 {
 		o.Target, o.Interface, err = scanner.AutoTarget6(*iface)
 	} else {
-		o.Target, err = scanner.AutoTarget(*iface)
+		o.Target, o.Interface, err = scanner.AutoTarget4(*iface)
 	}
 	if err != nil {
 		return err

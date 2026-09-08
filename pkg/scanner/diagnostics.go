@@ -87,7 +87,7 @@ func Diagnose(ctx context.Context, iface string) (Diagnostics, error) {
 		}
 	}
 	var target4, target6 netip.Prefix
-	var iface6 string
+	var iface4, iface6 string
 	var target4Err, target6Err error
 	inventory := func(v6 bool) func(context.Context) (string, error) {
 		return func(context.Context) (string, error) {
@@ -116,7 +116,7 @@ func Diagnose(ctx context.Context, iface string) (Diagnostics, error) {
 	}
 	multicast := func(v6 bool) func(context.Context) (string, error) {
 		return func(ctx context.Context) (string, error) {
-			target, preferred, err := target4, iface, target4Err
+			target, preferred, err := target4, iface4, target4Err
 			if v6 {
 				target, preferred, err = target6, iface6, target6Err
 			}
@@ -139,11 +139,11 @@ func Diagnose(ctx context.Context, iface string) (Diagnostics, error) {
 		{"networks4", "Connect an IPv4 interface or specify a reachable single-host target.", inventory(false)},
 		{"networks6", "IPv6 discovery needs an active IPv6 address on the selected interface.", inventory(true)},
 		{"target4", "Use lantern interfaces, then select --interface or an explicit IP/CIDR.", func(ctx context.Context) (string, error) {
-			target4, target4Err = autoTargetContext(ctx, iface)
+			target4, iface4, target4Err = autoTarget4Context(ctx, iface)
 			if target4Err != nil {
 				return "", target4Err
 			}
-			return target4.String(), nil
+			return target4.String() + " on " + iface4, nil
 		}},
 		{"target6", "Use lantern interfaces, then select --interface for local IPv6 discovery.", func(ctx context.Context) (string, error) {
 			target6, iface6, target6Err = autoTarget6Context(ctx, iface)
@@ -160,7 +160,7 @@ func Diagnose(ctx context.Context, iface string) (Diagnostics, error) {
 			if target4Err != nil {
 				return "", fmt.Errorf("target selection: %w", target4Err)
 			}
-			link, err := arpInterface(target4, iface)
+			link, err := arpInterface(target4, iface4)
 			if err != nil {
 				return "", err
 			}
@@ -168,7 +168,7 @@ func Diagnose(ctx context.Context, iface string) (Diagnostics, error) {
 			return "raw ARP resource opened and closed on " + link.iface.Name + "; no frame read or sent", err
 		}},
 		{"neighbors4", "The OS neighbor table is optional evidence; Linux needs the ip command and macOS uses /usr/sbin/arp.", func(ctx context.Context) (string, error) {
-			entries, err := neighbors(ctx)
+			entries, err := neighborsOn(ctx, iface)
 			return fmt.Sprintf("IPv4 neighbor table readable (%d mappings; entries may be stale)", len(entries)), err
 		}},
 		{"neighbors6", "The IPv6 neighbor table uses ip on Linux and /usr/sbin/ndp on macOS.", func(ctx context.Context) (string, error) {

@@ -46,20 +46,41 @@ func networksFor(v6 bool) ([]Network, error) {
 	})
 	return out, nil
 }
+
+// AutoTarget returns the automatically selected IPv4 prefix. Use AutoTarget4
+// when passing the result to Scan so local discovery retains its interface.
 func AutoTarget(iface string) (netip.Prefix, error) {
-	return autoTargetContext(context.Background(), iface)
+	p, _, err := AutoTarget4(iface)
+	return p, err
 }
-func autoTargetContext(ctx context.Context, iface string) (netip.Prefix, error) {
+
+// AutoTarget4 returns the IPv4 prefix and its selected local interface together.
+func AutoTarget4(iface string) (netip.Prefix, string, error) {
+	return autoTarget4Context(context.Background(), iface)
+}
+
+func autoTarget4Context(ctx context.Context, iface string) (netip.Prefix, string, error) {
 	networks, err := Networks()
 	if err != nil {
-		return netip.Prefix{}, err
+		return netip.Prefix{}, "", err
 	}
+	preferred := ""
 	if iface == "" {
-		if preferred := defaultInterfaceContext(ctx, false); preferred != "" {
-			for _, n := range networks {
-				if n.Interface == preferred {
-					return netip.ParsePrefix(n.CIDR)
-				}
+		preferred = defaultInterfaceContext(ctx, false)
+	}
+	network, err := selectIPv4Network(networks, iface, preferred)
+	if err != nil {
+		return netip.Prefix{}, "", err
+	}
+	p, err := netip.ParsePrefix(network.CIDR)
+	return p, network.Interface, err
+}
+
+func selectIPv4Network(networks []Network, iface, preferred string) (Network, error) {
+	if iface == "" && preferred != "" {
+		for _, n := range networks {
+			if n.Interface == preferred {
+				return n, nil
 			}
 		}
 	}
@@ -70,12 +91,12 @@ func autoTargetContext(ctx context.Context, iface string) (netip.Prefix, error) 
 		}
 	}
 	if len(matches) == 0 {
-		return netip.Prefix{}, fmt.Errorf("no IPv4 network found; specify an IP or CIDR")
+		return Network{}, fmt.Errorf("no IPv4 network found; specify an IP or CIDR")
 	}
 	if len(matches) > 1 && iface == "" {
-		return netip.Prefix{}, fmt.Errorf("multiple networks found; choose --interface or a CIDR (see lantern interfaces)")
+		return Network{}, fmt.Errorf("multiple networks found; choose --interface or a CIDR (see lantern interfaces)")
 	}
-	return netip.ParsePrefix(matches[0].CIDR)
+	return matches[0], nil
 }
 
 // ParseTarget parses an unscoped address/prefix. Use ParseTargetSpec for zones.
