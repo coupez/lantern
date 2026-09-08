@@ -1,6 +1,6 @@
 # Install Lantern
 
-The configured GitHub repository is currently private, and no GitHub release assets have been published. Authenticated installation of the integration revision from GitHub has been verified; access is still required. Public downloads remain a release step; the commands below do not change repository visibility.
+Lantern supports source builds and self-contained macOS/Linux archives. Published builds, when available, appear on [GitHub releases](https://github.com/coupez/lantern/releases). Source installation requires repository access; a private repository requires authentication. Authenticated installation of an integration revision has been verified.
 
 ## Build from a checkout
 
@@ -36,7 +36,7 @@ Go installs commands into `GOBIN` when set, otherwise into the first `GOPATH` en
 
 ## Install a release archive
 
-Local archives are generated with `make release VERSION=v0.1.0-rc.1`. They support macOS and Linux on ARM64 and x86-64; choose `darwin-arm64` for Apple Silicon, `darwin-amd64` for Intel Macs, and the corresponding Linux architecture.
+Local archives are generated with `make release VERSION=v0.1.0-rc.3`. They support macOS and Linux on ARM64 and x86-64; choose `darwin-arm64` for Apple Silicon, `darwin-amd64` for Intel Macs, and the corresponding Linux architecture.
 
 When release downloads become available, place the archive and its checksum file in the same directory. Archive names use `lantern-VERSION-OS-ARCH.tar.gz`. Verify the archives listed in the checksum file using `shasum -a 256 -c lantern-VERSION-checksums.txt` (or `sha256sum -c` on Linux). That command expects all listed archives to be present; for a single downloaded archive, compare its `shasum -a 256 ARCHIVE` output with the matching line in the checksum file.
 
