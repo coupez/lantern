@@ -12,6 +12,7 @@ Lantern combines independent MAC assignment records with device-reported protoco
 | `_airplay._tcp`, `_device-info._tcp`; `_raop._tcp` | `model`; `am` | Original advertised model identifier |
 | Pinned AppleDB hardware catalog | 606 identifiers → 886 assignments, including 124 ambiguous identifiers | Catalog-derived product-name candidates; all source variants retained |
 | `_esphomelib._tcp` (ESPHome) | Friendly name, firmware version, build board/platform, project metadata | Protocol-derived firmware label; advertised build details, without retail model/manufacturer inference |
+| `_shelly._tcp` → `/shelly` | Instance name; reported model, name, firmware version/build, generation, application/profile | Device-reported JSON; no manufacturer/catalog or link-layer MAC inference |
 | `_hap._tcp` (HomeKit) | `md` model, instance name, `ci` category | Advertised name/model plus source-linked protocol category interpretation |
 | `_googlecast._tcp` | `md`, `fn` | Advertised model and friendly name |
 | Pinned PyChromecast catalog | 40 exact Cast model → manufacturer mappings | Catalog-derived, explicitly labeled |
@@ -20,6 +21,18 @@ Lantern combines independent MAC assignment records with device-reported protoco
 The `identity` object offers selected name/manufacturer/model/firmware fields, plus all recognized claims and their provenance. The advertised `model` remains unchanged. `model_names` contains unique, sorted catalog candidates for that selected model; one candidate is a catalog interpretation, and several candidates indicate unresolved variants. Each catalog claim records the exact input identifier and pinned source-file URL. Explicit standardized fields precede printer display descriptions; catalog-derived manufacturer claims rank below device-reported manufacturer fields. Ties are resolved deterministically by source/key/value, not packet arrival order. Catalog names and manufacturers attach only to the selected model claim; metadata from a conflicting, unselected model cannot silently populate the selected identity. Conflicting claims remain visible. A claim is not an authenticated hardware identity.
 
 The CLI shows identity fields in `inspect` / `--details`; JSON and saved snapshots retain claims and raw advertisements. CSV includes reported-name, manufacturer, model, model-candidate, firmware, and firmware-version columns. The two firmware columns are appended after `model_candidates`; earlier column positions stay the same.
+
+## Shelly recognition
+
+Standard/deep mDNS discovery directly queries `_shelly._tcp`, including when service enumeration is unanswered. The service supplies a generic smart-home type hint, an instance-name fallback, and a generation claim when its `gen` TXT value is a valid integer of at least 2. Other TXT fields do not become model or firmware claims.
+
+With descriptions enabled, this exact service triggers one read-only `GET /shelly` on the discovered IP and advertised port. URL/path/host values in TXT cannot redirect the request. Generic HTTP services and hostname patterns do not trigger it. Shelly and UPnP together share at most four unique request targets and one per-device `--timeout`; duplicate Shelly advertisements reuse the endpoint result, including failures. `--no-descriptions` disables these reads. No authentication, control, update, or configuration endpoint is called.
+
+The JSON response must contain a generation of at least 2 and nonempty `id`/`model` strings. Its reported name and model populate identity fields; `ver` supplies the firmware version with a protocol-derived Shelly firmware label. Build, generation, application, profile, and reported MAC become provenance claims. Firmware/version selection stays tied to the same endpoint and device ID. These data do not supply a retail product-name catalog match or manufacturer, overwrite observed MACs, establish authentication/security state, or add a verified-open port to the TCP scan results.
+
+Reads use the same pinned-IP, no-proxy, no-redirect transport as UPnP. Headers are capped at 16 KiB; JSON at 16 KiB; selected strings at 2 KiB before display normalization. Duplicate top-level keys, invalid types, incomplete identities, trailing documents, and unsupported generation-1 replies are rejected. Unknown extension fields are ignored within the body cap. Failures leave the original mDNS record intact. Shelly Gen1 recognition and physical-device interoperability remain pending.
+
+Semantics were checked on 2026-09-08 against Shelly's official [mDNS documentation](https://shelly-api-docs.shelly.cloud/gen2/General/mDNS/) and [device-information endpoint](https://shelly-api-docs.shelly.cloud/gen2/ComponentsAndServices/Shelly/#http-endpoint-shelly). No upstream implementation or model database is incorporated.
 
 ## ESPHome recognition
 
@@ -57,7 +70,7 @@ mDNS asks for common services plus the DNS-SD service-type enumeration record. P
 
 mDNS and SSDP each process at most 512 received datagrams, including ignored/malformed traffic. mDNS also caps query attempts at 128, including initial questions and follow-ups. Reaching either limit adds a completeness warning while retaining decoded observations. A query limit stops new questions but allows pending replies to arrive within the existing response window. Unexpected receive errors and query/short-write failures also retain already-decoded data and add a warning. Normal read-deadline expiry and cancellation do not become socket-failure warnings. SSDP multicast hop-limit setup errors are reported before querying.
 
-UPnP description requests only accept HTTP URLs with a literal IP matching the SSDP responder. The transport pins that address and disables proxies and redirects. Four unique URLs share one per-device timeout. Response headers, body size (256 KiB), XML depth (32), device count (64), and field lengths are bounded. The USN's device UUID is matched to the description's UDN before attaching a model, so an embedded device does not silently inherit the root device's identity. Unknown, malformed, inaccessible, or unmatched descriptions leave the original SSDP advertisement intact.
+UPnP description requests only accept HTTP URLs with a literal IP matching the SSDP responder. The transport pins that address and disables proxies and redirects. Four unique request targets, shared with Shelly identity reads, use one per-device timeout. Response headers, body size (256 KiB), XML depth (32), device count (64), and field lengths are bounded. The USN's device UUID is matched to the description's UDN before attaching a model, so an embedded device does not silently inherit the root device's identity. Unknown, malformed, inaccessible, or unmatched descriptions leave the original SSDP advertisement intact.
 
 Quick mode skips multicast and descriptions by default. NetBIOS is opt-in for quick/standard and enabled for deep IPv4/inspect; `--netbios=false` disables it. Explicit boolean flags override profile defaults, including `--no-multicast=false` and `--banners=false`.
 

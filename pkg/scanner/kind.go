@@ -68,7 +68,7 @@ func inferKind(d Device) string {
 				kinds["printer"] = true
 			case "_home-assistant._tcp":
 				kinds["smart home hub"] = true
-			case "_esphomelib._tcp":
+			case "_esphomelib._tcp", "_shelly._tcp":
 				kinds["smart home device"] = true
 			case "_hap._tcp":
 				homeKit = true

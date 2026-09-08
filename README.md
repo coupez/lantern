@@ -83,7 +83,7 @@ Computer names, workgroups, registration flags, and reported unit IDs remain in 
 
 Use on networks you own or are authorized to inspect. Lantern makes ordinary discovery requests and connections; it does not log in to devices or execute remote commands.
 
-UPnP descriptions are enabled in standard/deep mode. `--no-descriptions` disables them. Reads stay on the SSDP responder’s literal IP, never use a proxy or follow redirects, and share one per-device deadline across at most four URLs. XML is capped at 256 KiB and bounded in depth. mDNS follows missing PTR/SRV/TXT/A/AAAA records and enumerates additional service types within the original discovery deadline and a 128-query budget.
+UPnP and Shelly identity reads are enabled in standard/deep mode. `--no-descriptions` disables them. Reads stay on the discovered device’s literal IP, never use a proxy or follow redirects, and share one per-device deadline across at most four request targets. UPnP XML is capped at 256 KiB and bounded in depth; Shelly JSON is capped at 16 KiB. mDNS follows missing PTR/SRV/TXT/A/AAAA records and enumerates additional service types within the original discovery deadline and a 128-query budget.
 
 [Recognition sources and rules](docs/recognition.md) describe the supported mappings and limitations.
 
@@ -94,6 +94,8 @@ IPv6 single addresses and small prefixes support TCP, ICMPv6, DNS, banners, and 
 `--ndp` adds direct IPv6 neighbor solicitation on the selected Ethernet interface, with the same raw-access requirements. Use `lantern scan fe80::1234%en0 --ndp` or `lantern scan --ipv6 --interface en0 --ndp`. It probes finite ranges or the bounded candidate list for large ranges, records fresh `ndp` MAC evidence, and finishes early when every requested neighbor answers. Linux kernel exchanges are verified; privileged macOS BPF exchange remains pending.
 
 ESPHome devices advertising `_esphomelib._tcp` gain a friendly name, an ESPHome firmware label, and the reported firmware version. Build-board, platform, and project details appear as source-linked claims in the inspector. These details remain separate from retail hardware identity and observed MAC addresses. CSV appends `firmware` and `firmware_version` after `model_candidates`; JSON/snapshots add the same optional identity fields.
+
+Shelly devices advertising `_shelly._tcp` gain an instance-name fallback and smart-home type hint. With descriptions enabled, a bounded read of `/shelly` adds the reported model, name, firmware/version, and source-linked build/application claims. Advertised MACs remain separate from link-layer observations. See [Shelly recognition and limits](docs/recognition.md#shelly-recognition).
 
 Use `lantern models Mac16,9` to look up a hardware code offline, `lantern models` for the index count, or `lantern models sources` for provenance. Discovery maps Bonjour device-info/AirPlay `model` and RAOP `am` fields to these candidates. The reported `identity.model` stays intact; `identity.model_names` contains catalog candidates. A unique candidate appears in the report, while ambiguous matches are labeled and listed in `inspect` / `--details`. CSV includes `model_candidates`.
 

@@ -74,6 +74,7 @@ func TestMDNSSplitReplyNetworkIntegration(t *testing.T) {
 			t.Run("unknown-service", func(t *testing.T) { testMDNSSplitReply(t, address, "_lantern-test._tcp", "Protocol Fixture") })
 			t.Run("catalog-model", func(t *testing.T) { testMDNSSplitReply(t, address, "_device-info._tcp", "Mac16,9") })
 			t.Run("esphome", func(t *testing.T) { testMDNSSplitReply(t, address, "_esphomelib._tcp", "2026.8.1") })
+			t.Run("shelly", func(t *testing.T) { testMDNSSplitReply(t, address, "_shelly._tcp", "2") })
 			t.Run("homekit", func(t *testing.T) { testMDNSSplitReply(t, address, "_hap._tcp", "Fixture Light 7") })
 		})
 	}
@@ -81,6 +82,19 @@ func TestMDNSSplitReplyNetworkIntegration(t *testing.T) {
 func testMDNSSplitReply(t *testing.T, address, service, model string) {
 	requireNetwork(t)
 	modelKey := "model"
+	port := uint16(8765)
+	var shellyReads atomic.Int32
+	if service == "_shelly._tcp" {
+		modelKey = "gen"
+		httpServer := shellyHTTPFixture(t, address, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Method != "GET" || r.URL.Path != "/shelly" || r.URL.RawQuery != "" {
+				t.Errorf("unexpected Shelly request: %s %s", r.Method, r.URL)
+			}
+			shellyReads.Add(1)
+			fmt.Fprint(w, shellyFixture)
+		}))
+		port = uint16(httpServer.Listener.Addr().(*net.TCPAddr).Port)
+	}
 	if service == "_esphomelib._tcp" {
 		modelKey = "version"
 	}
@@ -115,7 +129,7 @@ func testMDNSSplitReply(t *testing.T, address, service, model string) {
 				var body dnsmessage.ResourceBody
 				switch strings.ToLower(q.Name.String()) {
 				case "_services._dns-sd._udp.local.":
-					if service == "_esphomelib._tcp" {
+					if service == "_esphomelib._tcp" || service == "_shelly._tcp" {
 						continue
 					} // Verify direct service discovery without enumeration.
 					body = &dnsmessage.PTRResource{PTR: dnsmessage.MustNewName(service + ".local.")}
@@ -123,7 +137,7 @@ func testMDNSSplitReply(t *testing.T, address, service, model string) {
 					body = &dnsmessage.PTRResource{PTR: dnsmessage.MustNewName("Office." + service + ".local.")}
 				case "office." + service + ".local.":
 					if q.Type == dnsmessage.TypeSRV {
-						body = &dnsmessage.SRVResource{Target: dnsmessage.MustNewName("Office.local."), Port: 8765}
+						body = &dnsmessage.SRVResource{Target: dnsmessage.MustNewName("Office.local."), Port: port}
 					} else if q.Type == dnsmessage.TypeTXT {
 						txt := []string{modelKey + "=" + model}
 						if service == "_esphomelib._tcp" {
@@ -154,8 +168,20 @@ func testMDNSSplitReply(t *testing.T, address, service, model string) {
 	hits, err := collectMDNS(context.Background(), client, server.LocalAddr().(*net.UDPAddr), target)
 	server.Close()
 	<-done
-	if err != nil || len(hits) != 1 || len(hits[0].Ads) != 1 || hits[0].Ads[0].Service != service || hits[0].Ads[0].Port != 8765 || hits[0].Ads[0].Properties[modelKey] != model {
+	if err != nil || len(hits) != 1 || len(hits[0].Ads) != 1 || hits[0].Ads[0].Service != service || hits[0].Ads[0].Port != port || hits[0].Ads[0].Properties[modelKey] != model {
 		t.Fatalf("hits=%+v err=%v", hits, err)
+	}
+	if service == "_shelly._tcp" {
+		d := Device{IP: hits[0].IP, Advertisements: hits[0].Ads}
+		if shellyReads.Load() != 0 {
+			t.Fatal("mDNS opened API connection")
+		}
+		enrichDescriptions(context.Background(), &d, time.Second)
+		normalizeAdvertisements(&d)
+		d.Identity = identify(d.Advertisements)
+		if shellyReads.Load() != 1 || d.Identity == nil || d.Identity.Name != "Workshop relay" || d.Identity.Model != "SNSW-001X16EU" || d.Identity.FirmwareVersion != "1.4.0" || inferKind(d) != "smart home device" || d.MAC != "" || len(d.Ports) != 0 {
+			t.Fatal("packet-to-Shelly identity integration", d, shellyReads.Load())
+		}
 	}
 	if service == "_hap._tcp" {
 		id := identify(hits[0].Ads)

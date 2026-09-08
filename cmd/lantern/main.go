@@ -144,7 +144,7 @@ func help() {
     --save scan.json               Save a snapshot atomically
     --no-dns | --no-icmp            Disable discovery components
     --no-multicast                  Skip mDNS and SSDP (quick default)
-    --no-descriptions               Skip UPnP model/name reads
+    --no-descriptions               Skip UPnP/Shelly identity reads
     --details                      Show full device records
     --banners                      Read SSH/HTTP/service banners
     --all-hosts                    Scan ports even on silent hosts

@@ -42,12 +42,18 @@ func identify(ads []Advertisement) *Identity {
 			value = string([]rune(value)[:256])
 		}
 		source := a.Protocol + ":" + a.Instance
-		if a.Protocol == "upnp" {
-			source = "upnp:" + a.Properties["location"] + "#" + a.Instance
+		if a.Protocol == "upnp" || a.Protocol == "shelly" {
+			source = a.Protocol + ":" + a.Properties["location"] + "#" + a.Instance
 		}
 		reference := ""
 		if a.Protocol == "mdns" && strings.EqualFold(a.Service, "_esphomelib._tcp") {
 			reference = espHomeReference
+		}
+		if a.Protocol == "mdns" && strings.EqualFold(a.Service, "_shelly._tcp") {
+			reference = shellyMDNSReference
+		}
+		if a.Protocol == "shelly" {
+			reference = shellyInfoReference
 		}
 		claims = append(claims, IdentityClaim{Field: field, Value: value, Source: source, Key: key, Basis: "advertised", Reference: reference})
 	}
@@ -61,6 +67,17 @@ func identify(ads []Advertisement) *Identity {
 	}
 	for _, a := range ads {
 		switch a.Protocol {
+		case "shelly":
+			if a.Service != "device-info" {
+				continue
+			}
+			for _, field := range []struct{ field, key string }{
+				{"name", "name"}, {"name", "id"}, {"model", "model"}, {"firmware_version", "ver"},
+				{"firmware_build", "fw_id"}, {"generation", "gen"}, {"application", "app"}, {"profile", "profile"}, {"reported_mac", "mac"},
+			} {
+				add(field.field, field.key, a)
+			}
+			claims = append(claims, IdentityClaim{Field: "firmware", Value: "Shelly", Source: "shelly:" + a.Properties["location"] + "#" + a.Instance, Key: "service", Basis: "protocol", Reference: shellyInfoReference, Identifier: "device-info"})
 		case "netbios":
 			if a.Service == "workstation" || a.Service == "file-server" {
 				add("name", "name", a)
@@ -71,6 +88,12 @@ func identify(ads []Advertisement) *Identity {
 			add("model", "modelName", a)
 		case "mdns":
 			switch strings.ToLower(a.Service) {
+			case "_shelly._tcp":
+				addValue("name", "instance", mdnsInstanceName(a.Instance, "_shelly._tcp"), a)
+				if shellyGeneration(a.Properties["gen"]) {
+					add("generation", "gen", a)
+				}
+				claims = append(claims, IdentityClaim{Field: "kind", Value: "smart home device", Source: "mdns:" + a.Instance, Key: "service", Basis: "protocol", Reference: shellyMDNSReference, Identifier: "_shelly._tcp"})
 			case "_ipp._tcp", "_ipps._tcp", "_printer._tcp", "_pdl-datastream._tcp":
 				add("manufacturer", "usb_mfg", a)
 				add("model", "usb_mdl", a)
@@ -124,7 +147,7 @@ func identify(ads []Advertisement) *Identity {
 			return 4
 		}
 		switch c.Key {
-		case "manufacturer", "friendlyName", "friendly_name", "modelName", "usb_mfg", "usb_mdl":
+		case "manufacturer", "friendlyName", "friendly_name", "name", "modelName", "usb_mfg", "usb_mdl":
 			return 0
 		case "model", "md", "am":
 			return 1

@@ -40,6 +40,15 @@ func descriptionURL(raw string, peer netip.Addr) (*url.URL, error) {
 	return u, nil
 }
 func fetchDescription(ctx context.Context, peer netip.Addr, raw string) ([]map[string]string, error) {
+	b, err := fetchDeviceDocument(ctx, peer, raw, "text/xml, application/xml", maxDescriptionBytes)
+	if err != nil {
+		return nil, err
+	}
+	return parseDescription(string(b))
+}
+
+// fetchDeviceDocument is shared by read-only, discovery-triggered identity reads.
+func fetchDeviceDocument(ctx context.Context, peer netip.Addr, raw, accept string, limit int64) ([]byte, error) {
 	u, err := descriptionURL(raw, peer)
 	if err != nil {
 		return nil, err
@@ -59,7 +68,7 @@ func fetchDescription(ctx context.Context, peer netip.Addr, raw string) ([]map[s
 		return nil, err
 	}
 	request.Header.Set("User-Agent", "Lantern/0.1")
-	request.Header.Set("Accept", "text/xml, application/xml")
+	request.Header.Set("Accept", accept)
 	response, err := client.Do(request)
 	if err != nil {
 		return nil, err
@@ -68,14 +77,14 @@ func fetchDescription(ctx context.Context, peer netip.Addr, raw string) ([]map[s
 	if response.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("description returned HTTP %d", response.StatusCode)
 	}
-	b, err := io.ReadAll(io.LimitReader(response.Body, maxDescriptionBytes+1))
+	b, err := io.ReadAll(io.LimitReader(response.Body, limit+1))
 	if err != nil {
 		return nil, err
 	}
-	if len(b) > maxDescriptionBytes {
-		return nil, errors.New("description exceeds 256 KiB")
+	if int64(len(b)) > limit {
+		return nil, fmt.Errorf("device document exceeds %d bytes", limit)
 	}
-	return parseDescription(string(b))
+	return b, nil
 }
 
 // parseDescription reads direct device fields, keeping embedded UPnP devices
@@ -172,6 +181,19 @@ func enrichDescriptions(ctx context.Context, d *Device, timeout time.Duration) {
 	cache := map[string]cached{}
 	original := append([]Advertisement{}, d.Advertisements...)
 	for _, ad := range original {
+		if location := shellyDescriptionURL(d.IP, ad); location != "" {
+			key := "shelly:" + location
+			if _, ok := cache[key]; ok || len(cache) >= 4 || ctx.Err() != nil {
+				continue
+			}
+			fields, err := fetchShellyDescription(ctx, d.IP, location)
+			cache[key] = cached{err: err}
+			if err == nil {
+				fields["location"] = location
+				d.Advertisements = append(d.Advertisements, Advertisement{Protocol: "shelly", Service: "device-info", Instance: fields["id"], Port: ad.Port, Properties: fields})
+			}
+			continue
+		}
 		if ad.Protocol != "ssdp" {
 			continue
 		}
