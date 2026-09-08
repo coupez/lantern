@@ -407,7 +407,7 @@ func scan(args []string, watch bool) error {
 }
 func writeCSV(w io.Writer, r scanner.Report) error {
 	c := csv.NewWriter(w)
-	if err := c.Write([]string{"ip", "mac", "vendor", "names", "ports", "evidence", "reported_name", "manufacturer", "model", "model_candidates"}); err != nil {
+	if err := c.Write([]string{"ip", "mac", "vendor", "names", "ports", "evidence", "reported_name", "manufacturer", "model", "model_candidates", "firmware", "firmware_version"}); err != nil {
 		return err
 	}
 	for _, d := range r.Devices {
@@ -417,9 +417,9 @@ func writeCSV(w io.Writer, r scanner.Report) error {
 		}
 		row := []string{d.IP.String(), d.MAC, d.Vendor.Name, strings.Join(d.Names, ";"), strings.Join(p, ";"), strings.Join(d.Evidence, ";")}
 		if d.Identity != nil {
-			row = append(row, d.Identity.Name, d.Identity.Manufacturer, d.Identity.Model, strings.Join(d.Identity.ModelNames, ";"))
+			row = append(row, d.Identity.Name, d.Identity.Manufacturer, d.Identity.Model, strings.Join(d.Identity.ModelNames, ";"), d.Identity.Firmware, d.Identity.FirmwareVersion)
 		} else {
-			row = append(row, "", "", "", "")
+			row = append(row, "", "", "", "", "", "")
 		}
 		for i, s := range row {
 			if len(s) > 0 && strings.ContainsAny(s[:1], "=+-@\t\r") {

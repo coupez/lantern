@@ -21,9 +21,11 @@ type IdentityClaim struct {
 
 // Identity retains competing claims while offering deterministic display fields.
 type Identity struct {
-	Name         string `json:"name,omitempty"`
-	Manufacturer string `json:"manufacturer,omitempty"`
-	Model        string `json:"model,omitempty"`
+	Name            string `json:"name,omitempty"`
+	Manufacturer    string `json:"manufacturer,omitempty"`
+	Model           string `json:"model,omitempty"`
+	Firmware        string `json:"firmware,omitempty"`
+	FirmwareVersion string `json:"firmware_version,omitempty"`
 	// ModelNames contains catalog candidates for the selected advertised model.
 	ModelNames []string        `json:"model_names,omitempty"`
 	Claims     []IdentityClaim `json:"claims,omitempty"`
@@ -43,7 +45,11 @@ func identify(ads []Advertisement) *Identity {
 		if a.Protocol == "upnp" {
 			source = "upnp:" + a.Properties["location"] + "#" + a.Instance
 		}
-		claims = append(claims, IdentityClaim{Field: field, Value: value, Source: source, Key: key, Basis: "advertised"})
+		reference := ""
+		if a.Protocol == "mdns" && strings.EqualFold(a.Service, "_esphomelib._tcp") {
+			reference = espHomeReference
+		}
+		claims = append(claims, IdentityClaim{Field: field, Value: value, Source: source, Key: key, Basis: "advertised", Reference: reference})
 	}
 	add := func(field, key string, a Advertisement) { addValue(field, key, a.Properties[key], a) }
 	catalogModel := func(key string, a Advertisement) {
@@ -64,12 +70,24 @@ func identify(ads []Advertisement) *Identity {
 			add("manufacturer", "manufacturer", a)
 			add("model", "modelName", a)
 		case "mdns":
-			switch a.Service {
+			switch strings.ToLower(a.Service) {
 			case "_ipp._tcp", "_ipps._tcp", "_printer._tcp", "_pdl-datastream._tcp":
 				add("manufacturer", "usb_mfg", a)
 				add("model", "usb_mdl", a)
 				add("model", "ty", a)
 				add("model", "product", a)
+			case "_esphomelib._tcp":
+				add("name", "friendly_name", a)
+				addValue("name", "instance", mdnsInstanceName(a.Instance, "_esphomelib._tcp"), a)
+				claims = append(claims,
+					IdentityClaim{Field: "firmware", Value: "ESPHome", Source: "mdns:" + a.Instance, Key: "service", Basis: "protocol", Reference: espHomeReference, Identifier: "_esphomelib._tcp"},
+					IdentityClaim{Field: "kind", Value: "smart home device", Source: "mdns:" + a.Instance, Key: "service", Basis: "protocol", Reference: espHomeReference, Identifier: "_esphomelib._tcp"})
+				for _, field := range []struct{ field, key string }{
+					{"firmware_version", "version"}, {"build_board", "board"}, {"platform", "platform"},
+					{"firmware_project", "project_name"}, {"firmware_project_version", "project_version"},
+				} {
+					add(field.field, field.key, a)
+				}
 			case "_hap._tcp":
 				add("model", "md", a)
 				addValue("name", "instance", homeKitName(a.Instance), a)
@@ -106,7 +124,7 @@ func identify(ads []Advertisement) *Identity {
 			return 4
 		}
 		switch c.Key {
-		case "manufacturer", "friendlyName", "modelName", "usb_mfg", "usb_mdl":
+		case "manufacturer", "friendlyName", "friendly_name", "modelName", "usb_mfg", "usb_mdl":
 			return 0
 		case "model", "md", "am":
 			return 1
@@ -142,7 +160,7 @@ func identify(ads []Advertisement) *Identity {
 		return a.Identifier < b.Identifier
 	})
 	result := &Identity{}
-	var selectedModel IdentityClaim
+	var selectedModel, selectedFirmware IdentityClaim
 	for _, c := range claims {
 		if len(result.Claims) > 0 && result.Claims[len(result.Claims)-1] == c {
 			continue
@@ -153,6 +171,10 @@ func identify(ads []Advertisement) *Identity {
 			if result.Name == "" {
 				result.Name = c.Value
 			}
+		case "firmware":
+			if result.Firmware == "" {
+				result.Firmware, selectedFirmware = c.Value, c
+			}
 		case "model":
 			if result.Model == "" {
 				result.Model = c.Value
@@ -161,6 +183,9 @@ func identify(ads []Advertisement) *Identity {
 		}
 	}
 	for _, c := range result.Claims {
+		if c.Field == "firmware_version" && c.Source == selectedFirmware.Source && result.FirmwareVersion == "" {
+			result.FirmwareVersion = c.Value
+		}
 		linked := c.Source == selectedModel.Source && c.Key == selectedModel.Key && strings.EqualFold(c.Identifier, result.Model)
 		if c.Field == "manufacturer" && result.Manufacturer == "" && (c.Basis != "catalog" || linked) {
 			result.Manufacturer = c.Value

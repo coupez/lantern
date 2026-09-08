@@ -143,6 +143,8 @@ func Diff(before, after Report) []Change {
 			}
 			add("changed", address, "identity.name", "reported name", one(oldID.Name), one(newID.Name))
 			add("changed", address, "identity.manufacturer", "reported manufacturer", one(oldID.Manufacturer), one(newID.Manufacturer))
+			add("changed", address, "identity.firmware", "reported firmware", one(oldID.Firmware), one(newID.Firmware))
+			add("changed", address, "identity.firmware_version", "reported firmware version", one(oldID.FirmwareVersion), one(newID.FirmwareVersion))
 			add("changed", address, "identity.model", "reported model", one(oldID.Model), one(newID.Model))
 			add("changed", address, "identity.model_names", "catalog candidates", stringSet(oldID.ModelNames), stringSet(newID.ModelNames))
 		}

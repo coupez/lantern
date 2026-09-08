@@ -93,7 +93,9 @@ IPv6 single addresses and small prefixes support TCP, ICMPv6, DNS, banners, and 
 
 `--ndp` adds direct IPv6 neighbor solicitation on the selected Ethernet interface, with the same raw-access requirements. Use `lantern scan fe80::1234%en0 --ndp` or `lantern scan --ipv6 --interface en0 --ndp`. It probes finite ranges or the bounded candidate list for large ranges, records fresh `ndp` MAC evidence, and finishes early when every requested neighbor answers. Linux kernel exchanges are verified; privileged macOS BPF exchange remains pending.
 
-Use `lantern models Mac16,9` to look up a hardware code offline, `lantern models` for the index count, or `lantern models sources` for provenance. Discovery maps Bonjour device-info/AirPlay `model` and RAOP `am` fields to these candidates. The reported `identity.model` stays intact; `identity.model_names` contains catalog candidates. A unique candidate appears in the report, while ambiguous matches are labeled and listed in `inspect` / `--details`. CSV appends `model_candidates`.
+ESPHome devices advertising `_esphomelib._tcp` gain a friendly name, an ESPHome firmware label, and the reported firmware version. Build-board, platform, and project details appear as source-linked claims in the inspector. These details remain separate from retail hardware identity and observed MAC addresses. CSV appends `firmware` and `firmware_version` after `model_candidates`; JSON/snapshots add the same optional identity fields.
+
+Use `lantern models Mac16,9` to look up a hardware code offline, `lantern models` for the index count, or `lantern models sources` for provenance. Discovery maps Bonjour device-info/AirPlay `model` and RAOP `am` fields to these candidates. The reported `identity.model` stays intact; `identity.model_names` contains catalog candidates. A unique candidate appears in the report, while ambiguous matches are labeled and listed in `inspect` / `--details`. CSV includes `model_candidates`.
 
 ### Useful watch activity
 

@@ -54,7 +54,19 @@ func TestCSVCatalogCandidates(t *testing.T) {
 		t.Fatal(err)
 	}
 	rows, err := csv.NewReader(&b).ReadAll()
-	if err != nil || len(rows) != 2 || len(rows[1]) != 10 || rows[0][9] != "model_candidates" || rows[1][8] != "AppleTV14,1" || rows[1][9] != "Wi-Fi;Wi-Fi + Ethernet" {
+	if err != nil || len(rows) != 2 || len(rows[1]) != 12 || rows[0][9] != "model_candidates" || rows[1][8] != "AppleTV14,1" || rows[1][9] != "Wi-Fi;Wi-Fi + Ethernet" {
+		t.Fatal(rows, err)
+	}
+}
+
+func TestCSVFirmwareFieldsAndFormulaProtection(t *testing.T) {
+	var b bytes.Buffer
+	r := scanner.Report{Devices: []scanner.Device{{IP: netip.MustParseAddr("192.0.2.1"), Identity: &scanner.Identity{Firmware: "ESPHome", FirmwareVersion: "=untrusted"}}, {IP: netip.MustParseAddr("192.0.2.2")}}}
+	if err := writeCSV(&b, r); err != nil {
+		t.Fatal(err)
+	}
+	rows, err := csv.NewReader(&b).ReadAll()
+	if err != nil || len(rows) != 3 || len(rows[0]) != 12 || rows[0][10] != "firmware" || rows[0][11] != "firmware_version" || rows[1][10] != "ESPHome" || rows[1][11] != "'=untrusted" || rows[2][10] != "" || rows[2][11] != "" {
 		t.Fatal(rows, err)
 	}
 }

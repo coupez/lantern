@@ -11,14 +11,27 @@ Lantern combines independent MAC assignment records with device-reported protoco
 | Bonjour printing `_ipp`, `_ipps`, `_printer`, `_pdl-datastream` | `usb_MFG`, `usb_MDL`, `ty`, `product` | Advertised manufacturer, model, or display description |
 | `_airplay._tcp`, `_device-info._tcp`; `_raop._tcp` | `model`; `am` | Original advertised model identifier |
 | Pinned AppleDB hardware catalog | 606 identifiers → 886 assignments, including 124 ambiguous identifiers | Catalog-derived product-name candidates; all source variants retained |
+| `_esphomelib._tcp` (ESPHome) | Friendly name, firmware version, build board/platform, project metadata | Protocol-derived firmware label; advertised build details, without retail model/manufacturer inference |
 | `_hap._tcp` (HomeKit) | `md` model, instance name, `ci` category | Advertised name/model plus source-linked protocol category interpretation |
 | `_googlecast._tcp` | `md`, `fn` | Advertised model and friendly name |
 | Pinned PyChromecast catalog | 40 exact Cast model → manufacturer mappings | Catalog-derived, explicitly labeled |
 | SSDP → UPnP description | `friendlyName`, `manufacturer`, `modelName`, `modelNumber`, `deviceType`, `UDN` | Device-reported XML; embedded devices stay distinct |
 
-The `identity` object offers selected name/manufacturer/model fields, plus all recognized claims and their provenance. The advertised `model` remains unchanged. `model_names` contains unique, sorted catalog candidates for that selected model; one candidate is a catalog interpretation, and several candidates indicate unresolved variants. Each catalog claim records the exact input identifier and pinned source-file URL. Explicit standardized fields precede printer display descriptions; catalog-derived manufacturer claims rank below device-reported manufacturer fields. Ties are resolved deterministically by source/key/value, not packet arrival order. Catalog names and manufacturers attach only to the selected model claim; metadata from a conflicting, unselected model cannot silently populate the selected identity. Conflicting claims remain visible. A claim is not an authenticated hardware identity.
+The `identity` object offers selected name/manufacturer/model/firmware fields, plus all recognized claims and their provenance. The advertised `model` remains unchanged. `model_names` contains unique, sorted catalog candidates for that selected model; one candidate is a catalog interpretation, and several candidates indicate unresolved variants. Each catalog claim records the exact input identifier and pinned source-file URL. Explicit standardized fields precede printer display descriptions; catalog-derived manufacturer claims rank below device-reported manufacturer fields. Ties are resolved deterministically by source/key/value, not packet arrival order. Catalog names and manufacturers attach only to the selected model claim; metadata from a conflicting, unselected model cannot silently populate the selected identity. Conflicting claims remain visible. A claim is not an authenticated hardware identity.
 
-The CLI shows identity fields in `inspect` / `--details`; JSON and saved snapshots retain claims and raw advertisements. CSV includes reported-name, manufacturer, model, and model-candidate columns.
+The CLI shows identity fields in `inspect` / `--details`; JSON and saved snapshots retain claims and raw advertisements. CSV includes reported-name, manufacturer, model, model-candidate, firmware, and firmware-version columns. The two firmware columns are appended after `model_candidates`; earlier column positions stay the same.
+
+## ESPHome recognition
+
+Standard/deep discovery now queries `_esphomelib._tcp` directly, so ESPHome devices can be found even when service-type enumeration is unanswered. PTR, SRV, TXT, and address records can arrive separately. The existing shared deadline and query/packet budgets still apply; this adds one initial service question and no device API connection. Quick mode still requires `--no-multicast=false` to enable mDNS.
+
+The exact service identifies the advertised firmware as ESPHome (`basis: "protocol"`). The `friendly_name` TXT value supplies a display name; a valid service instance supplies a lower-priority fallback. `version` populates `identity.firmware_version`, while `identity.firmware` remains separate from the hardware model. Both fields appear in JSON, saved snapshots, CSV, plain output, and the inspector; watch search includes them. A version is selected only from the same advertised instance as the chosen firmware claim. Other instances' versions remain visible as competing claims, including when the selected instance omitted its version.
+
+`board`, `platform`, `project_name`, and `project_version` become source-linked build/project claims. They describe firmware configuration and do not establish a retail device model or manufacturer. The advertised `mac` stays in TXT metadata; it cannot replace link-layer observations. Advertised ports remain unverified until a TCP probe confirms them. Import URLs are retained but never fetched, and advertised encryption metadata is not treated as a verified security assessment.
+
+Recognition requires the exact service and mDNS protocol, with normal DNS case-insensitivity. Generic HTTP advertisements with similar TXT keys are insufficient. The generic smart-home type hint yields to more specific HomeKit, printer, router, hub, and media service evidence. Firmware versions are compared as observed strings with the same multicast-coverage and partial-scan safeguards as other identity fields. There is no claim that a particular board, firmware project, or version authenticates a physical device.
+
+Protocol semantics were checked against [ESPHome's pinned mDNS implementation](https://github.com/esphome/esphome/blob/1ce0bed3f672d3a4699dad0cbfd8617c3b8950e5/esphome/components/mdns/mdns_component.cpp), SHA-256 `2b04cfea602306e369ff45660d3e25d369f082de47d11800a58e160bfa8deae0`. No upstream implementation code is incorporated. IPv4/IPv6 socket fixtures verify this path; physical ESPHome-device coverage remains pending.
 
 ## HomeKit recognition
 
@@ -60,4 +73,4 @@ Quick mode skips multicast and descriptions by default. NetBIOS is opt-in for qu
 - [pyatv RAOP device-info parser](https://github.com/postlund/pyatv/blob/master/pyatv/protocols/raop/__init__.py), for the advertised `am` field.
 - [pyatv AirPlay device-info parser](https://github.com/postlund/pyatv/blob/master/pyatv/protocols/airplay/__init__.py) for the advertised `model` field. No pyatv source or catalog is incorporated.
 
-These mappings do not cover every model. Proprietary cloud recognition, direct NDP, additional discovery protocols, and broader real-device verification remain separate work.
+These mappings do not cover every model. Proprietary cloud recognition, additional discovery protocols, and broader real-device verification remain separate work.

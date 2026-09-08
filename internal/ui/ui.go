@@ -95,7 +95,17 @@ func (u *UI) Report(r scanner.Report) {
 			responsive++
 		}
 	}
-	fmt.Fprintf(u.Out, "\n  %s  %s  %s\n\n", u.style("1;38;5;158", fmt.Sprintf("%d devices", len(r.Devices))), u.style("38;5;81", fmt.Sprintf("%d open ports", open)), u.style("38;5;245", fmt.Sprintf("%.2fs · %d addresses", float64(r.DurationMS)/1000, r.Probed)))
+	counts := []string{fmt.Sprintf("%d devices", len(r.Devices)), fmt.Sprintf("%d open ports", open), fmt.Sprintf("%.2fs · %d addresses", float64(r.DurationMS)/1000, r.Probed)}
+	styles := []string{"1;38;5;158", "38;5;81", "38;5;245"}
+	if uniseg.StringWidth("  "+strings.Join(counts, "  ")) > u.Width {
+		fmt.Fprintln(u.Out)
+		for i, count := range counts {
+			fmt.Fprintf(u.Out, "  %s\n", u.style(styles[i], strings.TrimRight(fit(count, max(1, u.Width-2)), " ")))
+		}
+		fmt.Fprintln(u.Out)
+	} else {
+		fmt.Fprintf(u.Out, "\n  %s  %s  %s\n\n", u.style(styles[0], counts[0]), u.style(styles[1], counts[1]), u.style(styles[2], counts[2]))
+	}
 	if r.AddressMode == "discovered" {
 		fmt.Fprintln(u.Out, "  IPv6 discovery · observed addresses on this interface")
 		fmt.Fprintln(u.Out)
@@ -122,6 +132,8 @@ func (u *UI) Report(r scanner.Report) {
 				name = d.Identity.Name
 			} else if name == "" && d.Identity.Model != "" {
 				name = d.Identity.Model
+			} else if name == "" && d.Identity.Firmware != "" {
+				name = d.Identity.Firmware
 			}
 		}
 		if name == "" {
@@ -154,6 +166,10 @@ func (u *UI) Report(r scanner.Report) {
 			fmt.Fprintf(u.Out, "    %s\n", fit(name, max(12, u.Width-6)))
 			fmt.Fprintf(u.Out, "    %s\n", u.style("38;5;245", fit(mac+" · "+services, max(12, u.Width-6))))
 		}
+		if d.Identity != nil && d.Identity.Firmware != "" {
+			label := strings.TrimSpace(d.Identity.Firmware + " " + d.Identity.FirmwareVersion)
+			fmt.Fprintf(u.Out, "    %s\n", u.style("38;5;245", fit("Firmware · "+label, max(12, u.Width-6))))
+		}
 		if d.Identity != nil && d.Identity.Model != "" {
 			label := d.Identity.Model
 			if len(d.Identity.ModelNames) == 1 {
@@ -167,7 +183,10 @@ func (u *UI) Report(r scanner.Report) {
 			fmt.Fprintf(u.Out, "    %s\n", u.style("38;5;245", fit(label, max(12, u.Width-6))))
 		}
 	}
-	fmt.Fprintf(u.Out, "\n  %s\n", u.style("38;5;245", fmt.Sprintf("● %d responsive   ○ %d cached neighbors", responsive, len(r.Devices)-responsive)))
+	fmt.Fprintln(u.Out)
+	for _, line := range wrapCells(fmt.Sprintf("● %d responsive   ○ %d cached neighbors", responsive, len(r.Devices)-responsive), max(1, u.Width-2)) {
+		fmt.Fprintf(u.Out, "  %s\n", u.style("38;5;245", line))
+	}
 	if r.ICMP != nil && (r.ICMP.Retries > 0 || r.ICMP.Failed > 0) {
 		fmt.Fprintf(u.Out, "  ICMP · %d sent · %d retries · %d unsent\n", r.ICMP.Sent, r.ICMP.Retries, r.ICMP.Failed)
 	}
@@ -199,6 +218,8 @@ func (u *UI) Details(r scanner.Report) {
 			field("Reported name", d.Identity.Name)
 			field("Maker", d.Identity.Manufacturer)
 			field("Model", d.Identity.Model)
+			field("Firmware", d.Identity.Firmware)
+			field("FW version", d.Identity.FirmwareVersion)
 			for _, name := range d.Identity.ModelNames {
 				label := "Catalog model"
 				if len(d.Identity.ModelNames) > 1 {

@@ -19,6 +19,7 @@ The workspace started empty. A runnable CLI and reusable discovery engine now ex
 - Embedded 58,421-entry IEEE MAC database with /24, /28, /36 longest-prefix matching, private/multicast MAC handling, and registry provenance.
 - Embedded 5,889-entry IANA TCP service database, public-data refresh tooling.
 - mDNS service-type enumeration and follow-up queries; bounded UPnP description reads with embedded-device matching; source-attributed names/models; 40 MIT-licensed Cast model/manufacturer mappings.
+- ESPHome discovery and firmware recognition with direct DNS-SD queries, friendly names, source-linked build/project claims, firmware exports/search/diffs, and separate IPv4/IPv6 socket fixtures. Physical ESPHome-device coverage remains pending.
 - HomeKit model/name recognition and 36 protocol category codes, with source-linked type hints, conflict preservation, exact service matching, and IPv4/IPv6 socket fixtures. Physical HomeKit-device coverage remains pending.
 - 606 MIT-licensed AppleDB hardware identifiers with 886 source assignments, ambiguity-preserving product names, RAOP model recognition, and an offline `models` lookup command.
 - JSON, JSONL, CSV, atomic snapshots, and snapshot/watch changes for identity and response evidence, with requested scan coverage, interruption handling, common-port comparisons, and interface isolation. Wake-on-LAN and a no-network demo.

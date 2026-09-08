@@ -73,6 +73,7 @@ func TestMDNSSplitReplyNetworkIntegration(t *testing.T) {
 		t.Run(address, func(t *testing.T) {
 			t.Run("unknown-service", func(t *testing.T) { testMDNSSplitReply(t, address, "_lantern-test._tcp", "Protocol Fixture") })
 			t.Run("catalog-model", func(t *testing.T) { testMDNSSplitReply(t, address, "_device-info._tcp", "Mac16,9") })
+			t.Run("esphome", func(t *testing.T) { testMDNSSplitReply(t, address, "_esphomelib._tcp", "2026.8.1") })
 			t.Run("homekit", func(t *testing.T) { testMDNSSplitReply(t, address, "_hap._tcp", "Fixture Light 7") })
 		})
 	}
@@ -80,6 +81,9 @@ func TestMDNSSplitReplyNetworkIntegration(t *testing.T) {
 func testMDNSSplitReply(t *testing.T, address, service, model string) {
 	requireNetwork(t)
 	modelKey := "model"
+	if service == "_esphomelib._tcp" {
+		modelKey = "version"
+	}
 	if service == "_hap._tcp" {
 		modelKey = "md"
 	}
@@ -111,6 +115,9 @@ func testMDNSSplitReply(t *testing.T, address, service, model string) {
 				var body dnsmessage.ResourceBody
 				switch strings.ToLower(q.Name.String()) {
 				case "_services._dns-sd._udp.local.":
+					if service == "_esphomelib._tcp" {
+						continue
+					} // Verify direct service discovery without enumeration.
 					body = &dnsmessage.PTRResource{PTR: dnsmessage.MustNewName(service + ".local.")}
 				case service + ".local.":
 					body = &dnsmessage.PTRResource{PTR: dnsmessage.MustNewName("Office." + service + ".local.")}
@@ -119,6 +126,9 @@ func testMDNSSplitReply(t *testing.T, address, service, model string) {
 						body = &dnsmessage.SRVResource{Target: dnsmessage.MustNewName("Office.local."), Port: 8765}
 					} else if q.Type == dnsmessage.TypeTXT {
 						txt := []string{modelKey + "=" + model}
+						if service == "_esphomelib._tcp" {
+							txt = append(txt, "FRIENDLY_NAME=Workshop Air", "board=esp32dev", "platform=ESP32", "project_name=example.air-monitor", "mac=001122334455")
+						}
 						if service == "_hap._tcp" {
 							txt = append(txt, "CI=5", "id=AA:BB:CC:DD:EE:FF")
 						}
@@ -152,6 +162,13 @@ func testMDNSSplitReply(t *testing.T, address, service, model string) {
 		d := Device{IP: hits[0].IP, Advertisements: hits[0].Ads, Identity: id}
 		if id == nil || id.Model != model || id.Name != "Office" || id.Manufacturer != "" || inferKind(d) != "light" || d.MAC != "" || len(d.Ports) != 0 {
 			t.Fatal("packet-to-HomeKit integration", d)
+		}
+	}
+	if service == "_esphomelib._tcp" {
+		id := identify(hits[0].Ads)
+		d := Device{IP: hits[0].IP, Advertisements: hits[0].Ads, Identity: id}
+		if id == nil || id.Name != "Workshop Air" || id.Firmware != "ESPHome" || id.FirmwareVersion != model || id.Model != "" || id.Manufacturer != "" || inferKind(d) != "smart home device" || d.MAC != "" || len(d.Ports) != 0 {
+			t.Fatal("packet-to-ESPHome integration", d)
 		}
 	}
 	if service == "_device-info._tcp" {

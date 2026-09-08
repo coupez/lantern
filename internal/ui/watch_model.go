@@ -48,6 +48,9 @@ func deviceName(d scanner.Device) string {
 	if d.Identity != nil && d.Identity.Model != "" {
 		return d.Identity.Model
 	}
+	if d.Identity != nil && d.Identity.Firmware != "" {
+		return d.Identity.Firmware
+	}
 	if d.Vendor.Private {
 		return "Private / randomized MAC"
 	}
@@ -69,7 +72,7 @@ func (m *watchModel) devices() []scanner.Device {
 	for _, d := range m.report.Devices {
 		haystack := d.IP.String() + " " + d.MAC + " " + d.Vendor.Name + " " + strings.Join(d.Names, " ") + " " + deviceName(d) + " " + deviceServices(d)
 		if d.Identity != nil {
-			haystack += " " + d.Identity.Manufacturer + " " + d.Identity.Model + " " + strings.Join(d.Identity.ModelNames, " ")
+			haystack += " " + d.Identity.Manufacturer + " " + d.Identity.Model + " " + d.Identity.Firmware + " " + d.Identity.FirmwareVersion + " " + strings.Join(d.Identity.ModelNames, " ")
 		}
 		if query == "" || strings.Contains(strings.ToLower(scanner.CleanText(haystack)), query) {
 			out = append(out, d)

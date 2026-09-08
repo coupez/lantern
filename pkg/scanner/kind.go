@@ -5,6 +5,8 @@ import (
 	"strings"
 )
 
+const espHomeReference = "https://github.com/esphome/esphome/blob/1ce0bed3f672d3a4699dad0cbfd8617c3b8950e5/esphome/components/mdns/mdns_component.cpp"
+
 const homeKitCategoryReference = "https://github.com/homebridge/HAP-NodeJS/blob/25e8bea26a64309a47184dec478479483fbdd50c/src/lib/Accessory.ts"
 
 // Protocol category numbers, not a manufacturer or model catalog. Some Apple
@@ -38,9 +40,11 @@ func homeKitCategory(raw string) string {
 	return categories[n]
 }
 
-func homeKitName(instance string) string {
+func homeKitName(instance string) string { return mdnsInstanceName(instance, "_hap._tcp") }
+
+func mdnsInstanceName(instance, service string) string {
 	instance = strings.TrimSuffix(instance, ".")
-	const suffix = "._hap._tcp.local"
+	suffix := "." + service + ".local"
 	if !strings.HasSuffix(strings.ToLower(instance), suffix) {
 		return ""
 	}
@@ -64,6 +68,8 @@ func inferKind(d Device) string {
 				kinds["printer"] = true
 			case "_home-assistant._tcp":
 				kinds["smart home hub"] = true
+			case "_esphomelib._tcp":
+				kinds["smart home device"] = true
 			case "_hap._tcp":
 				homeKit = true
 				if kind := homeKitCategory(a.Properties["ci"]); kind != "" && kind != "smart home device" {
@@ -104,6 +110,9 @@ func inferKind(d Device) string {
 	}
 	if kinds["media"] {
 		return "media"
+	}
+	if kinds["smart home device"] {
+		return "smart home device"
 	}
 	has := func(port uint16) bool {
 		for _, p := range d.Ports {

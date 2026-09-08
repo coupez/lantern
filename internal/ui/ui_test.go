@@ -96,3 +96,32 @@ func TestProgressPhaseChangeBypassesThrottle(t *testing.T) {
 		t.Fatal("phase change was throttled", b.String())
 	}
 }
+
+func TestFirmwareReportDetailsAndWatchSearch(t *testing.T) {
+	d := scanner.Device{IP: netip.MustParseAddr("192.0.2.1"), Identity: &scanner.Identity{Firmware: "ESPHome", FirmwareVersion: "2026.8.1\x1b\u202e"}}
+	for _, width := range []int{36, 80, 120} {
+		var b bytes.Buffer
+		u := &UI{Out: &b, Width: width}
+		u.Report(scanner.Report{Devices: []scanner.Device{d}})
+		if !strings.Contains(b.String(), "ESPHome") || !strings.Contains(b.String(), "2026.8.1") || strings.ContainsAny(b.String(), "\x1b\u202e") {
+			t.Fatal(b.String())
+		}
+		for _, line := range strings.Split(b.String(), "\n") {
+			if utf8.RuneCountInString(line) > width {
+				t.Fatal("overflow", width, line)
+			}
+		}
+		b.Reset()
+		u.Details(scanner.Report{Devices: []scanner.Device{d}})
+		if !strings.Contains(b.String(), "Firmware") || !strings.Contains(b.String(), "FW version") || strings.ContainsAny(b.String(), "\x1b\u202e") {
+			t.Fatal(b.String())
+		}
+	}
+	m := watchModel{report: scanner.Report{Devices: []scanner.Device{d}}}
+	for _, query := range []string{"esphome", "2026.8.1"} {
+		m.query = query
+		if len(m.devices()) != 1 || deviceName(d) != "ESPHome" {
+			t.Fatal("firmware missing from watch search/name", query)
+		}
+	}
+}
