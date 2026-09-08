@@ -17,3 +17,7 @@ and available in their upstream repositories.
 Fing is a trademark of its owner. Lantern is independent and is not affiliated
 with Fing. No Fing application binaries, extracted code, or proprietary
 recognition tables are included in the Lantern build or source distribution.
+
+The Cast model registry is adapted from PyChromecast by Paulus Schoutsen and
+contributors, under MIT. Its pinned source and hash are in cast-models.json;
+the license is reproduced in THIRD_PARTY_LICENSES.

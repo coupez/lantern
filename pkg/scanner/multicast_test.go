@@ -44,3 +44,37 @@ func FuzzMDNS(f *testing.F) {
 		r.hits(netip.MustParsePrefix("192.168.1.0/24"))
 	})
 }
+
+func TestMDNSFollowupsStayLocal(t *testing.T) {
+	r := newMDNSRecords()
+	r.pointers["_services._dns-sd._udp.local."] = []string{"_new._tcp.local.", "evil.example.", "instance._new._tcp.local."}
+	r.pointers["_new._tcp.local."] = []string{"device._new._tcp.local.", "other._bad._tcp.local."}
+	qs := r.followups()
+	if len(qs) != 3 {
+		t.Fatalf("expected service PTR + instance SRV/TXT, got %+v", qs)
+	}
+	for _, q := range qs {
+		if q.Name.String() == "evil.example." {
+			t.Fatal("escaped local discovery")
+		}
+	}
+	r.services["device._new._tcp.local."] = dnsmessage.SRVResource{Target: dnsmessage.MustNewName("device.local."), Port: 9999}
+	r.txt["device._new._tcp.local."] = map[string]string{}
+	qs = r.followups()
+	if len(qs) != 2 {
+		t.Fatalf("expected service PTR + host A, got %+v", qs)
+	}
+	if serviceType("Living._fake.room._ipp._tcp.local.") != "_ipp._tcp.local." {
+		t.Fatal("instance name corrupted service parsing")
+	}
+}
+func TestMDNSTXTCaseAndFirstDuplicate(t *testing.T) {
+	m := dnsmessage.Message{Header: dnsmessage.Header{Response: true}, Answers: []dnsmessage.Resource{{Header: dnsmessage.ResourceHeader{Name: dnsmessage.MustNewName("Office._ipp._tcp.local."), Type: dnsmessage.TypeTXT, Class: dnsmessage.ClassINET, TTL: 120}, Body: &dnsmessage.TXTResource{TXT: []string{"USB_MFG=Example", "usb_mfg=Incorrect", "USB_MDL=Printer 7"}}}}}
+	b, _ := m.Pack()
+	r := newMDNSRecords()
+	r.ingest(b)
+	p := r.txt["office._ipp._tcp.local."]
+	if p["usb_mfg"] != "Example" || p["usb_mdl"] != "Printer 7" {
+		t.Fatal(p)
+	}
+}

@@ -93,6 +93,13 @@ func (u *UI) Report(r scanner.Report) {
 		if len(d.Names) > 0 {
 			name = d.Names[0]
 		}
+		if d.Identity != nil {
+			if d.Identity.Name != "" {
+				name = d.Identity.Name
+			} else if name == "" && d.Identity.Model != "" {
+				name = d.Identity.Model
+			}
+		}
 		if name == "" {
 			if d.Vendor.Private {
 				name = "Private / randomized MAC"
@@ -121,6 +128,13 @@ func (u *UI) Report(r scanner.Report) {
 		} else {
 			fmt.Fprintf(u.Out, "  %s %s  %s\n", dot, u.style("1", d.IP.String()), fit(name, max(12, u.Width-24)))
 			fmt.Fprintf(u.Out, "    %s\n", u.style("38;5;245", fit(mac+" · "+services, max(12, u.Width-6))))
+		}
+		if d.Identity != nil && d.Identity.Model != "" {
+			label := d.Identity.Model
+			if d.Identity.Manufacturer != "" {
+				label += " · " + d.Identity.Manufacturer
+			}
+			fmt.Fprintf(u.Out, "    %s\n", u.style("38;5;245", fit(label, max(12, u.Width-6))))
 		}
 	}
 	fmt.Fprintf(u.Out, "\n  %s\n", u.style("38;5;245", fmt.Sprintf("● %d responsive   ○ %d cached neighbors", responsive, len(r.Devices)-responsive)))
@@ -152,6 +166,14 @@ func (u *UI) Details(r scanner.Report) {
 		field("Names", strings.Join(d.Names, ", "))
 		field("MAC", d.MAC)
 		field("Vendor", d.Vendor.Name)
+		if d.Identity != nil {
+			field("Reported name", d.Identity.Name)
+			field("Maker", d.Identity.Manufacturer)
+			field("Model", d.Identity.Model)
+			for _, c := range d.Identity.Claims {
+				field("Source", c.Field+" = "+c.Value+" · "+c.Source+" ["+c.Key+"; "+c.Basis+"]")
+			}
+		}
 		field("Type hint", d.Kind)
 		if d.LatencyMS > 0 {
 			field("Latency", fmt.Sprintf("%.2f ms", d.LatencyMS))

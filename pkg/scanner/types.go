@@ -14,6 +14,7 @@ type Port struct {
 	Banner  string `json:"banner,omitempty"`
 }
 type Device struct {
+	Identity       *Identity       `json:"identity,omitempty"`
 	Advertisements []Advertisement `json:"advertisements,omitempty"`
 	IP             netip.Addr      `json:"ip"`
 	MAC            string          `json:"mac,omitempty"`
@@ -43,20 +44,21 @@ type Event struct {
 	Message   string  `json:"message,omitempty"`
 }
 type Options struct {
-	Target      netip.Prefix
-	Ports       []uint16
-	Concurrency int
-	Timeout     time.Duration
-	Resolve     bool
-	ICMP        bool
-	Banners     bool
-	Multicast   bool
-	AllHosts    bool
-	MaxHosts    int
+	Target       netip.Prefix
+	Ports        []uint16
+	Concurrency  int
+	Timeout      time.Duration
+	Resolve      bool
+	ICMP         bool
+	Banners      bool
+	Descriptions bool
+	Multicast    bool
+	AllHosts     bool
+	MaxHosts     int
 }
 
 func Defaults() Options {
-	return Options{Multicast: true, Concurrency: 512, Timeout: 300 * time.Millisecond, Resolve: true, ICMP: true, MaxHosts: 4096, Ports: []uint16{22, 53, 80, 443, 445, 554, 631, 3389, 5000, 7000, 8008, 8080, 8443, 9100}}
+	return Options{Descriptions: true, Multicast: true, Concurrency: 512, Timeout: 300 * time.Millisecond, Resolve: true, ICMP: true, MaxHosts: 4096, Ports: []uint16{22, 53, 80, 443, 445, 554, 631, 3389, 5000, 7000, 8008, 8080, 8443, 9100}}
 }
 
 type Dialer interface {

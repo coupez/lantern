@@ -34,3 +34,14 @@ func TestInvalidCLI(t *testing.T) {
 		}
 	}
 }
+
+func TestCSVIncludesIdentity(t *testing.T) {
+	var b bytes.Buffer
+	r := scanner.Report{Devices: []scanner.Device{{IP: netip.MustParseAddr("10.0.0.1"), Identity: &scanner.Identity{Name: "Living Room", Manufacturer: "Example", Model: "Model 42"}}}}
+	if err := writeCSV(&b, r); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(b.String(), "reported_name,manufacturer,model") || !strings.Contains(b.String(), "Living Room,Example,Model 42") {
+		t.Fatal(b.String())
+	}
+}

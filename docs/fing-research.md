@@ -40,7 +40,8 @@ Local research artifacts are under `research/downloads/` and `research/extracted
 | IEEE MA-L, MA-M, MA-S, IAB | MAC assignment → registered organization | 58,421 embedded assignments; longest-prefix lookup |
 | IANA service registry | TCP port → registered service name | 5,889 embedded names |
 | mDNS / DNS-SD | Hostname, advertised service, model/TXT properties | Bounded local discovery implemented |
-| SSDP | Advertised service, server, USN, description URL | Discovery implemented; description URLs are not fetched |
+| SSDP | Advertised service, server, USN, description URL | Descriptions now read from the responder IP with limits; embedded devices matched by UDN |
+| PyChromecast model table (MIT) | Exact Cast model → manufacturer | 40 mappings embedded from a pinned commit |
 | Reverse DNS | PTR names | Bounded optional lookup |
 | SSH / HTTP / FTP / SMTP responses | Device-reported software banners | Bounded explicit/deep inspection |
 | Wireshark manuf / Nmap fingerprints / community catalogs | Potential extra mappings and fingerprints | Not imported; provenance and applicable source terms need evaluation |

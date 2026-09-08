@@ -1,0 +1,171 @@
+{
+  "source": {
+    "url": "https://github.com/home-assistant-libs/pychromecast/blob/8f7f3bfaa3142614b04f04e885b43e7810872adb/pychromecast/const.py",
+    "commit": "8f7f3bfaa3142614b04f04e885b43e7810872adb",
+    "sha256": "ebbab58e77203e2f636cd35187f0edf38e684dfdb477e178c65c7efe52d5994c",
+    "retrieved": "2026-09-08",
+    "license": "MIT"
+  },
+  "models": {
+    "bose smart ultra soundbar": {
+      "cast_type": "audio",
+      "manufacturer": "Bose"
+    },
+    "bravia 4k gb": {
+      "cast_type": "cast",
+      "manufacturer": "Sony"
+    },
+    "bravia 4k gb atv3": {
+      "cast_type": "cast",
+      "manufacturer": "Sony"
+    },
+    "bravia 4k vh2": {
+      "cast_type": "cast",
+      "manufacturer": "Sony"
+    },
+    "bravia 4k vh21": {
+      "cast_type": "cast",
+      "manufacturer": "Sony"
+    },
+    "c4a": {
+      "cast_type": "audio",
+      "manufacturer": "Sony"
+    },
+    "chromecast": {
+      "cast_type": "cast",
+      "manufacturer": "Google Inc."
+    },
+    "chromecast audio": {
+      "cast_type": "audio",
+      "manufacturer": "Google Inc."
+    },
+    "chromecast hd": {
+      "cast_type": "cast",
+      "manufacturer": "Google Inc."
+    },
+    "chromecast ultra": {
+      "cast_type": "cast",
+      "manufacturer": "Google Inc."
+    },
+    "d24f-j09": {
+      "cast_type": "cast",
+      "manufacturer": "Vizio"
+    },
+    "eureka dongle": {
+      "cast_type": "cast",
+      "manufacturer": "Google Inc."
+    },
+    "google cast group": {
+      "cast_type": "group",
+      "manufacturer": "Google Inc."
+    },
+    "google home": {
+      "cast_type": "audio",
+      "manufacturer": "Google Inc."
+    },
+    "google home mini": {
+      "cast_type": "audio",
+      "manufacturer": "Google Inc."
+    },
+    "google nest hub": {
+      "cast_type": "cast",
+      "manufacturer": "Google Inc."
+    },
+    "google nest hub max": {
+      "cast_type": "cast",
+      "manufacturer": "Google Inc."
+    },
+    "google nest mini": {
+      "cast_type": "audio",
+      "manufacturer": "Google Inc."
+    },
+    "jbl link 10": {
+      "cast_type": "audio",
+      "manufacturer": "JBL"
+    },
+    "jbl link 20": {
+      "cast_type": "audio",
+      "manufacturer": "JBL"
+    },
+    "jbl link 300": {
+      "cast_type": "audio",
+      "manufacturer": "JBL"
+    },
+    "jbl link 500": {
+      "cast_type": "audio",
+      "manufacturer": "JBL"
+    },
+    "jbl link portable": {
+      "cast_type": "audio",
+      "manufacturer": "HARMAN International Industries"
+    },
+    "lenovo smart display 10": {
+      "cast_type": "cast",
+      "manufacturer": "LENOVO"
+    },
+    "lenovo smart display 7": {
+      "cast_type": "cast",
+      "manufacturer": "LENOVO"
+    },
+    "lenovocd-24502f": {
+      "cast_type": "audio",
+      "manufacturer": "LENOVO"
+    },
+    "lg wk7 thinq speaker": {
+      "cast_type": "audio",
+      "manufacturer": "LG"
+    },
+    "marshall stanmore ii": {
+      "cast_type": "audio",
+      "manufacturer": "Marshall"
+    },
+    "mitv-mssp2": {
+      "cast_type": "cast",
+      "manufacturer": "Xiaomi"
+    },
+    "nest audio": {
+      "cast_type": "audio",
+      "manufacturer": "Google Inc."
+    },
+    "nest wifi point": {
+      "cast_type": "audio",
+      "manufacturer": "Google Inc."
+    },
+    "pioneer vsx-1131": {
+      "cast_type": "audio",
+      "manufacturer": "Pioneer"
+    },
+    "pioneer vsx-831": {
+      "cast_type": "audio",
+      "manufacturer": "Pioneer"
+    },
+    "pioneer vsx-lx305": {
+      "cast_type": "audio",
+      "manufacturer": "Pioneer"
+    },
+    "shield android tv": {
+      "cast_type": "cast",
+      "manufacturer": "NVIDIA"
+    },
+    "smart soundbar 10": {
+      "cast_type": "audio",
+      "manufacturer": "Canton Elektronik GmbH + Co. KG"
+    },
+    "stream tv": {
+      "cast_type": "cast",
+      "manufacturer": "wnc"
+    },
+    "svs pro soundbase": {
+      "cast_type": "audio",
+      "manufacturer": "SVS"
+    },
+    "tpm191e": {
+      "cast_type": "cast",
+      "manufacturer": "Philips"
+    },
+    "v705-h3": {
+      "cast_type": "cast",
+      "manufacturer": "Vizio"
+    }
+  }
+}

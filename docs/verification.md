@@ -27,3 +27,13 @@ These checks establish functional behavior and one-network performance, not exha
 - The public-data refresh script completed end to end against IEEE and IANA, preserving the expected 58,421 and 5,889 assignment counts.
 - The controlled ICMP/TCP/banner integration test passed again after the dependency upgrades.
 - Human report rendering was checked at 80 and 120 columns, including oversized names and terminal escape sanitization.
+
+## Recognition expansion
+
+- Standard scan after recognition changes: **1,022 addresses in 2,297 ms**, two devices, one model identification from a live advertisement. Sixteen ICMP writes timed out and were reported. Full local record: `research/results/recognition-standard.json` (excluded from distribution).
+- Controlled localhost mDNS integration reconstructs a previously unknown service type from separate enumeration, PTR, SRV, TXT, and A responses.
+- Controlled UPnP integration verifies device/embedded-device UDN matching, URL-fetch deduplication, off-device rejection, no redirect following, body limits, and cancellation of slow HTTP responses.
+- Pure tests cover TXT case folding/duplicate keys, scope-bounded followups, description parsing limits, identity conflicts and source attribution, exact catalog matches, and identity CSV output. All packages pass with the race detector; `go vet` passes.
+- Short fuzz runs: 354,405 description-parser cases and 589,287 mDNS cases; both passed. These runs predated the toolchain change below; the final patched build's full tests and controlled network checks also passed.
+- New HTTP/XML call paths made Go 1.26.3 standard-library advisories reachable to `govulncheck`. The project now requires patched **Go 1.26.8** (verified in the official Go release feed), and the final scan reports **no vulnerabilities found**. This supersedes the earlier toolchain requirement for the current build.
+- Added 40 exact Cast model/manufacturer mappings from a pinned MIT-licensed PyChromecast source, with content hash and license retention.

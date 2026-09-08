@@ -280,6 +280,11 @@ func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, 
 						d.Ports[i].Banner = readBanner(ctx, d.IP, d.Ports[i], o.Timeout)
 					}
 				}
+				if o.Descriptions && ctx.Err() == nil {
+					enrichDescriptions(ctx, d, o.Timeout)
+				}
+				normalizeAdvertisements(d)
+				d.Identity = identify(d.Advertisements)
 				sort.Strings(d.Names)
 				d.Kind = inferKind(*d)
 				sort.Slice(d.Ports, func(i, j int) bool { return d.Ports[i].Number < d.Ports[j].Number })

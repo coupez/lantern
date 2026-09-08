@@ -10,7 +10,7 @@ make build
 ./bin/lantern demo        # preview the interface without sending packets
 ```
 
-Go 1.25 or newer is required to build. The resulting executable contains the vendor and service databases and runs offline. macOS scanning works without root. Linux requires `ip` from iproute2 for neighbor discovery; ICMP permissions depend on the host's ping socket configuration.
+Go 1.26.8 or newer is required to build. Go can download the project-required toolchain automatically. The resulting executable contains the vendor and service databases and runs offline. macOS scanning works without root. Linux requires `ip` from iproute2 for neighbor discovery; ICMP permissions depend on the host's ping socket configuration.
 
 ## Everyday commands
 
@@ -41,8 +41,8 @@ The TCP worker pool defaults to 512 concurrent probes. Deadlines bound TCP and I
 | Profile | Behavior |
 | --- | --- |
 | `quick` | ICMP + TCP discovery + neighbor lookup; checks 80/443; skips multicast |
-| `standard` | Adds mDNS/SSDP and 14 common TCP service ports |
-| `deep` | 28 common service ports, mDNS/SSDP, and protocol banner reads |
+| `standard` | Adds mDNS/SSDP, device descriptions, and 14 common TCP service ports |
+| `deep` | 28 common service ports, device descriptions, mDNS/SSDP, and protocol banner reads |
 
 `--timeout 300ms` controls each probe. Increase it for congested Wi-Fi or sleeping devices. Standard and deep scans allow at least one second for multicast responses. A full TCP scan is `--ports 1-65535`; deep is not a full-port scan. `--ports none` disables TCP probes, leaving ICMP, multicast, and neighbor observations as enabled.
 
@@ -53,10 +53,15 @@ The initial live macOS benchmark scanned **1,022 addresses in 2.39 seconds** in 
 - **● Responsive** means a TCP/ICMP/mDNS/SSDP response or a local interface was observed. **○ Cached neighbor** means the OS has an address mapping; it does not prove the device is awake.
 - MAC vendors are registered IEEE organizations, which may differ from the device's retail brand. Randomized/private MACs are labeled explicitly and do not receive a guessed vendor.
 - Device types are hints based on services. An RTSP port can belong to a camera or another media device. Port names come from IANA/common conventions; a name does not prove which application is running there.
+- Device names and models are extracted from UPnP descriptions and known Bonjour printing, AirPlay, and Cast TXT fields. A pinned MIT-licensed catalog adds manufacturers for **40 exact Cast model names**. The JSON `identity.claims` records whether each field is advertised or catalog-derived, its source, and conflicting values; MAC ownership stays separate.
 - Advertisements and banners are device-reported, untrusted information. Advertised ports are separate from verified open TCP ports. Terminal control characters are removed before rendering.
 - Discovery can miss filtered, isolated, sleeping, or slow devices. MAC addresses normally exist only for hosts on the same link. IPv6, privileged active ARP/NDP, OS fingerprinting, and a persistent service are not implemented yet.
 
 Use on networks you own or are authorized to inspect. Lantern makes ordinary discovery requests and connections; it does not log in to devices or execute remote commands.
+
+UPnP descriptions are enabled in standard/deep mode. `--no-descriptions` disables them. Reads stay on the SSDP responder’s literal IP, never use a proxy or follow redirects, and share one per-device deadline across at most four URLs. XML is capped at 256 KiB and bounded in depth. mDNS follows missing PTR/SRV/TXT/A records and enumerates additional service types within the original discovery deadline and a 128-query budget.
+
+[Recognition sources and rules](docs/recognition.md) describe the supported mappings and limitations.
 
 ## Open data and Fing inspection
 

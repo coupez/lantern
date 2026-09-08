@@ -134,6 +134,7 @@ func help() {
     --save scan.json               Save a snapshot atomically
     --no-dns | --no-icmp            Disable discovery components
     --no-multicast                  Skip mDNS and SSDP (quick default)
+    --no-descriptions               Skip UPnP model/name reads
     --details                      Show full device records
     --banners                      Read SSH/HTTP/service banners
     --all-hosts                    Scan ports even on silent hosts
@@ -185,6 +186,7 @@ func scan(args []string, watch bool) error {
 	noDNS := f.Bool("no-dns", false, "")
 	noICMP := f.Bool("no-icmp", false, "")
 	noMulticast := f.Bool("no-multicast", false, "")
+	noDescriptions := f.Bool("no-descriptions", false, "")
 	interval := f.Duration("interval", 10*time.Second, "")
 	f.DurationVar(&o.Timeout, "timeout", o.Timeout, "")
 	f.IntVar(&o.Concurrency, "concurrency", o.Concurrency, "")
@@ -219,14 +221,23 @@ func scan(args []string, watch bool) error {
 	if watch && *interval < time.Second {
 		return errors.New("watch interval must be at least 1s")
 	}
+	explicit := map[string]bool{}
+	f.Visit(func(flag *flag.Flag) { explicit[flag.Name] = true })
 	switch *profile {
 	case "quick":
-		*noMulticast = true
+		if !explicit["no-multicast"] {
+			*noMulticast = true
+		}
+		if !explicit["no-descriptions"] {
+			*noDescriptions = true
+		}
 		o.Ports = []uint16{80, 443}
 	case "standard":
 	case "deep":
 		o.Ports, _ = scanner.ParsePorts("21-23,25,53,80,110,139,143,443,445,554,631,1883,3000,3306,3389,5000,5432,5900,6379,7000,8008-8009,8080,8443,9000,9100")
-		o.Banners = true
+		if !explicit["banners"] {
+			o.Banners = true
+		}
 	default:
 		return errors.New("profile must be quick, standard, or deep")
 	}
@@ -248,6 +259,7 @@ func scan(args []string, watch bool) error {
 	o.Resolve = !*noDNS
 	o.ICMP = !*noICMP
 	o.Multicast = !*noMulticast
+	o.Descriptions = !*noDescriptions
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 	u := ui.New(os.Stderr, *noColor)
@@ -335,7 +347,7 @@ func scan(args []string, watch bool) error {
 }
 func writeCSV(w io.Writer, r scanner.Report) error {
 	c := csv.NewWriter(w)
-	if err := c.Write([]string{"ip", "mac", "vendor", "names", "ports", "evidence"}); err != nil {
+	if err := c.Write([]string{"ip", "mac", "vendor", "names", "ports", "evidence", "reported_name", "manufacturer", "model"}); err != nil {
 		return err
 	}
 	for _, d := range r.Devices {
@@ -344,6 +356,11 @@ func writeCSV(w io.Writer, r scanner.Report) error {
 			p = append(p, strconv.Itoa(int(v.Number)))
 		}
 		row := []string{d.IP.String(), d.MAC, d.Vendor.Name, strings.Join(d.Names, ";"), strings.Join(p, ";"), strings.Join(d.Evidence, ";")}
+		if d.Identity != nil {
+			row = append(row, d.Identity.Name, d.Identity.Manufacturer, d.Identity.Model)
+		} else {
+			row = append(row, "", "", "")
+		}
 		for i, s := range row {
 			if len(s) > 0 && strings.ContainsAny(s[:1], "=+-@\t\r") {
 				row[i] = "'" + s
