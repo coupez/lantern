@@ -6,6 +6,7 @@ Lantern combines independent MAC assignment records with device-reported protoco
 
 | Input | Extracted information | Basis |
 | --- | --- | --- |
+| NetBIOS node status (UDP 137) | Active unique computer names, workgroups, raw registration bytes/flags, reported unit ID | Unauthenticated registration claims; no OS, manufacturer, or open-port inference |
 | IEEE MA-L / MA-M / MA-S / IAB | Registered MAC organization | Registry assignment; not the retail brand |
 | Bonjour printing `_ipp`, `_ipps`, `_printer`, `_pdl-datastream` | `usb_MFG`, `usb_MDL`, `ty`, `product` | Advertised manufacturer, model, or display description |
 | `_airplay._tcp`, `_device-info._tcp`; `_raop._tcp` | `model`; `am` | Original advertised model identifier |
@@ -34,7 +35,7 @@ mDNS asks for common services plus the DNS-SD service-type enumeration record. P
 
 UPnP description requests only accept HTTP URLs with a literal IP matching the SSDP responder. The transport pins that address and disables proxies and redirects. Four unique URLs share one per-device timeout. Response headers, body size (256 KiB), XML depth (32), device count (64), and field lengths are bounded. The USN's device UUID is matched to the description's UDN before attaching a model, so an embedded device does not silently inherit the root device's identity. Unknown, malformed, inaccessible, or unmatched descriptions leave the original SSDP advertisement intact.
 
-Quick mode skips multicast and descriptions by default. Explicit boolean flags override profile defaults, including `--no-multicast=false` and `--banners=false`.
+Quick mode skips multicast and descriptions by default. NetBIOS is opt-in for quick/standard and enabled for deep IPv4/inspect; `--netbios=false` disables it. Explicit boolean flags override profile defaults, including `--no-multicast=false` and `--banners=false`.
 
 ## Sources and provenance
 

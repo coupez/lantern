@@ -15,6 +15,8 @@ import (
 type Engine struct {
 	Dialer         Dialer
 	NeighborSource func(context.Context) (map[netip.Addr]string, error)
+	// NetBIOSSource optionally replaces the UDP node-status exchange.
+	NetBIOSSource func(context.Context, []netip.Addr, time.Duration) (NetBIOSResult, error)
 	// ARPSource optionally replaces native ARP exchange for integrations/tests.
 	ARPSource func(context.Context, Options, []netip.Addr) (ARPResult, error)
 }
@@ -36,6 +38,9 @@ func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, 
 	}
 	if o.ARP && !o.Target.Addr().Is4() {
 		return r, fmt.Errorf("ARP requires an IPv4 target; IPv6 uses neighbor discovery")
+	}
+	if o.NetBIOS && !o.Target.Addr().Is4() {
+		return r, fmt.Errorf("NetBIOS discovery requires an IPv4 target")
 	}
 	requestedPorts := make(map[uint16]bool, len(o.Ports))
 	for _, p := range o.Ports {
@@ -186,6 +191,23 @@ func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, 
 			}(sweep)
 		}
 	}
+	var netbiosWG sync.WaitGroup
+	var netbiosResult NetBIOSResult
+	if o.NetBIOS {
+		netbiosWG.Add(1)
+		go func() {
+			defer netbiosWG.Done()
+			source := e.NetBIOSSource
+			if source == nil {
+				source = netbiosSweep
+			}
+			var err error
+			netbiosResult, err = source(ctx, hosts, o.Timeout)
+			if ctx.Err() == nil {
+				warn(err)
+			}
+		}()
+	}
 	var arpWG sync.WaitGroup
 	var arpResult ARPResult
 	if o.ARP {
@@ -283,6 +305,20 @@ func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, 
 	pingWG.Wait()
 	discoveryWG.Wait()
 	arpWG.Wait()
+	netbiosWG.Wait()
+	for _, ip := range netbiosResult.Probed {
+		if targeted[ip] {
+			markAttempt(ip)
+		}
+	}
+	seenNetBIOS := map[netip.Addr]bool{}
+	for _, reply := range netbiosResult.Replies {
+		if !targeted[reply.IP] || seenNetBIOS[reply.IP] {
+			continue
+		}
+		seenNetBIOS[reply.IP] = true
+		discovered = append(discovered, netbiosHit(reply))
+	}
 	for _, ip := range arpResult.Probed {
 		if targeted[ip] {
 			markAttempt(ip)
@@ -442,7 +478,11 @@ func contains(s []string, v string) bool {
 // inferKind returns a stable hint derived from advertised or reachable services.
 func inferKind(d Device) string {
 	services := ""
+	netbiosComputer := false
 	for _, a := range d.Advertisements {
+		if a.Protocol == "netbios" && (a.Service == "workstation" || a.Service == "file-server") {
+			netbiosComputer = true
+		}
 		services += " " + strings.ToLower(a.Service)
 	}
 	for _, rule := range []struct{ needle, kind string }{{"_ipp", "printer"}, {"_printer", "printer"}, {"internetgatewaydevice", "router"}, {"_home-assistant", "smart home hub"}, {"_hap.", "smart home device"}, {"_googlecast", "media"}, {"_airplay", "media"}, {"_raop", "media"}, {"mediarenderer", "media"}} {
@@ -467,7 +507,7 @@ func inferKind(d Device) string {
 	if has(554) {
 		return "camera / media"
 	}
-	if has(445) || has(3389) {
+	if has(445) || has(3389) || netbiosComputer {
 		return "computer / NAS"
 	}
 	return "device"

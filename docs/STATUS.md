@@ -7,6 +7,7 @@ The workspace started empty. A runnable CLI and reusable discovery engine now ex
 - Go CLI with styled adaptive-width output, live discoveries/progress, inspect view, quick/standard/deep profiles, automatic default-route selection, and explicit target/interface selection.
 - Interactive watch dashboard with selection, grapheme-aware search/rendering, scrollable device details, bounded activity history, warnings, pause/refresh controls, synthetic demo, and terminal restoration. Plain and structured watch streams remain available.
 - Cancellable core with bounded TCP concurrency, bounded ICMP writes and queue-pressure retries, immediate completion for fully answered echo sweeps, per-scan echo counters, incremental port jobs, neighbor observation, mDNS/DNS-SD, SSDP, reverse DNS, and simple service banners.
+- Unicast IPv4 NetBIOS node-status discovery with source-attributed computer names, workgroups, raw registration bytes, cancellation, bounded pacing, and live Samba interoperability checks.
 - IPv6 single/small-range scanning and bounded local discovery for large prefixes, scoped link-local addresses, ICMPv6, NDP cache, IPv6 mDNS/SSDP, and AAAA resolution.
 - Explicit direct IPv4 ARP discovery with bounded sending, Linux packet sockets, macOS BPF backend, permission fallback, and solicited-reply validation. Linux ARM64 runtime verified; macOS raw exchange remains unverified.
 - Embedded 58,421-entry IEEE MAC database with /24, /28, /36 longest-prefix matching, private/multicast MAC handling, and registry provenance.

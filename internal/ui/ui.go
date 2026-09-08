@@ -175,7 +175,7 @@ func (u *UI) Report(r scanner.Report) {
 }
 func live(d scanner.Device) bool {
 	for _, e := range d.Evidence {
-		if e == "arp" || e == "icmp" || e == "tcp-open" || e == "tcp-refused" || e == "mdns" || e == "ssdp" || e == "local-interface" {
+		if e == "arp" || e == "icmp" || e == "tcp-open" || e == "tcp-refused" || e == "mdns" || e == "ssdp" || e == "netbios" || e == "local-interface" {
 			return true
 		}
 	}

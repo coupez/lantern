@@ -145,6 +145,7 @@ func help() {
     --interface en0                Select local network / IPv6 zone
     --ipv6                         Discover local IPv6 neighbors
     --arp                          Direct IPv4 ARP (needs raw link access)
+    --netbios                      IPv4 NetBIOS names (deep default)
     --json | --jsonl | --csv        Structured output
     --save scan.json               Save a snapshot atomically
     --no-dns | --no-icmp            Disable discovery components
@@ -212,6 +213,7 @@ func scan(args []string, watch bool) error {
 	f.IntVar(&o.Concurrency, "concurrency", o.Concurrency, "")
 	f.IntVar(&o.MaxHosts, "max-hosts", o.MaxHosts, "")
 	f.BoolVar(&o.Banners, "banners", false, "")
+	f.BoolVar(&o.NetBIOS, "netbios", false, "unicast IPv4 NetBIOS node-status discovery")
 	f.BoolVar(&o.ARP, "arp", false, "direct IPv4 ARP discovery (requires raw link access)")
 	f.BoolVar(&o.AllHosts, "all-hosts", false, "scan ports even without discovery responses")
 	f.Usage = help
@@ -289,6 +291,9 @@ func scan(args []string, watch bool) error {
 	}
 	if err != nil {
 		return err
+	}
+	if *profile == "deep" && !explicit["netbios"] && o.Target.Addr().Is4() {
+		o.NetBIOS = true
 	}
 	o.Resolve = !*noDNS
 	o.ICMP = !*noICMP

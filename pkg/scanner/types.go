@@ -56,6 +56,8 @@ type Options struct {
 	Timeout     time.Duration
 	Resolve     bool
 	ICMP        bool
+	// NetBIOS enables unicast IPv4 node-status discovery without authentication.
+	NetBIOS bool
 	// ARP enables direct IPv4 neighbor discovery; requires raw link access.
 	ARP          bool
 	Banners      bool

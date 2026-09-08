@@ -68,3 +68,9 @@ func TestModelCandidateRendering(t *testing.T) {
 		}
 	}
 }
+
+func TestNetBIOSIsResponsiveEvidence(t *testing.T) {
+	if !live(scanner.Device{Evidence: []string{"netbios"}}) {
+		t.Fatal("NetBIOS reply classified as cached")
+	}
+}

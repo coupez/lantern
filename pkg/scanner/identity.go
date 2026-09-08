@@ -53,6 +53,10 @@ func identify(ads []Advertisement) *Identity {
 	}
 	for _, a := range ads {
 		switch a.Protocol {
+		case "netbios":
+			if a.Service == "workstation" || a.Service == "file-server" {
+				add("name", "name", a)
+			}
 		case "upnp":
 			add("name", "friendlyName", a)
 			add("manufacturer", "manufacturer", a)
@@ -84,6 +88,12 @@ func identify(ads []Advertisement) *Identity {
 	}
 	// Standardized, explicit fields precede human-readable printer descriptions.
 	rank := func(c IdentityClaim) int {
+		if strings.HasPrefix(c.Source, "netbios:") {
+			if strings.HasSuffix(c.Source, "<00>") {
+				return 4
+			}
+			return 5
+		}
 		if c.Basis == "catalog" {
 			return 4
 		}

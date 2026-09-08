@@ -22,6 +22,7 @@ lantern scan --ipv6 --interface en0
 lantern inspect fe80::1%en0
 lantern inspect 192.168.1.42
 lantern scan 192.168.1.42 --ports 1-65535
+lantern scan --netbios             # include IPv4 NetBIOS names/workgroups
 lantern watch --interval 10s --save latest.json
 lantern scan --json > network.json
 lantern scan --jsonl               # streaming discovery events + final report
@@ -56,6 +57,12 @@ The TCP worker pool defaults to 512 concurrent probes. Deadlines bound TCP and I
 `--timeout 300ms` controls each probe. Increase it for congested Wi-Fi or sleeping devices. Standard and deep scans allow at least one second for multicast responses. A full TCP scan is `--ports 1-65535`; deep is not a full-port scan. `--ports none` disables TCP probes, leaving ICMP, multicast, and neighbor observations as enabled.
 
 The initial live macOS benchmark scanned **1,022 addresses in 2.39 seconds** in standard mode at 512 TCP workers. A full 65,535-port localhost scan completed in **0.86 seconds**. This is one network measurement, not a completeness guarantee or a comparison with Fing. Later alternating quick-scan runs with ICMP retries completed in **0.90–1.05 seconds**, versus **3.85–4.02 seconds** for the saved earlier build; both observed two addresses. Retry recovery and remaining send failures are recorded in the reports. These timings depend on local queue/cache state. Warm offline vendor lookup measured **76.7 ns/op** on an Apple M4 Max. See [verification](docs/verification.md).
+
+### NetBIOS names
+
+Deep IPv4 scans and `lantern inspect IP` include a unicast NetBIOS node-status pass. Use `--netbios` with other profiles or `--netbios=false` to disable it. It can discover a responding Windows/Samba/NAS address even when the initial TCP probes do not answer. The pass runs concurrently with other discovery and uses one response window for the entire target list, with bounded request bursts.
+
+Computer names, workgroups, registration flags, and reported unit IDs remain in the raw advertisements; recognized computer names also enter the name/identity fields. A workgroup is not a host name, and a reported unit ID does not override an observed MAC. Registrations are service hints, not verified open TCP ports or operating-system identification. NetBIOS-disabled systems need the other discovery paths. This protocol supports IPv4 and the default empty NetBIOS scope only.
 
 ## Know what the results mean
 
@@ -108,4 +115,4 @@ python3 scripts/build-apple-models.py --download # rebuild the pinned model cata
 
 To reproduce Linux runtime verification, run `make linux-test` with Docker available. The container receives only `NET_RAW`, has no host mounts or published ports, and probes its own bridge gateway for the ARP check.
 
-The network integration test uses controlled IPv4/IPv6 localhost servers to verify ICMP, port detection, SSH/HTTP banners, DNS-SD follow-ups, and UPnP description boundaries. Regular tests don't send scan traffic. See [status and remaining work](docs/STATUS.md).
+The network integration test uses controlled IPv4/IPv6 localhost servers to verify ICMP, port detection, SSH/HTTP banners, DNS-SD follow-ups, UPnP description boundaries, and NetBIOS node status. The Linux container also checks interoperability with Samba’s actual name server. Regular tests don't send scan traffic. See [status and remaining work](docs/STATUS.md).

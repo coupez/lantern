@@ -36,11 +36,24 @@ Reception accepts Ethernet/IPv4 ARP replies addressed to the scanner's IP and MA
 
 The Linux ARM64 packet socket path is runtime-tested against a container gateway with all other discovery methods disabled. macOS BPF parsing and builds are tested; live privileged exchange is still pending. Test commands and measurements are in [verification](verification.md).
 
+## NetBIOS node status
+
+`--netbios` sends RFC 1002 wildcard node-status requests to UDP 137 on the enumerated IPv4 target addresses. Deep IPv4 and `inspect` enable it by default; `--netbios=false` overrides that default. Standard and quick profiles leave it disabled unless requested. An explicit IPv6 target with `--netbios` is rejected before probing; deep IPv6 scans simply omit this pass.
+
+One ephemeral UDP socket handles the entire pass alongside the existing discovery methods. Requests use independent random transaction IDs, with 32 requests per burst and a 10 ms pause between bursts. Writes have a 2 ms deadline; a write failure stops the remaining requests and produces a warning. Unanswered probes are not retransmitted. The full `--timeout` response window starts after the final write; fully answered target sets finish immediately. Cancellation closes the socket and keeps collected responses. Attempted addresses contribute to report-level `probed`, including a failed final write.
+
+A response must match a successfully sent target address, transaction ID, and UDP source port. It must be an authoritative, successful, untruncated node-status answer with the wildcard owner, correct type/class, one complete name table, and its full 46-byte statistics tail. Wrong, unsolicited, duplicate, compressed-owner, truncated, or malformed responses are ignored. Packets are bounded to 8 KiB and names to the protocol's 255-entry table limit. Broadcast enumeration, named scopes, and TCP fallback are not implemented.
+
+Active unique `<00>` and `<20>` registrations provide computer-name claims. Group `<00>` entries are retained as workgroup advertisements. Inactive, conflicted, or deregistering names do not become computer identity claims. Every name's original 16 bytes and flags are retained. Because the remote OEM code page is unknown, non-ASCII/control bytes are escaped for display instead of guessing a Unicode conversion. A reported unit ID stays in `reported_unit_id`; it never becomes the device's observed MAC or determines its vendor. Samba/Windows compatibility does not establish the operating system of a responder.
+
 ## IPv6
 
 Individual addresses and small ranges are probed directly. Large ranges, including normal /64 networks, use candidate discovery from scoped ICMPv6 all-nodes echo, mDNS/SSDP, the NDP cache, and local interface addresses. The candidate list is bounded by `--max-hosts`; the address space is never exhaustively enumerated. Direct NDP solicitation is not implemented yet. Link-local addresses retain the interface zone in structured reports.
 
 ## Protocol references
+
+- [RFC 1002](https://www.rfc-editor.org/rfc/rfc1002.html), sections 4.2.17–4.2.18, specifies node-status request/response fields.
+- [Microsoft NetBIOS suffix definitions](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-brws/0c773bdd-78e2-4d8b-8b3d-b7506849847b) distinguishes computer and workgroup registrations.
 
 - [RFC 826](https://www.rfc-editor.org/rfc/rfc826) defines Ethernet/IPv4 ARP fields and request/reply behavior.
 - [Linux packet socket manual](https://man7.org/linux/man-pages/man7/packet.7.html) describes AF_PACKET and its `CAP_NET_RAW` requirement.
