@@ -205,6 +205,9 @@ func (u *UI) Details(r scanner.Report) {
 				if c.Catalog != "" {
 					detail += " · " + c.Catalog
 				}
+				if c.Reference != "" {
+					detail += " · " + c.Reference
+				}
 				field("Source", detail)
 			}
 		}

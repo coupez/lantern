@@ -56,12 +56,19 @@ func (r *mdnsRecords) ingest(b []byte) bool {
 		if _, ok := r.display[name]; !ok && len(r.display) >= 2048 {
 			continue
 		}
-		r.display[name] = rr.Header.Name.String()
+		if _, ok := r.display[name]; !ok {
+			r.display[name] = rr.Header.Name.String()
+		}
 		switch v := rr.Body.(type) {
 		case *dnsmessage.PTRResource:
 			ptr := strings.ToLower(v.PTR.String())
 			if strings.HasSuffix(ptr, ".local.") && !contains(r.pointers[name], ptr) && len(r.pointers[name]) < 128 {
 				r.pointers[name] = append(r.pointers[name], ptr)
+				// PTR targets carry the advertised instance spelling. Follow-up
+				// replies may echo our lowercase query name; keep the original.
+				if _, ok := r.display[ptr]; !ok && len(r.display) < 2048 {
+					r.display[ptr] = v.PTR.String()
+				}
 			}
 		case *dnsmessage.AAAAResource:
 			a := netip.AddrFrom16(v.AAAA)
@@ -93,9 +100,12 @@ func (r *mdnsRecords) ingest(b []byte) bool {
 			props := map[string]string{}
 			for _, s := range v.TXT {
 				key, value, _ := strings.Cut(s, "=")
-				key = strings.ToLower(CleanText(key))
+				if !validTXTKey(key) {
+					continue
+				}
+				key = strings.ToLower(key)
 				if _, exists := props[key]; !exists {
-					props[key] = CleanText(value)
+					props[key] = value // Preserve input for recognition; sanitize only display text.
 				}
 			}
 			r.txt[name] = props
@@ -407,4 +417,17 @@ func normalizeAdvertisements(d *Device) {
 	for _, k := range keys {
 		d.Advertisements = append(d.Advertisements, unique[k])
 	}
+}
+
+// RFC 6763 section 6.4: printable ASCII, nonempty; '=' is split before this call.
+func validTXTKey(key string) bool {
+	if key == "" {
+		return false
+	}
+	for i := range len(key) {
+		if key[i] < 0x20 || key[i] > 0x7e || key[i] == '=' {
+			return false
+		}
+	}
+	return true
 }

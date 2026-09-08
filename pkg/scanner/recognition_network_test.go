@@ -72,11 +72,16 @@ func TestMDNSSplitReplyNetworkIntegration(t *testing.T) {
 		t.Run(address, func(t *testing.T) {
 			t.Run("unknown-service", func(t *testing.T) { testMDNSSplitReply(t, address, "_lantern-test._tcp", "Protocol Fixture") })
 			t.Run("catalog-model", func(t *testing.T) { testMDNSSplitReply(t, address, "_device-info._tcp", "Mac16,9") })
+			t.Run("homekit", func(t *testing.T) { testMDNSSplitReply(t, address, "_hap._tcp", "Fixture Light 7") })
 		})
 	}
 }
 func testMDNSSplitReply(t *testing.T, address, service, model string) {
 	requireNetwork(t)
+	modelKey := "model"
+	if service == "_hap._tcp" {
+		modelKey = "md"
+	}
 	server, err := net.ListenUDP("udp", &net.UDPAddr{IP: net.ParseIP(address)})
 	if err != nil {
 		t.Fatal(err)
@@ -112,7 +117,11 @@ func testMDNSSplitReply(t *testing.T, address, service, model string) {
 					if q.Type == dnsmessage.TypeSRV {
 						body = &dnsmessage.SRVResource{Target: dnsmessage.MustNewName("Office.local."), Port: 8765}
 					} else if q.Type == dnsmessage.TypeTXT {
-						body = &dnsmessage.TXTResource{TXT: []string{"model=" + model}}
+						txt := []string{modelKey + "=" + model}
+						if service == "_hap._tcp" {
+							txt = append(txt, "CI=5", "id=AA:BB:CC:DD:EE:FF")
+						}
+						body = &dnsmessage.TXTResource{TXT: txt}
 					}
 				case "office.local.":
 					if q.Type == dnsmessage.TypeAAAA {
@@ -134,8 +143,15 @@ func testMDNSSplitReply(t *testing.T, address, service, model string) {
 	hits, err := collectMDNS(context.Background(), client, server.LocalAddr().(*net.UDPAddr), target)
 	server.Close()
 	<-done
-	if err != nil || len(hits) != 1 || len(hits[0].Ads) != 1 || hits[0].Ads[0].Service != service || hits[0].Ads[0].Port != 8765 || hits[0].Ads[0].Properties["model"] != model {
+	if err != nil || len(hits) != 1 || len(hits[0].Ads) != 1 || hits[0].Ads[0].Service != service || hits[0].Ads[0].Port != 8765 || hits[0].Ads[0].Properties[modelKey] != model {
 		t.Fatalf("hits=%+v err=%v", hits, err)
+	}
+	if service == "_hap._tcp" {
+		id := identify(hits[0].Ads)
+		d := Device{IP: hits[0].IP, Advertisements: hits[0].Ads, Identity: id}
+		if id == nil || id.Model != model || id.Name != "Office" || id.Manufacturer != "" || inferKind(d) != "light" || d.MAC != "" || len(d.Ports) != 0 {
+			t.Fatal("packet-to-HomeKit integration", d)
+		}
 	}
 	if service == "_device-info._tcp" {
 		id := identify(hits[0].Ads)

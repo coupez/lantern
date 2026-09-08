@@ -11,6 +11,7 @@ Lantern combines independent MAC assignment records with device-reported protoco
 | Bonjour printing `_ipp`, `_ipps`, `_printer`, `_pdl-datastream` | `usb_MFG`, `usb_MDL`, `ty`, `product` | Advertised manufacturer, model, or display description |
 | `_airplay._tcp`, `_device-info._tcp`; `_raop._tcp` | `model`; `am` | Original advertised model identifier |
 | Pinned AppleDB hardware catalog | 606 identifiers → 886 assignments, including 124 ambiguous identifiers | Catalog-derived product-name candidates; all source variants retained |
+| `_hap._tcp` (HomeKit) | `md` model, instance name, `ci` category | Advertised name/model plus source-linked protocol category interpretation |
 | `_googlecast._tcp` | `md`, `fn` | Advertised model and friendly name |
 | Pinned PyChromecast catalog | 40 exact Cast model → manufacturer mappings | Catalog-derived, explicitly labeled |
 | SSDP → UPnP description | `friendlyName`, `manufacturer`, `modelName`, `modelNumber`, `deviceType`, `UDN` | Device-reported XML; embedded devices stay distinct |
@@ -18,6 +19,14 @@ Lantern combines independent MAC assignment records with device-reported protoco
 The `identity` object offers selected name/manufacturer/model fields, plus all recognized claims and their provenance. The advertised `model` remains unchanged. `model_names` contains unique, sorted catalog candidates for that selected model; one candidate is a catalog interpretation, and several candidates indicate unresolved variants. Each catalog claim records the exact input identifier and pinned source-file URL. Explicit standardized fields precede printer display descriptions; catalog-derived manufacturer claims rank below device-reported manufacturer fields. Ties are resolved deterministically by source/key/value, not packet arrival order. Catalog names and manufacturers attach only to the selected model claim; metadata from a conflicting, unselected model cannot silently populate the selected identity. Conflicting claims remain visible. A claim is not an authenticated hardware identity.
 
 The CLI shows identity fields in `inspect` / `--details`; JSON and saved snapshots retain claims and raw advertisements. CSV includes reported-name, manufacturer, model, and model-candidate columns.
+
+## HomeKit recognition
+
+HomeKit advertisements already participate in standard/deep mDNS discovery. Their `md` field now supplies a model claim and their DNS-SD instance supplies a name, including embedded dots and original spelling. No pairing, authentication, accessory control, or additional network request is involved.
+
+The `ci` field maps 36 known category codes to type hints such as light, outlet, thermostat, camera, speaker, television, and smart home hub. Category claims use `field: "kind"`, `basis: "protocol"`, the original numeric `identifier`, and a `reference` URL pinned to the checked protocol table. Model/name claims keep `basis: "advertised"`. JSON, snapshots, and the CLI details view preserve the evidence.
+
+Unknown/malformed categories fall back to a generic smart home device. Multiple different specific categories on one IP also stay generic; all claims remain available rather than choosing whichever packet arrived first. Existing printer, UPnP router, and Home Assistant hub advertisements retain precedence. Recognition requires the correct protocol and exact service type, so lookalike names do not become recognized services. A HomeKit model is not matched against Cast or Apple hardware catalogs, and category codes never supply a manufacturer. The HomeKit `id` remains an advertised protocol identifier and does not replace the observed MAC.
 
 ## Model catalog import
 
@@ -31,7 +40,7 @@ Rebuild using `python3 scripts/build-apple-models.py --download --retrieved 2026
 
 ## Discovery behavior and limits
 
-mDNS asks for common services plus the DNS-SD service-type enumeration record. PTR records lead to missing SRV/TXT queries, and SRV targets lead to missing A or AAAA queries for the scan’s address family. Names and TXT records may arrive in separate packets. TXT keys are case-insensitive and the first occurrence of a duplicate key wins. Human-readable instance spelling is retained. Follow-ups stay in `.local.` and consume a fixed 128-query budget; the original socket deadline never extends. Advertised ports are not reported as verified open TCP ports.
+mDNS asks for common services plus the DNS-SD service-type enumeration record. PTR records lead to missing SRV/TXT queries, and SRV targets lead to missing A or AAAA queries for the scan’s address family. Names and TXT records may arrive in separate packets. TXT keys must be nonempty printable ASCII; malformed keys are ignored. Valid keys are case-insensitive and the first occurrence of a duplicate key wins. Values remain unchanged in memory until interpretation, so removing controls cannot create a valid category or catalog match. JSON escapes controls, and terminal rendering sanitizes them. Human-readable instance spelling from a PTR target survives lowercase follow-up replies. Follow-ups stay in `.local.` and consume a fixed 128-query budget; the original socket deadline never extends. Advertised ports are not reported as verified open TCP ports.
 
 UPnP description requests only accept HTTP URLs with a literal IP matching the SSDP responder. The transport pins that address and disables proxies and redirects. Four unique URLs share one per-device timeout. Response headers, body size (256 KiB), XML depth (32), device count (64), and field lengths are bounded. The USN's device UUID is matched to the description's UDN before attaching a model, so an embedded device does not silently inherit the root device's identity. Unknown, malformed, inaccessible, or unmatched descriptions leave the original SSDP advertisement intact.
 
@@ -39,6 +48,7 @@ Quick mode skips multicast and descriptions by default. NetBIOS is opt-in for qu
 
 ## Sources and provenance
 
+- [Apple HomeKit discovery implementation](https://github.com/apple/HomeKitADK/blob/master/HAP/HAPIPServiceDiscovery.c) defines model/category TXT fields and the advertised instance name. [Apple accessory categories](https://github.com/apple/HomeKitADK/blob/master/HAP/HAP.h) and the [pinned HAP-NodeJS category definitions](https://github.com/homebridge/HAP-NodeJS/blob/25e8bea26a64309a47184dec478479483fbdd50c/src/lib/Accessory.ts) provide protocol-number semantics; no upstream implementation code is incorporated.
 - [RFC 6763](https://www.rfc-editor.org/rfc/rfc6763), particularly service enumeration, instance resolution, and TXT rules.
 - [Apple Bonjour Printing 1.2.1](https://developer.apple.com/bonjour/printing-specification/bonjourprinting-1.2.1.pdf), sections 9.2.6–9.2.11, for printing field semantics.
 - [UPnP Device Architecture 2.0](https://upnp.org/specs/arch/UPnP-arch-DeviceArchitecture-v2.0-20140901.pdf) for discovery/description structure and embedded-device identity.

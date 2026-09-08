@@ -146,7 +146,7 @@ func TestKindIsIndependentOfProbeCompletionOrder(t *testing.T) {
 	if inferKind(a) != "printer" || inferKind(a) != inferKind(b) {
 		t.Fatal(inferKind(a), inferKind(b))
 	}
-	if inferKind(Device{Advertisements: []Advertisement{{Service: "_ipp._tcp"}}}) != "printer" {
+	if inferKind(Device{Advertisements: []Advertisement{{Protocol: "mdns", Service: "_ipp._tcp"}}}) != "printer" {
 		t.Fatal("missed advertised printer")
 	}
 }

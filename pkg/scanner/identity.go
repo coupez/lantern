@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-// IdentityClaim records a reported or catalog-derived field with its provenance.
+// IdentityClaim records a reported field, protocol interpretation, or catalog match.
 // It is not an independently verified hardware identity.
 type IdentityClaim struct {
 	Field      string `json:"field"`
@@ -15,6 +15,7 @@ type IdentityClaim struct {
 	Key        string `json:"key"`
 	Basis      string `json:"basis"`
 	Catalog    string `json:"catalog,omitempty"`
+	Reference  string `json:"reference,omitempty"`
 	Identifier string `json:"identifier,omitempty"`
 }
 
@@ -30,8 +31,8 @@ type Identity struct {
 
 func identify(ads []Advertisement) *Identity {
 	claims := []IdentityClaim{}
-	add := func(field, key string, a Advertisement) {
-		value := strings.TrimSpace(CleanText(a.Properties[key]))
+	addValue := func(field, key, value string, a Advertisement) {
+		value = strings.TrimSpace(CleanText(value))
 		if value == "" {
 			return
 		}
@@ -44,6 +45,7 @@ func identify(ads []Advertisement) *Identity {
 		}
 		claims = append(claims, IdentityClaim{Field: field, Value: value, Source: source, Key: key, Basis: "advertised"})
 	}
+	add := func(field, key string, a Advertisement) { addValue(field, key, a.Properties[key], a) }
 	catalogModel := func(key string, a Advertisement) {
 		for _, match := range models.Lookup(a.Properties[key]) {
 			claims = append(claims,
@@ -68,6 +70,12 @@ func identify(ads []Advertisement) *Identity {
 				add("model", "usb_mdl", a)
 				add("model", "ty", a)
 				add("model", "product", a)
+			case "_hap._tcp":
+				add("model", "md", a)
+				addValue("name", "instance", homeKitName(a.Instance), a)
+				if kind := homeKitCategory(a.Properties["ci"]); kind != "" {
+					claims = append(claims, IdentityClaim{Field: "kind", Value: kind, Source: "mdns:" + a.Instance, Key: "ci", Basis: "protocol", Reference: homeKitCategoryReference, Identifier: a.Properties["ci"]})
+				}
 			case "_googlecast._tcp":
 				add("model", "md", a)
 				add("name", "fn", a)
@@ -127,6 +135,9 @@ func identify(ads []Advertisement) *Identity {
 		}
 		if a.Catalog != b.Catalog {
 			return a.Catalog < b.Catalog
+		}
+		if a.Reference != b.Reference {
+			return a.Reference < b.Reference
 		}
 		return a.Identifier < b.Identifier
 	})

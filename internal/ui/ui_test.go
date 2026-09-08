@@ -74,3 +74,14 @@ func TestNetBIOSIsResponsiveEvidence(t *testing.T) {
 		t.Fatal("NetBIOS reply classified as cached")
 	}
 }
+
+func TestProtocolClaimsAndUntrustedTXTDisplay(t *testing.T) {
+	var b bytes.Buffer
+	id := &scanner.Identity{Model: "Fixture Light", Claims: []scanner.IdentityClaim{{Field: "kind", Value: "light", Source: "mdns:Fixture", Key: "ci", Basis: "protocol", Identifier: "5", Reference: "https://example.com/protocol"}}}
+	r := scanner.Report{Devices: []scanner.Device{{IP: netip.MustParseAddr("192.0.2.1"), Identity: id, Kind: "light", Advertisements: []scanner.Advertisement{{Protocol: "mdns", Service: "_hap._tcp", Properties: map[string]string{"md": "Fixture\x1b\x00\u202e Light", "ci": "5\r\nInjected"}}}}}}
+	(&UI{Out: &b, Width: 100}).Details(r)
+	out := b.String()
+	if !strings.Contains(out, "kind = light") || !strings.Contains(out, "ci; protocol") || !strings.Contains(out, "https://example.com/protocol") || strings.ContainsAny(out, "\x1b\x00\r\u202e") || strings.Contains(out, "\nInjected") {
+		t.Fatal(out)
+	}
+}
