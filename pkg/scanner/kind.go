@@ -58,12 +58,20 @@ func inferKind(d Device) string {
 	kinds := map[string]bool{}
 	netbiosComputer, homeKit := false, false
 	homeKitKinds := map[string]bool{}
+	matter, matterKinds := false, map[string]bool{}
 	for _, a := range d.Advertisements {
 		switch a.Protocol {
 		case "netbios":
 			netbiosComputer = netbiosComputer || a.Service == "workstation" || a.Service == "file-server"
 		case "mdns":
 			switch strings.ToLower(a.Service) {
+			case "_matterc._udp", "_matterd._udp", "_matter._tcp":
+				matter = true
+				if matterRole(a.Service) != "operational" {
+					if _, kind := matterDeviceType(a.Properties["dt"]); kind != "" {
+						matterKinds[kind] = true
+					}
+				}
 			case "_ipp._tcp", "_ipps._tcp", "_printer._tcp", "_pdl-datastream._tcp":
 				kinds["printer"] = true
 			case "_home-assistant._tcp":
@@ -110,6 +118,14 @@ func inferKind(d Device) string {
 	}
 	if kinds["media"] {
 		return "media"
+	}
+	if matter {
+		if len(matterKinds) == 1 {
+			for kind := range matterKinds {
+				return kind
+			}
+		}
+		return "smart home device"
 	}
 	if kinds["smart home device"] {
 		return "smart home device"

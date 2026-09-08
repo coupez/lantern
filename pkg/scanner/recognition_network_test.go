@@ -76,6 +76,9 @@ func TestMDNSSplitReplyNetworkIntegration(t *testing.T) {
 			t.Run("esphome", func(t *testing.T) { testMDNSSplitReply(t, address, "_esphomelib._tcp", "2026.8.1") })
 			t.Run("shelly", func(t *testing.T) { testMDNSSplitReply(t, address, "_shelly._tcp", "2") })
 			t.Run("homekit", func(t *testing.T) { testMDNSSplitReply(t, address, "_hap._tcp", "Fixture Light 7") })
+			for _, service := range []string{"_matterc._udp", "_matterd._udp", "_matter._tcp"} {
+				t.Run(service, func(t *testing.T) { testMDNSSplitReply(t, address, service, "256") })
+			}
 		})
 	}
 }
@@ -100,6 +103,9 @@ func testMDNSSplitReply(t *testing.T, address, service, model string) {
 	}
 	if service == "_hap._tcp" {
 		modelKey = "md"
+	}
+	if matterRole(service) != "" {
+		modelKey = "dt"
 	}
 	server, err := net.ListenUDP("udp", &net.UDPAddr{IP: net.ParseIP(address)})
 	if err != nil {
@@ -129,7 +135,7 @@ func testMDNSSplitReply(t *testing.T, address, service, model string) {
 				var body dnsmessage.ResourceBody
 				switch strings.ToLower(q.Name.String()) {
 				case "_services._dns-sd._udp.local.":
-					if service == "_esphomelib._tcp" || service == "_shelly._tcp" {
+					if service == "_esphomelib._tcp" || service == "_shelly._tcp" || matterRole(service) != "" {
 						continue
 					} // Verify direct service discovery without enumeration.
 					body = &dnsmessage.PTRResource{PTR: dnsmessage.MustNewName(service + ".local.")}
@@ -145,6 +151,9 @@ func testMDNSSplitReply(t *testing.T, address, service, model string) {
 						}
 						if service == "_hap._tcp" {
 							txt = append(txt, "CI=5", "id=AA:BB:CC:DD:EE:FF")
+						}
+						if matterRole(service) != "" {
+							txt = append(txt, "DN=Kitchen Light", "VP=65521+32769")
 						}
 						body = &dnsmessage.TXTResource{TXT: txt}
 					}
@@ -201,6 +210,17 @@ func testMDNSSplitReply(t *testing.T, address, service, model string) {
 		id := identify(hits[0].Ads)
 		if id == nil || id.Model != "Mac16,9" || len(id.ModelNames) != 1 || id.ModelNames[0] != "Mac Studio (M4 Max, 2025)" {
 			t.Fatal("packet-to-catalog integration", id)
+		}
+	}
+	if role := matterRole(service); role != "" {
+		id := identify(hits[0].Ads)
+		d := Device{IP: hits[0].IP, Advertisements: hits[0].Ads, Identity: id}
+		wantName, wantKind := "Kitchen Light", "on/off light"
+		if role == "operational" {
+			wantName, wantKind = "", "smart home device"
+		}
+		if id == nil || id.Name != wantName || id.Model != "" || id.Manufacturer != "" || inferKind(d) != wantKind || d.MAC != "" || len(d.Ports) != 0 {
+			t.Fatal("packet-to-Matter integration", d)
 		}
 	}
 }

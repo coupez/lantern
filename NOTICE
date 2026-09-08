@@ -37,3 +37,11 @@ requirements are omitted. Pinned source/license/index hashes and selection rules
 are in pkg/models/data/shelly-sources.json. The upstream license is reproduced
 in THIRD_PARTY_LICENSES. The Shelly manufacturer field is a catalog brand label,
 separate from IEEE assignments and device-reported fields.
+
+Matter device-type labels are adapted from connectedhomeip v1.4.0.0 by
+Project CHIP Authors under Apache-2.0. Standard numeric type IDs, labels, and
+the application/utility distinction are retained; vendor-specific examples and
+cluster/control definitions are omitted. Source revisions, hashes, and selection
+rules are in pkg/scanner/data/matter-types.json. The upstream copyright, NOTICE,
+and license are reproduced in THIRD_PARTY_LICENSES. These are protocol category
+labels, not a retail model or manufacturer database or a certification claim.

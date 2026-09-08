@@ -41,7 +41,8 @@ required = {'lantern','LICENSE','NOTICE','THIRD_PARTY_LICENSES','README.md','doc
             'docs/STATUS.md','docs/fing-research.md','research/fing-inventory.json',
             'pkg/models/data/sources.json','pkg/vendors/data/sources.json','pkg/scanner/data/sources.json',
             'pkg/scanner/data/cast-models.json','pkg/models/data/shelly-models.json',
-            'pkg/models/data/shelly-sources.json','research/fing-static-analysis.json'}
+            'pkg/models/data/shelly-sources.json','pkg/scanner/data/matter-types.json',
+            'research/fing-static-analysis.json'}
 for system,arch in targets:
     filename = f'lantern-{version}-{system}-{arch}.tar.gz'
     path = dist/filename
@@ -65,6 +66,10 @@ for system,arch in targets:
         shelly_source = json.loads(content['pkg/models/data/shelly-sources.json'])
         assert hashlib.sha256(content['pkg/models/data/shelly-models.json']).hexdigest() == shelly_source['index_sha256']
         assert shelly_source['license'] == 'Apache-2.0' and shelly_source['identifiers'] == 155
+        matter = json.loads(content['pkg/scanner/data/matter-types.json'])
+        assert matter['source']['license'] == 'Apache-2.0' and len(matter['types']) == 65
+        assert b'Project CHIP Authors' in content['NOTICE']
+        assert b'LIMITED RIGHTS TO THE MATTER SDK' in content['THIRD_PARTY_LICENSES']
         for name,data in content.items():
             if name.endswith('.json'):
                 json.loads(data)

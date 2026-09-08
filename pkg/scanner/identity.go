@@ -109,6 +109,8 @@ func identify(ads []Advertisement) *Identity {
 			add("model", "modelName", a)
 		case "mdns":
 			switch strings.ToLower(a.Service) {
+			case "_matterc._udp", "_matterd._udp", "_matter._tcp":
+				claims = append(claims, matterClaims(a)...)
 			case "_shelly._tcp":
 				addValue("name", "instance", mdnsInstanceName(a.Instance, "_shelly._tcp"), a)
 				if shellyGeneration(a.Properties["gen"]) {
