@@ -114,6 +114,9 @@ func parseDescription(s string) ([]map[string]string, error) {
 		}
 		switch t := token.(type) {
 		case xml.StartElement:
+			if field != "" {
+				return nil, fmt.Errorf("description field %s contains nested markup", field)
+			}
 			depth++
 			if depth > 32 {
 				return nil, errors.New("description XML is too deeply nested")
@@ -136,6 +139,13 @@ func parseDescription(s string) ([]map[string]string, error) {
 			if len(stack) > 0 && depth == stack[len(stack)-1].depth+1 && t.Name.Space == "urn:schemas-upnp-org:device-1-0" {
 				switch t.Name.Local {
 				case "friendlyName", "manufacturer", "modelName", "modelNumber", "deviceType", "UDN":
+					fields := stack[len(stack)-1].fields
+					if _, exists := fields[t.Name.Local]; exists {
+						return nil, fmt.Errorf("duplicate description field %s", t.Name.Local)
+					}
+					// Mark presence even for an empty first element. Only text
+					// tokens within this one element may be concatenated.
+					fields[t.Name.Local] = ""
 					field = t.Name.Local
 					fieldDepth = depth
 				}
