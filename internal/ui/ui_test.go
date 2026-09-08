@@ -2,7 +2,7 @@ package ui
 
 import (
 	"bytes"
-	"lantern/pkg/scanner"
+	"github.com/coupez/lantern/pkg/scanner"
 	"net/netip"
 	"strings"
 	"testing"

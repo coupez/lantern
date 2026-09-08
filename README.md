@@ -5,13 +5,15 @@
 > Early development. macOS is exercised on a local network. Linux ARM64 passes controlled container network tests; broader hardware coverage is still needed.
 
 ```sh
-make build
+make build                 # from a source checkout
 ./bin/lantern             # select the default-route network automatically
 ./bin/lantern demo        # preview the interface without sending packets
 ./bin/lantern demo --watch # try the interactive dashboard with synthetic data
 ```
 
 Go 1.26.8 or newer is required to build. Go can download the project-required toolchain automatically. The resulting executable contains the vendor and service databases and runs offline. Default macOS scanning works without root. Linux requires `ip` from iproute2 for neighbor discovery; ICMP permissions depend on the host's ping socket configuration.
+
+Install from a checkout with `make install` (defaults to `$HOME/.local/bin`). The GitHub repository is currently private and public release downloads are not yet available. [Installation and archive instructions](docs/install.md) cover custom prefixes, Go module installation, checksums, and runtime requirements.
 
 ## Everyday commands
 
@@ -105,12 +107,17 @@ report, err := (scanner.Engine{}).Scan(ctx, options, func(event scanner.Event) {
 })
 ```
 
+External applications import `github.com/coupez/lantern/pkg/scanner` (and `pkg/vendors` or `pkg/models` under the same module path).
+
 `pkg/scanner` owns discovery, enrichment, reports, snapshots, and diffs. `pkg/vendors` owns offline MAC lookups and `pkg/models` owns hardware-model lookups. `internal/ui` owns terminal rendering; `cmd/lantern` owns flags and signals. The engine takes `context.Context`, produces structured records, and has no dependency on terminal output, process exits, or a daemon. Callbacks run serially and should return promptly. Network test doubles are injectable.
 
 ## Development
 
 ```sh
 make check
+make install-test             # isolated Go install + core consumer checks
+make release VERSION=dev      # local archives; does not publish
+python3 scripts/test-release.py dev
 LANTERN_NETWORK_TESTS=1 go test -race ./pkg/scanner -run NetworkIntegration -v
 go test ./pkg/vendors -bench BenchmarkLookup -benchmem -run '^$'
 python3 scripts/update-data.py && make build # refresh the public indexes

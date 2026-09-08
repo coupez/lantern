@@ -3,7 +3,7 @@ package scanner
 
 import (
 	"context"
-	"lantern/pkg/vendors"
+	"github.com/coupez/lantern/pkg/vendors"
 	"net/netip"
 	"time"
 )

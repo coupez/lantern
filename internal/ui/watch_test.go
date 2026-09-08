@@ -1,7 +1,7 @@
 package ui
 
 import (
-	"lantern/pkg/scanner"
+	"github.com/coupez/lantern/pkg/scanner"
 	"net/netip"
 	"regexp"
 	"strings"

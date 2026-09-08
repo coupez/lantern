@@ -7,11 +7,11 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"github.com/coupez/lantern/internal/ui"
+	"github.com/coupez/lantern/pkg/models"
+	"github.com/coupez/lantern/pkg/scanner"
+	"github.com/coupez/lantern/pkg/vendors"
 	"io"
-	"lantern/internal/ui"
-	"lantern/pkg/models"
-	"lantern/pkg/scanner"
-	"lantern/pkg/vendors"
 	"net"
 	"os"
 	"os/signal"
@@ -22,7 +22,8 @@ import (
 	"time"
 )
 
-var version = "0.1.0-dev"
+// Set by release builds; go install uses the module version when unset.
+var version string
 
 func main() {
 	if err := run(os.Args[1:]); err != nil {
@@ -43,7 +44,7 @@ func run(args []string) error {
 		help()
 		return nil
 	case "version":
-		fmt.Println("lantern", version)
+		fmt.Println("lantern", buildVersion())
 		return nil
 	case "interfaces":
 		n, err := scanner.Networks()
@@ -98,7 +99,7 @@ func run(args []string) error {
 		}
 		return json.NewEncoder(os.Stdout).Encode(scanner.Diff(a, b))
 	case "doctor":
-		fmt.Printf("Lantern %s · %s/%s\nOffline vendor assignments: %d\n", version, runtime.GOOS, runtime.GOARCH, vendors.Count())
+		fmt.Printf("Lantern %s · %s/%s\nOffline vendor assignments: %d\n", buildVersion(), runtime.GOOS, runtime.GOARCH, vendors.Count())
 		n, err := scanner.Networks()
 		if err != nil {
 			return err

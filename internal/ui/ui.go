@@ -2,8 +2,8 @@ package ui
 
 import (
 	"fmt"
+	"github.com/coupez/lantern/pkg/scanner"
 	"io"
-	"lantern/pkg/scanner"
 	"os"
 	"sort"
 	"strings"

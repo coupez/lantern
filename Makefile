@@ -1,6 +1,13 @@
-.PHONY: build test check demo clean linux-test terminal-test
+.PHONY: build install test check demo clean linux-test terminal-test install-test release
+PREFIX ?= $(HOME)/.local
+DESTDIR ?=
+VERSION ?= dev
+export PREFIX DESTDIR VERSION
 build:
 	go build -trimpath -ldflags='-s -w' -o bin/lantern ./cmd/lantern
+install: build
+	install -d "$$DESTDIR$$PREFIX/bin"
+	install -m 755 bin/lantern "$$DESTDIR$$PREFIX/bin/lantern"
 test:
 	go test -race ./...
 check:
@@ -17,3 +24,9 @@ linux-test:
 
 terminal-test: build
 	python3 scripts/test-watch-pty.py
+
+install-test:
+	python3 scripts/test-install.py
+
+release:
+	sh scripts/release.sh "$$VERSION"

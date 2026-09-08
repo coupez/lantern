@@ -9,6 +9,7 @@ LANTERN_ARP_INTERFACE=$(ip -4 route show default | awk 'NR == 1 {print $5}')
 export LANTERN_ARP_TARGET LANTERN_ARP_INTERFACE LANTERN_NETWORK_TESTS=1
 test -n "$LANTERN_ARP_TARGET"
 go test -race ./pkg/scanner -run NetworkIntegration -v
+python3 scripts/test-install.py
 go build -trimpath -o /tmp/lantern ./cmd/lantern
 python3 /usr/local/bin/test-watch-pty.py /tmp/lantern
 python3 /usr/local/bin/test-snapshot-cli.py /tmp/lantern

@@ -1,7 +1,7 @@
 package scanner
 
 import (
-	"lantern/pkg/models"
+	"github.com/coupez/lantern/pkg/models"
 	"sort"
 	"strings"
 )

@@ -3,7 +3,7 @@ package scanner
 import (
 	"context"
 	"fmt"
-	"lantern/pkg/vendors"
+	"github.com/coupez/lantern/pkg/vendors"
 	"net"
 	"net/netip"
 	"sort"

@@ -1,4 +1,4 @@
-module lantern
+module github.com/coupez/lantern
 
 go 1.26.8
 

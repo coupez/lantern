@@ -3,7 +3,7 @@ package ui
 import (
 	"bytes"
 	"fmt"
-	"lantern/pkg/scanner"
+	"github.com/coupez/lantern/pkg/scanner"
 	"sort"
 	"strings"
 	"time"

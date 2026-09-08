@@ -104,3 +104,13 @@ These checks establish functional behavior and one-network performance, not exha
 - The full-port-coverage benchmark compares 1,024 device records with one observed open port/name each and all 65,535 requested ports. Shared bitsets avoid rebuilding a large port map for every device. On the local Apple M4 Max, the optimized comparison measured approximately 0.45 ms with 344 KiB allocated; this is a comparison benchmark, not a network-scan timing.
 
 - macOS ARM64 race/vet and snapshot CLI checks passed, as did the isolated Linux ARM64 race/protocol/terminal/Samba/snapshot suite. All four macOS/Linux ARM64/x86-64 release archives rebuilt successfully.
+
+
+## Installation and release packaging (2026-09-08)
+
+- The module path is `github.com/coupez/lantern`; CLI and core imports use that canonical path. `lantern version` reports an explicit release build label or the module version embedded by `go install`, with a development fallback for checkout builds.
+- `scripts/test-install.py` constructs a file-only module proxy from the current source and cached dependencies. It uses isolated module/build caches and installs outside the checkout, verifies the installed version/demo, compiles a separate consumer importing scanner/vendor/model APIs and their embedded data, and stages `make install` with spaces in `PREFIX`/`DESTDIR`. A rejected release-version input is checked to ensure it is treated as data. No system installation or remote publication occurs.
+- Release archives include linked offline docs, license notices, public dataset provenance JSON, and the Fing inspection inventory. Checksums use basenames so they can be verified from a download directory. `scripts/test-release.py` checks the four archives' hashes, safe regular-file entries, normalized timestamps/ownership/modes, platform/architecture headers, local Markdown links, licensing/provenance, and the host-compatible executable's version/demo/vendor/model commands.
+- GitHub API checks found the repository private and its release list empty. Remote public installation is not established by the local file-proxy test. macOS Developer ID signing/notarization is not configured. No repository-visibility change or release publication was performed in this milestone.
+
+- Installation, external-core imports, temporary prefix staging, and release-version validation passed on macOS ARM64 and Linux ARM64. The Linux protocol/terminal/Samba/snapshot suite passed after the module-path change. All four local archives passed structural, checksum, licensing, provenance, and offline-link validation; the packaged macOS ARM64 executable also passed its offline commands.

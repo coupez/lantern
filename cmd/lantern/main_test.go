@@ -3,8 +3,8 @@ package main
 import (
 	"bytes"
 	"encoding/csv"
-	"lantern/pkg/scanner"
-	"lantern/pkg/vendors"
+	"github.com/coupez/lantern/pkg/scanner"
+	"github.com/coupez/lantern/pkg/vendors"
 	"net/netip"
 	"reflect"
 	"strings"
