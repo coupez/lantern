@@ -115,7 +115,7 @@ report, err := (scanner.Engine{}).Scan(ctx, options, func(event scanner.Event) {
 
 External applications import `github.com/coupez/lantern/pkg/scanner` (and `pkg/vendors` or `pkg/models` under the same module path).
 
-`pkg/scanner` owns discovery, enrichment, reports, snapshots, and diffs. `pkg/vendors` owns offline MAC lookups and `pkg/models` owns hardware-model lookups. `internal/ui` owns terminal rendering; `cmd/lantern` owns flags and signals. The engine takes `context.Context`, produces structured records, and has no dependency on terminal output, process exits, or a daemon. Callbacks run serially and should return promptly. Network test doubles are injectable.
+`pkg/scanner` owns discovery, enrichment, reports, snapshots, and diffs. `pkg/vendors` owns offline MAC lookups and `pkg/models` owns hardware-model lookups. `internal/ui` owns terminal rendering; `cmd/lantern` owns flags and signals. The engine takes `context.Context`, produces structured records, and has no dependency on terminal output, process exits, or a daemon. Callbacks run serially and should return promptly. Independently owned `device_update` snapshots stream enriched details as each device finishes; JSONL and the first watch scan use these updates. See [core events and ownership](docs/core-events.md). Network test doubles are injectable.
 
 ## Development
 

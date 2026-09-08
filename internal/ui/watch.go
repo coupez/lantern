@@ -37,25 +37,26 @@ type scanResult struct {
 type watchMailbox struct {
 	sync.Mutex
 	completed, total int
+	phase            string
 	discovered       map[string]scanner.Device
 }
 
 func (b *watchMailbox) emit(e scanner.Event) {
 	b.Lock()
 	defer b.Unlock()
-	if e.Type == "progress" {
-		b.completed, b.total = e.Completed, e.Total
+	if e.Type == "progress" || e.Type == "device_update" {
+		b.completed, b.total, b.phase = e.Completed, e.Total, e.Phase
 	}
-	if e.Type == "device" && e.Device != nil {
-		// Only scalar fields are needed while scanning; don't retain mutable slices.
-		d := scanner.Device{IP: e.Device.IP, MAC: e.Device.MAC}
+	if (e.Type == "device" || e.Type == "device_update") && e.Device != nil {
+		// Also isolate custom WatchOptions.Scan implementations from UI ownership.
+		d := e.Device.Clone()
 		b.discovered[d.IP.String()] = d
 	}
 }
 func (b *watchMailbox) update(m *watchModel) {
 	b.Lock()
 	defer b.Unlock()
-	m.completed, m.total = b.completed, b.total
+	m.completed, m.total, m.phase = b.completed, b.total, b.phase
 	m.discovered = len(b.discovered)
 	if !m.hasReport {
 		m.report.Devices = m.report.Devices[:0]
@@ -118,6 +119,7 @@ func RunWatch(ctx context.Context, in, out *os.File, o WatchOptions) (err error)
 		m.scanning = true
 		m.started = time.Now()
 		m.completed = 0
+		m.phase = ""
 		m.total = 0
 		m.discovered = 0
 		mailbox = &watchMailbox{discovered: make(map[string]scanner.Device)}
@@ -189,7 +191,11 @@ func watchStatus(m *watchModel, now time.Time) string {
 	if m.scanning {
 		progress := "discovering"
 		if m.total > 0 {
-			progress = fmt.Sprintf("probing %d%%", min(100, m.completed*100/m.total))
+			label := "probing"
+			if m.phase == "enrichment" {
+				label = "identifying"
+			}
+			progress = fmt.Sprintf("%s %d%%", label, min(100, m.completed*100/m.total))
 		}
 		pause := ""
 		if m.paused {

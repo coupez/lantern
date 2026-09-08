@@ -13,7 +13,7 @@ import (
 )
 
 type watchModel struct {
-	target, profile                                           string
+	target, profile, phase                                    string
 	report                                                    scanner.Report
 	hasReport, scanning, paused, details, searching, activity bool
 	query, selected                                           string
@@ -217,7 +217,7 @@ func (m *watchModel) frame(u *UI, width, height int, now time.Time) string {
 		}
 		summary := fmt.Sprintf(" %d devices · %d responsive · %d cached · %d open ports", len(m.report.Devices), responsive, len(m.report.Devices)-responsive, ports)
 		if !m.hasReport {
-			summary = fmt.Sprintf(" %d addresses discovered · details appear when scan finishes", m.discovered)
+			summary = fmt.Sprintf(" %d addresses discovered · details update as checks finish", m.discovered)
 		}
 		if m.scanning && m.hasReport {
 			summary += " · previous scan"

@@ -56,7 +56,13 @@ type Report struct {
 	Warnings    []string  `json:"warnings,omitempty"`
 	Cancelled   bool      `json:"cancelled,omitempty"`
 }
+
+// Event callbacks are serialized and synchronous. Device snapshots are owned by
+// the recipient and remain independent of later events and the returned report.
+// progress counts TCP jobs during discovery/ports; the enrichment phase and
+// device_update count processed devices. A processed device can still have missing fields.
 type Event struct {
+	Phase     string  `json:"phase,omitempty"`
 	Type      string  `json:"type"`
 	Device    *Device `json:"device,omitempty"`
 	Completed int     `json:"completed,omitempty"`

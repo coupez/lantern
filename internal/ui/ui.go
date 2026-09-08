@@ -18,6 +18,7 @@ type UI struct {
 	Color bool
 	Width int
 	last  time.Time
+	phase string
 }
 
 func New(out *os.File, noColor bool) *UI {
@@ -42,13 +43,18 @@ func (u *UI) Progress(e scanner.Event) {
 	if !u.Color {
 		return
 	}
-	if e.Type == "progress" && time.Since(u.last) > 70*time.Millisecond {
+	if (e.Type == "progress" || e.Type == "device_update") && (e.Phase != u.phase || time.Since(u.last) > 70*time.Millisecond) {
 		u.last = time.Now()
+		u.phase = e.Phase
 		pct := 0
 		if e.Total > 0 {
 			pct = e.Completed * 100 / e.Total
 		}
-		fmt.Fprintf(u.Out, "\r\x1b[2K  %s  Probing  %3d%%  %s", u.style("38;5;81", "◌"), pct, u.style("38;5;245", fmt.Sprintf("%d / %d", e.Completed, e.Total)))
+		label := "Probing"
+		if e.Phase == "enrichment" {
+			label = "Identifying"
+		}
+		fmt.Fprintf(u.Out, "\r\x1b[2K  %s  %s  %3d%%  %s", u.style("38;5;81", "◌"), label, pct, u.style("38;5;245", fmt.Sprintf("%d / %d", e.Completed, e.Total)))
 	}
 	if e.Type == "device" {
 		fmt.Fprintf(u.Out, "\r\x1b[2K  %s  %-15s %s\n", u.style("38;5;158", "+"), e.Device.IP, u.style("38;5;245", "discovered"))

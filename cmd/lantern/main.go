@@ -325,14 +325,18 @@ func scan(args []string, watch bool) error {
 			u.Intro(label, *profile)
 		}
 		var outputErr error
-		report, err := (scanner.Engine{}).Scan(ctx, o, func(e scanner.Event) {
-			if human {
-				u.Progress(e)
+		var emit func(scanner.Event)
+		if (human && u.Color) || *asJSONL {
+			emit = func(e scanner.Event) {
+				if human {
+					u.Progress(e)
+				}
+				if *asJSONL && outputErr == nil {
+					outputErr = enc.Encode(e)
+				}
 			}
-			if *asJSONL && outputErr == nil {
-				outputErr = enc.Encode(e)
-			}
-		})
+		}
+		report, err := (scanner.Engine{}).Scan(ctx, o, emit)
 		if err != nil {
 			u.Clear()
 			return err

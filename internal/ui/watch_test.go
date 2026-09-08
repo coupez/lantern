@@ -166,3 +166,31 @@ func TestWatchActivityReportsIdentityChanges(t *testing.T) {
 		t.Fatal(m.changes)
 	}
 }
+
+func TestWatchMailboxShowsEnrichedSnapshotsDuringFirstScan(t *testing.T) {
+	ip := netip.MustParseAddr("192.0.2.1")
+	mailbox := watchMailbox{discovered: map[string]scanner.Device{}}
+	mailbox.emit(scanner.Event{Type: "device", Device: &scanner.Device{IP: ip}})
+	d := scanner.Device{IP: ip, Identity: &scanner.Identity{Name: "Live Fixture"}, Ports: []scanner.Port{{Number: 80}}, Evidence: []string{"tcp-open"}, Advertisements: []scanner.Advertisement{{Properties: map[string]string{"model": "Fixture"}}}}
+	mailbox.emit(scanner.Event{Type: "device_update", Phase: "enrichment", Device: &d, Completed: 1, Total: 2})
+	// Custom scan providers may reuse their value after emit; the mailbox owns it.
+	d.Identity.Name = "changed"
+	d.Ports[0].Number = 99
+	d.Advertisements[0].Properties["model"] = "changed"
+	m := watchModel{scanning: true, started: time.Now()}
+	mailbox.update(&m)
+	if m.discovered != 1 || len(m.report.Devices) != 1 || m.report.Devices[0].Identity.Name != "Live Fixture" || m.report.Devices[0].Ports[0].Number != 80 || m.report.Devices[0].Advertisements[0].Properties["model"] != "Fixture" {
+		t.Fatal(m.report)
+	}
+	frame := m.frame(&UI{}, 100, 24, time.Now())
+	if !strings.Contains(frame, "Live Fixture") || !strings.Contains(frame, "identifying 50%") || !strings.Contains(frame, "details update as checks finish") {
+		t.Fatal(frame)
+	}
+	// Refresh scans keep the previous completed report until the new one finishes.
+	m.hasReport = true
+	m.report.Devices[0].Identity = &scanner.Identity{Name: "Previous report"}
+	mailbox.update(&m)
+	if m.report.Devices[0].Identity.Name != "Previous report" {
+		t.Fatal("mixed partial refresh into completed report")
+	}
+}

@@ -102,7 +102,7 @@ func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, 
 		if emit != nil {
 			emit(v)
 		}
-	} // Called under mu: callbacks are serialized.
+	} // Concurrent producers hold mu; phase/done events follow producer joins.
 	warn := func(err error) {
 		if err != nil {
 			mu.Lock()
@@ -145,10 +145,8 @@ func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, 
 				d.Ports = append(d.Ports, Port{Number: port, Service: service})
 			}
 		}
-		if fresh {
-			snapshot := *d
-			snapshot.Evidence = append([]string{}, d.Evidence...)
-			snapshot.Ports = append([]Port{}, d.Ports...)
+		if fresh && emit != nil {
+			snapshot := d.Clone()
 			event(Event{Type: "device", Device: &snapshot})
 		}
 	}
@@ -246,7 +244,7 @@ func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, 
 		port uint16
 	}
 
-	run := func(addresses []netip.Addr, ports []uint16) {
+	run := func(addresses []netip.Addr, ports []uint16, phase string) {
 		total := len(addresses) * len(ports)
 		lastProgress := time.Time{}
 		ch := make(chan job)
@@ -284,7 +282,7 @@ func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, 
 					completed++
 					if completed == total || time.Since(lastProgress) > 100*time.Millisecond {
 						lastProgress = time.Now()
-						event(Event{Type: "progress", Completed: completed, Total: total})
+						event(Event{Type: "progress", Phase: phase, Completed: completed, Total: total})
 					}
 					mu.Unlock()
 				}
@@ -307,7 +305,7 @@ func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, 
 	if len(o.Ports) == 0 {
 		discovery = nil
 	}
-	run(hosts, discovery)
+	run(hosts, discovery, "discovery")
 	pingWG.Wait()
 	discoveryWG.Wait()
 	arpWG.Wait()
@@ -411,8 +409,10 @@ func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, 
 			scanPorts = append(scanPorts, p)
 		}
 	}
-	run(scanHosts, scanPorts)
+	run(scanHosts, scanPorts, "ports")
 	// Enrichment is bounded independently; slow DNS cannot hold sockets open.
+	enriched := 0
+	event(Event{Type: "progress", Phase: "enrichment", Total: len(found)})
 	enrich := make(chan *Device)
 	bannerSlots := make(chan struct{}, min(32, o.Concurrency))
 	var wg sync.WaitGroup
@@ -446,6 +446,13 @@ func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, 
 				d.Kind = inferKind(*d)
 				sort.Slice(d.Ports, func(i, j int) bool { return d.Ports[i].Number < d.Ports[j].Number })
 				sort.Strings(d.Evidence)
+				if emit != nil {
+					snapshot := d.Clone()
+					mu.Lock()
+					enriched++
+					event(Event{Type: "device_update", Phase: "enrichment", Device: &snapshot, Completed: enriched, Total: len(found)})
+					mu.Unlock()
+				}
 			}
 		}()
 	}

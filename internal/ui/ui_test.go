@@ -85,3 +85,14 @@ func TestProtocolClaimsAndUntrustedTXTDisplay(t *testing.T) {
 		t.Fatal(out)
 	}
 }
+
+func TestProgressPhaseChangeBypassesThrottle(t *testing.T) {
+	var b bytes.Buffer
+	u := &UI{Out: &b, Color: true}
+	u.Progress(scanner.Event{Type: "progress", Phase: "ports", Completed: 1, Total: 1})
+	b.Reset()
+	u.Progress(scanner.Event{Type: "progress", Phase: "enrichment", Total: 2})
+	if !strings.Contains(b.String(), "Identifying") || !strings.Contains(b.String(), "0 / 2") {
+		t.Fatal("phase change was throttled", b.String())
+	}
+}
