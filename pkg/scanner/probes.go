@@ -11,6 +11,7 @@ import (
 	"golang.org/x/net/ipv6"
 	"net"
 	"net/netip"
+	"os"
 	"strconv"
 	"sync"
 	"syscall"
@@ -43,89 +44,233 @@ type pingHit struct {
 	RTT time.Duration
 }
 
-func pingSweep(ctx context.Context, hosts []netip.Addr, timeout time.Duration, hit func(pingHit), attempt func(netip.Addr)) error {
+// ICMPStats distinguishes kernel-accepted sends from actual replies. Counts are
+// for unicast echo only; IPv6 multicast candidate discovery is separate.
+type ICMPStats struct {
+	Attempted            int  `json:"attempted"`
+	Sent                 int  `json:"sent"`
+	Retries              int  `json:"retries"`
+	Recovered            int  `json:"recovered"`
+	Failed               int  `json:"failed"`
+	Responders           int  `json:"responders"`
+	RetryBudgetExhausted bool `json:"retry_budget_exhausted,omitempty"`
+}
+type echoConn interface {
+	ReadFrom([]byte) (int, net.Addr, error)
+	WriteTo([]byte, net.Addr) (int, error)
+	SetReadDeadline(time.Time) error
+	SetWriteDeadline(time.Time) error
+	Close() error
+}
+
+func pingSweep(ctx context.Context, hosts []netip.Addr, timeout time.Duration, hit func(pingHit), attempt func(netip.Addr)) (ICMPStats, error) {
 	if len(hosts) == 0 || ctx.Err() != nil {
-		return nil
+		return ICMPStats{}, nil
 	}
-	network, bind, proto := "udp4", "0.0.0.0", 1
-	var requestType icmp.Type = ipv4.ICMPTypeEcho
-	var replyType icmp.Type = ipv4.ICMPTypeEchoReply
+	network, bind := "udp4", "0.0.0.0"
 	if hosts[0].Is6() {
-		network, bind, proto = "udp6", "::", 58
-		requestType = ipv6.ICMPTypeEchoRequest
-		replyType = ipv6.ICMPTypeEchoReply
+		network, bind = "udp6", "::"
 	}
 	c, err := icmp.ListenPacket(network, bind)
 	if err != nil {
-		return fmt.Errorf("ICMP unavailable: %w", err)
+		return ICMPStats{}, fmt.Errorf("ICMP unavailable: %w", err)
 	}
 	defer c.Close()
+	return exchangeEcho(ctx, c, hosts, timeout, hit, attempt)
+}
+func exchangeEcho(ctx context.Context, c echoConn, hosts []netip.Addr, timeout time.Duration, hit func(pingHit), attempt func(netip.Addr)) (ICMPStats, error) {
+	stats := ICMPStats{}
+	if len(hosts) == 0 || ctx.Err() != nil {
+		return stats, nil
+	}
+	proto := 1
+	var requestType icmp.Type = ipv4.ICMPTypeEcho
+	var replyType icmp.Type = ipv4.ICMPTypeEchoReply
+	if hosts[0].Is6() {
+		proto = 58
+		requestType = ipv6.ICMPTypeEchoRequest
+		replyType = ipv6.ICMPTypeEchoReply
+	}
 	stop := context.AfterFunc(ctx, func() { c.Close() })
 	defer stop()
 	nonce := make([]byte, 16)
-	if _, err = rand.Read(nonce); err != nil {
-		return err
+	if _, err := rand.Read(nonce); err != nil {
+		return stats, err
 	}
-	var startsMu sync.RWMutex
-	starts := make(map[netip.Addr]time.Time, len(hosts))
-	done := make(chan struct{})
+	type probe struct {
+		start    time.Time
+		seq      int
+		answered bool
+		err      error
+	}
+	var mu sync.Mutex
+	probes := make(map[netip.Addr]*probe, len(hosts))
+	readDone := make(chan struct{})
+	var readErr error
+	responders := 0
 	go func() {
-		defer close(done)
+		defer close(readDone)
 		b := make([]byte, 1500)
 		for {
-			n, peer, e := c.ReadFrom(b)
-			if e != nil {
+			n, peer, err := c.ReadFrom(b)
+			if err != nil {
+				readErr = err
 				return
 			}
-			m, e := icmp.ParseMessage(proto, b[:n])
-			if e != nil || m.Type != replyType || m.Code != 0 {
+			message, err := icmp.ParseMessage(proto, b[:n])
+			if err != nil || message.Type != replyType || message.Code != 0 {
 				continue
 			}
-			body, ok := m.Body.(*icmp.Echo)
+			body, ok := message.Body.(*icmp.Echo)
 			if !ok || !bytes.Equal(body.Data, nonce) {
 				continue
 			}
-			a, ok := pingPeer(peer)
+			ip, ok := pingPeer(peer)
 			if !ok {
 				continue
 			}
-			startsMu.RLock()
-			t, ok := starts[a.Unmap()]
-			startsMu.RUnlock()
-			if ok {
-				hit(pingHit{a.Unmap(), time.Since(t)})
+			mu.Lock()
+			p := probes[ip]
+			if p == nil || p.answered || body.Seq != p.seq {
+				mu.Unlock()
+				continue
+			}
+			p.answered = true
+			responders++
+			elapsed := time.Since(p.start)
+			complete := responders == len(hosts)
+			mu.Unlock()
+			hit(pingHit{ip, elapsed})
+			// Every target has replied; waiting for the timeout cannot add a new host.
+			if complete {
+				return
 			}
 		}
 	}()
-	var writeErr error
-	dropped := 0
+	var retry []int
+	send := func(i int, deadline time.Time) error {
+		ip := hosts[i]
+		m := icmp.Message{Type: requestType, Body: &icmp.Echo{ID: 1, Seq: i % 65536, Data: nonce}}
+		packet, err := m.Marshal(nil)
+		if err != nil {
+			return err
+		}
+		if err = c.SetWriteDeadline(deadline); err != nil {
+			return err
+		}
+		_, err = c.WriteTo(packet, &net.UDPAddr{IP: net.IP(ip.AsSlice()), Zone: ip.Zone()})
+		return err
+	}
+	setError := func(ip netip.Addr, err error) { mu.Lock(); probes[ip].err = err; mu.Unlock() }
+firstPass:
 	for i, ip := range hosts {
 		if ctx.Err() != nil {
 			break
 		}
+		select {
+		case <-readDone:
+			break firstPass
+		default:
+		}
 		if attempt != nil {
 			attempt(ip)
 		}
-		m := icmp.Message{Type: requestType, Code: 0, Body: &icmp.Echo{ID: 1, Seq: i % 65536, Data: nonce}}
-		b, _ := m.Marshal(nil)
-		startsMu.Lock()
-		starts[ip] = time.Now()
-		startsMu.Unlock()
-		// A full Darwin ICMP send queue must never block the entire sweep.
-		c.SetWriteDeadline(time.Now().Add(2 * time.Millisecond))
-		if _, e := c.WriteTo(b, &net.UDPAddr{IP: net.IP(ip.AsSlice()), Zone: ip.Zone()}); e != nil {
-			dropped++
-			if writeErr == nil {
-				writeErr = e
+		stats.Attempted++
+		mu.Lock()
+		probes[ip] = &probe{start: time.Now(), seq: i % 65536}
+		mu.Unlock()
+		err := send(i, time.Now().Add(2*time.Millisecond))
+		setError(ip, err)
+		if err != nil && retryableEchoSend(err) {
+			retry = append(retry, i)
+		}
+	}
+	// One retry per pressure-dropped address, sharing at most 100 ms. This retries
+	// local queue failures only; unanswered, successfully sent probes are not resent.
+	retryUntil := time.Now().Add(min(timeout, 100*time.Millisecond))
+retryPass:
+	for _, i := range retry {
+		if ctx.Err() != nil {
+			break
+		}
+		select {
+		case <-readDone:
+			break retryPass
+		default:
+		}
+		if time.Until(retryUntil) <= 2*time.Millisecond {
+			stats.RetryBudgetExhausted = true
+			break
+		}
+		mu.Lock()
+		answered := probes[hosts[i]].answered
+		mu.Unlock()
+		if answered {
+			continue
+		}
+		timer := time.NewTimer(2 * time.Millisecond)
+		select {
+		case <-timer.C:
+		case <-ctx.Done():
+			timer.Stop()
+		}
+		if ctx.Err() != nil {
+			break
+		}
+		stats.Retries++
+		err := send(i, minTime(time.Now().Add(2*time.Millisecond), retryUntil))
+		if err == nil {
+			stats.Recovered++
+		}
+		setError(hosts[i], err)
+	}
+	var firstErr error
+	mu.Lock()
+	for _, ip := range hosts {
+		if p := probes[ip]; p != nil {
+			if p.err != nil {
+				stats.Failed++
+				if firstErr == nil {
+					firstErr = p.err
+				}
+			} else {
+				stats.Sent++
 			}
 		}
 	}
-	c.SetReadDeadline(time.Now().Add(timeout))
-	<-done
-	if writeErr != nil {
-		return fmt.Errorf("ICMP could not send %d probes: %w", dropped, writeErr)
+	mu.Unlock()
+	var deadlineErr error
+	if stats.Sent == 0 {
+		c.Close()
+	} else if err := c.SetReadDeadline(time.Now().Add(timeout)); err != nil {
+		c.Close()
+		deadlineErr = err
 	}
-	return nil
+	<-readDone
+	stats.Responders = responders
+	if ctx.Err() != nil {
+		return stats, nil
+	}
+	if firstErr != nil {
+		return stats, fmt.Errorf("ICMP could not send %d probes after %d retries: %w", stats.Failed, stats.Retries, firstErr)
+	}
+	if deadlineErr != nil {
+		return stats, fmt.Errorf("ICMP response deadline: %w", deadlineErr)
+	}
+	if readErr != nil && !errors.Is(readErr, os.ErrDeadlineExceeded) {
+		return stats, fmt.Errorf("ICMP receive: %w", readErr)
+	}
+	return stats, nil
+}
+func retryableEchoSend(err error) bool {
+	var ne net.Error
+	return errors.As(err, &ne) && ne.Timeout() || errors.Is(err, syscall.ENOBUFS) || errors.Is(err, syscall.EAGAIN)
+}
+func minTime(a, b time.Time) time.Time {
+	if a.Before(b) {
+		return a
+	}
+	return b
 }
 
 func pingPeer(peer net.Addr) (netip.Addr, bool) {

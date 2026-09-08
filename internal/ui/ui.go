@@ -152,6 +152,9 @@ func (u *UI) Report(r scanner.Report) {
 		}
 	}
 	fmt.Fprintf(u.Out, "\n  %s\n", u.style("38;5;245", fmt.Sprintf("● %d responsive   ○ %d cached neighbors", responsive, len(r.Devices)-responsive)))
+	if r.ICMP != nil && (r.ICMP.Retries > 0 || r.ICMP.Failed > 0) {
+		fmt.Fprintf(u.Out, "  ICMP · %d sent · %d retries · %d unsent\n", r.ICMP.Sent, r.ICMP.Retries, r.ICMP.Failed)
+	}
 	for _, w := range r.Warnings {
 		fmt.Fprintf(u.Out, "  %s %s\n", u.style("38;5;220", "!"), scanner.CleanText(w))
 	}

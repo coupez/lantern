@@ -208,7 +208,9 @@ func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, 
 		pingWG.Add(1)
 		go func() {
 			defer pingWG.Done()
-			warn(pingSweep(ctx, hosts, o.Timeout, func(h pingHit) { add(h.IP, "icmp", h.RTT, 0) }, markAttempt))
+			stats, err := pingSweep(ctx, hosts, o.Timeout, func(h pingHit) { add(h.IP, "icmp", h.RTT, 0) }, markAttempt)
+			r.ICMP = &stats
+			warn(err)
 		}()
 	}
 	type job struct {

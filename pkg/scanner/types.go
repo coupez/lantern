@@ -26,7 +26,8 @@ type Device struct {
 	LatencyMS      float64         `json:"latency_ms,omitempty"`
 }
 type Report struct {
-	Interface string `json:"interface,omitempty"`
+	ICMP      *ICMPStats `json:"icmp,omitempty"`
+	Interface string     `json:"interface,omitempty"`
 	// AddressMode is enumerated for finite ranges or discovered for sparse IPv6.
 	AddressMode string    `json:"address_mode,omitempty"`
 	Schema      int       `json:"schema"`

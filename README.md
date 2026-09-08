@@ -38,7 +38,7 @@ Use `./bin/lantern` until you put the binary on your PATH. Options work before o
 
 Lantern combines ICMP echo, TCP connect/refusal, the OS neighbor table, mDNS/DNS-SD, and SSDP. It scans common discovery ports across the target first, then checks requested ports on discovered devices. A single-IP target always checks all requested ports; `--all-hosts` does the same for every address in a subnet.
 
-The TCP worker pool defaults to 512 concurrent probes. Deadlines bound TCP and ICMP sends; large port ranges are produced incrementally rather than allocated as a host × port matrix. DNS enrichment uses its own bounded pool. Ctrl-C cancels sockets and returns partial results.
+The TCP worker pool defaults to 512 concurrent probes. Deadlines bound TCP and ICMP sends; large port ranges are produced incrementally rather than allocated as a host × port matrix. DNS enrichment uses its own bounded pool. Ctrl-C cancels sockets and returns partial results. Unicast ICMP finishes early when every target replies. Local send-queue failures get one bounded retry; JSON reports `icmp` counters for attempted/sent/failed addresses, retries, recovered sends, and responders.
 
 | Profile | Behavior |
 | --- | --- |
@@ -48,7 +48,7 @@ The TCP worker pool defaults to 512 concurrent probes. Deadlines bound TCP and I
 
 `--timeout 300ms` controls each probe. Increase it for congested Wi-Fi or sleeping devices. Standard and deep scans allow at least one second for multicast responses. A full TCP scan is `--ports 1-65535`; deep is not a full-port scan. `--ports none` disables TCP probes, leaving ICMP, multicast, and neighbor observations as enabled.
 
-The initial live macOS benchmark scanned **1,022 addresses in 2.39 seconds** in standard mode at 512 TCP workers. A full 65,535-port localhost scan completed in **0.86 seconds**. This is one network measurement, not a completeness guarantee or a comparison with Fing. The earlier 256-worker quick scan took 3.77 seconds. Warm offline vendor lookup measured **76.7 ns/op** on an Apple M4 Max. See [verification](docs/verification.md).
+The initial live macOS benchmark scanned **1,022 addresses in 2.39 seconds** in standard mode at 512 TCP workers. A full 65,535-port localhost scan completed in **0.86 seconds**. This is one network measurement, not a completeness guarantee or a comparison with Fing. Later alternating quick-scan runs with ICMP retries completed in **0.90–1.05 seconds**, versus **3.85–4.02 seconds** for the saved earlier build; both observed two addresses. Retry recovery and remaining send failures are recorded in the reports. These timings depend on local queue/cache state. Warm offline vendor lookup measured **76.7 ns/op** on an Apple M4 Max. See [verification](docs/verification.md).
 
 ## Know what the results mean
 

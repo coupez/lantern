@@ -2,6 +2,26 @@
 
 Lantern keeps observed address mappings separate from active responses. An OS neighbor-cache entry is useful evidence but may be stale. TCP connection acceptance/refusal, a matching echo reply, a discovery advertisement, or a solicited ARP reply counts as a response. Proxy ARP, shared devices, and multiple IP addresses mean the number of reported addresses is not necessarily the number of physical devices. All network claims remain unauthenticated.
 
+## ICMP scheduling and counters
+
+Unicast echo uses a random per-scan nonce and per-target sequence numbers. Replies must match the peer address (including IPv6 zone), nonce, sequence, type, and code. Duplicate replies do not create extra observations or inflate responder counts. When every target has replied, the echo phase finishes immediately. If any target remains unanswered, the configured response window after sending still applies. IPv6 all-nodes candidate discovery has an unknown responder set and keeps its full response window.
+
+Each initial send has a 2 ms write deadline. Timeout, `EAGAIN`, and `ENOBUFS` send failures receive at most one retry after the initial pass. Retries pause for 2 ms between writes and share a deadline of `min(--timeout, 100 ms)`; permanent permission/address errors are not retried. Successfully sent but unanswered probes are not resent by this mechanism. The retry budget bounds additional recovery work; it cannot guarantee complete coverage under persistent queue pressure. Read errors and unsupported deadlines are reported instead of silently being treated as silence. Cancellation closes the socket and retains partial results.
+
+The report's optional `icmp` object describes unicast echo:
+
+| Counter | Meaning |
+| --- | --- |
+| `attempted` | Target addresses whose initial send was attempted |
+| `sent` | Target addresses with a successful write, including recovered retries |
+| `retries` | Additional send attempts after local queue errors |
+| `recovered` | Failed initial sends whose retry succeeded |
+| `failed` | Attempted addresses still lacking a successful write |
+| `responders` | Unique target addresses with a matching echo reply |
+| `retry_budget_exhausted` | Recovery deadline prevented completing the retry queue |
+
+A successful write means the kernel accepted the datagram, not that the host received or answered it. `sent + failed == attempted` for the engine's unique target list. RTT is measured from the target's first echo attempt, so recovered sends can include queue/backoff time. Report-level `probed` remains the count of unique addresses attempted by any probe type. Disabled ICMP omits the counters; an unavailable ICMP socket reports zero counters and a warning.
+
 ## Direct IPv4 ARP
 
 Use `lantern scan --interface en0 --arp` to add direct local-link discovery. ARP runs alongside ICMP, TCP, and multicast discovery. It can reveal a local address whose firewall drops IP probes, and its fresh MAC mapping takes precedence over a conflicting cached mapping.
