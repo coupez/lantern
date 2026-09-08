@@ -57,4 +57,18 @@ with tempfile.TemporaryDirectory(prefix='lantern-diff-') as directory:
     del recovered['incomplete_methods']
     changes = compare(partial,recovered)
     assert len(changes) == 1 and changes[0]['field'] == 'incomplete_methods' and not changes[0].get('after'), changes
-print('PASS snapshot CLI: structured identity changes, common-port coverage, cancellation, legacy files, partial discovery and recovery')
+
+    for devices in ([{}], [{'ip': None}], [{'ip': '::'}],
+                    [{'ip': '192.0.2.1'}, {'ip': '192.0.2.1'}],
+                    [{'ip': '2001:db8::1'}, {'ip': '2001:db8:0:0:0:0:0:1'}]):
+        invalid = {'schema': 1, 'devices': devices}
+        for a, b, bad_path in ((invalid, before, left), (before, invalid, right)):
+            left.write_text(json.dumps(a))
+            right.write_text(json.dumps(b))
+            originals = [path.read_bytes() for path in (left, right)]
+            result = subprocess.run([binary, 'diff', str(left), str(right)],
+                                    capture_output=True, timeout=5)
+            assert result.returncode == 1 and not result.stdout, result
+            assert b'device' in result.stderr and str(bad_path).encode() in result.stderr, result.stderr
+            assert [path.read_bytes() for path in (left, right)] == originals
+print('PASS snapshot CLI: identity, coverage, cancellation, legacy files, partial recovery, invalid/duplicate device rejection')

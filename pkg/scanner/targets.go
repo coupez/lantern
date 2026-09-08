@@ -136,6 +136,9 @@ func Hosts(p netip.Prefix, limit int) ([]netip.Addr, error) {
 	if !p.IsValid() || p.Addr().Is4In6() {
 		return nil, fmt.Errorf("valid native IPv4 or IPv6 target required")
 	}
+	if p.Addr().IsMulticast() || (p.Addr().IsUnspecified() && p.Bits() == p.Addr().BitLen()) {
+		return nil, fmt.Errorf("target must be a unicast address or a network prefix")
+	}
 	if limit < 1 || limit > 65536 {
 		return nil, fmt.Errorf("max-hosts must be between 1 and 65536")
 	}
@@ -144,17 +147,19 @@ func Hosts(p netip.Prefix, limit int) ([]netip.Addr, error) {
 		return nil, fmt.Errorf("target is too large to enumerate; IPv6 scans use local discovery automatically")
 	}
 	count := uint64(1) << uint(hostBits)
+	a := p.Masked().Addr()
 	if p.Addr().Is4() && p.Bits() < 31 {
 		count -= 2
+		a = a.Next()
+	}
+	if a.IsUnspecified() {
+		count--
+		a = a.Next()
 	}
 	if count > uint64(limit) {
 		return nil, fmt.Errorf("target has %d hosts; limit is %d (use --max-hosts deliberately)", count, limit)
 	}
 	out := make([]netip.Addr, 0, int(count))
-	a := p.Masked().Addr()
-	if p.Addr().Is4() && p.Bits() < 31 {
-		a = a.Next()
-	}
 	for range count {
 		out = append(out, a)
 		a = a.Next()
@@ -166,7 +171,14 @@ func sparseIPv6(p netip.Prefix, limit int) bool {
 		return false
 	}
 	bits := 128 - p.Bits()
-	return bits > 16 || (uint64(1)<<uint(bits)) > uint64(limit)
+	if bits > 16 {
+		return true
+	}
+	count := uint64(1) << uint(bits)
+	if p.Masked().Addr().IsUnspecified() {
+		count--
+	}
+	return count > uint64(limit)
 }
 func scoped(a netip.Addr, iface string) netip.Addr {
 	if a.Is6() && a.IsLinkLocalUnicast() && a.Zone() == "" && iface != "" {

@@ -39,3 +39,21 @@ func TestNeighbors(t *testing.T) {
 		t.Fatal(m)
 	}
 }
+
+func TestHostsExcludeUnspecifiedAddresses(t *testing.T) {
+	for _, target := range []string{"0.0.0.0/31", "::/127"} {
+		prefix := netip.MustParsePrefix(target)
+		hosts, err := Hosts(prefix, 1)
+		if err != nil || len(hosts) != 1 || hosts[0] != prefix.Addr().Next() {
+			t.Fatal(target, hosts, err)
+		}
+		if sparseIPv6(prefix, 1) {
+			t.Fatal("eligible single host classified as sparse", target)
+		}
+	}
+	for _, target := range []string{"0.0.0.0/32", "::/128", "224.0.0.1/32", "ff02::1/128"} {
+		if _, err := Hosts(netip.MustParsePrefix(target), 4096); err == nil {
+			t.Fatal("accepted non-unicast host", target)
+		}
+	}
+}

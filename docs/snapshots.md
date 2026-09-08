@@ -4,6 +4,10 @@
 
 Reports with a fatal runtime scan failure retain observations and an optional `error` string. The CLI attempts `--save` before exiting with status 1, including when a JSONL pipe breaks; input validation failures leave an existing snapshot untouched. A saved failed or interrupted scan is a partial observation set.
 
+`scanner.Load` and `scanner.Save` require schema 1 and a unique, valid native IP for each device. Missing, null, unspecified, multicast, IPv4-mapped IPv6, and duplicate addresses are rejected. Equivalent IPv6 spellings count as the same address; different interface zones remain distinct. Load errors return a zero report and identify the input file; `lantern diff` exits 1 without emitting a change array. Save validates before creating a temporary file or replacing the destination. Optional legacy metadata, unknown extension fields, and duplicate port observations remain supported. This validates device keys, not every field in a report; callers constructing reports directly for `scanner.Diff` must supply valid, unique device addresses themselves.
+
+Host enumeration skips unspecified addresses in zero-containing ranges. For example, `0.0.0.0/31` and `::/127` each enumerate one eligible address and fit `--max-hosts 1`.
+
 ## Observations, not physical-device verdicts
 
 An IP address is the comparison key; scoped IPv6 addresses remain distinct. `added` means an address appears in the later observation set, and `missing` means it does not. Neither proves that a physical device joined or left the network. A MAC change can reflect a different device, randomized addressing, proxying, or a changed cache observation.
