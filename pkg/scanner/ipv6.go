@@ -125,7 +125,7 @@ func discoverIPv6(ctx context.Context, o Options, source func(context.Context) (
 		}()
 	}
 	if o.Multicast {
-		for _, sweep := range []func(context.Context, netip.Prefix, time.Duration, string) ([]discoveryHit, error){mdnsSweepOn, ssdpSweepOn} {
+		for _, sweep := range []func(context.Context, netip.Prefix, time.Duration, string) ([]discoveryHit, error){mdnsSweepOn, ssdpSweepOn, wsdSweepOn} {
 			wg.Add(1)
 			go func(sweep func(context.Context, netip.Prefix, time.Duration, string) ([]discoveryHit, error)) {
 				defer wg.Done()

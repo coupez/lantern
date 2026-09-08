@@ -46,15 +46,15 @@ Use `watch --plain` for appended reports or `watch --jsonl` for a machine-readab
 
 ## Discovery and speed
 
-Lantern combines ICMP echo, TCP connect/refusal, the OS neighbor table, mDNS/DNS-SD, and SSDP. It scans common discovery ports across the target first, then checks requested ports on discovered devices. A single-IP target always checks all requested ports; `--all-hosts` does the same for every address in a subnet.
+Lantern combines ICMP echo, TCP connect/refusal, the OS neighbor table, mDNS/DNS-SD, SSDP, and WS-Discovery. It scans common discovery ports across the target first, then checks requested ports on discovered devices. A single-IP target always checks all requested ports; `--all-hosts` does the same for every address in a subnet.
 
 The TCP worker pool defaults to 512 concurrent probes. Deadlines bound TCP and ICMP sends; large port ranges are produced incrementally rather than allocated as a host × port matrix. Each address/port pair runs once, and open-port collection avoids repeated searches through the growing result list. DNS enrichment uses its own bounded pool. Ctrl-C cancels sockets and returns partial results. Fatal TCP failures preserve available results with a JSON `error` field and exit status 1. A broken JSONL pipe cancels work promptly and still attempts `--save`. Unicast ICMP finishes early when every target replies. Local send-queue failures get one bounded retry; JSON reports `icmp` counters for attempted/sent/failed addresses, retries, recovered sends, and responders.
 
 | Profile | Behavior |
 | --- | --- |
 | `quick` | ICMP + TCP discovery + neighbor lookup; checks 80/443; skips multicast |
-| `standard` | Adds mDNS/SSDP, device descriptions, and 14 common TCP service ports |
-| `deep` | 28 common service ports, device descriptions, mDNS/SSDP, and protocol banner reads |
+| `standard` | Adds mDNS/SSDP/WS-Discovery, device descriptions, and 14 common TCP service ports |
+| `deep` | 28 common service ports, device descriptions, mDNS/SSDP/WS-Discovery, and protocol banner reads |
 
 `--timeout 300ms` controls each probe. Increase it for congested Wi-Fi or sleeping devices. Standard and deep scans allow at least one second for multicast responses. A full TCP scan is `--ports 1-65535`; deep is not a full-port scan. `--ports none` disables TCP probes, leaving ICMP, multicast, and neighbor observations as enabled.
 
@@ -74,7 +74,7 @@ Computer names, workgroups, registration flags, and reported unit IDs remain in 
 
 ## Know what the results mean
 
-- **● Responsive** means a TCP/ICMP/ARP/NDP/mDNS/SSDP/NetBIOS response or a local interface was observed. **○ Cached neighbor** means the OS has an address mapping; it does not prove the device is awake.
+- **● Responsive** means a TCP/ICMP/ARP/NDP/mDNS/SSDP/WS-Discovery/NetBIOS response or a local interface was observed. **○ Cached neighbor** means the OS has an address mapping; it does not prove the device is awake.
 - MAC vendors are registered IEEE organizations, which may differ from the device's retail brand. Randomized/private MACs are labeled explicitly and do not receive a guessed vendor.
 - Device types are hints based on services. An RTSP port can belong to a camera or another media device. Port names come from IANA/common conventions; a name does not prove which application is running there.
 - Device names and models are extracted from UPnP descriptions and known Bonjour printing, AirPlay, Cast, and HomeKit TXT fields. HomeKit also supplies **36 category codes** for more specific type hints without extra probes. Pinned MIT-licensed catalogs add manufacturers for **40 exact Cast model names**, plus **606 Apple/Beats hardware identifiers** with **886 model assignments**. The 124 identifiers with multiple product names retain every candidate. The JSON `identity.claims` records whether each field is advertised, protocol-interpreted, or catalog-derived, its source, and conflicting values; MAC ownership stays separate.
@@ -83,11 +83,13 @@ Computer names, workgroups, registration flags, and reported unit IDs remain in 
 
 Use on networks you own or are authorized to inspect. Lantern makes ordinary discovery requests and connections; it does not log in to devices or execute remote commands.
 
+WS-Discovery adds correlated UDP discovery for compatible endpoints, with ONVIF names and hardware-description claims. Advertised endpoint URLs are retained as metadata; they are not fetched or treated as verified open ports.
+
 UPnP and Shelly identity reads are enabled in standard/deep mode. `--no-descriptions` disables them. Reads stay on the discovered device’s literal IP, never use a proxy or follow redirects, and share one per-device deadline across at most four request targets. UPnP XML is capped at 256 KiB and bounded in depth; Shelly JSON is capped at 16 KiB. mDNS follows missing PTR/SRV/TXT/A/AAAA records and enumerates additional service types within the original discovery deadline and a 128-query budget.
 
 [Recognition sources and rules](docs/recognition.md) describe the supported mappings and limitations.
 
-IPv6 single addresses and small prefixes support TCP, ICMPv6, DNS, banners, and the same device recognition paths. Link-local targets need a zone (`fe80::1%en0`) or `--interface`. `--ipv6` discovers neighbors on one selected interface using all-nodes echo, IPv6 mDNS/SSDP, the NDP cache, and local addresses. Large IPv6 prefixes use this sparse discovery automatically: Lantern never enumerates a /64. `--max-hosts` caps the candidate list; `--all-hosts` checks all discovered candidates, not the entire IPv6 address space. JSON reports distinguish `address_mode: "discovered"` from `"enumerated"` and retain the interface scope. IPv4 and IPv6 currently use separate scans, and a dual-stack device can appear under multiple addresses.
+IPv6 single addresses and small prefixes support TCP, ICMPv6, DNS, banners, and the same device recognition paths. Link-local targets need a zone (`fe80::1%en0`) or `--interface`. `--ipv6` discovers neighbors on one selected interface using all-nodes echo, IPv6 mDNS/SSDP/WS-Discovery, the NDP cache, and local addresses. Large IPv6 prefixes use this sparse discovery automatically: Lantern never enumerates a /64. `--max-hosts` caps the candidate list; `--all-hosts` checks all discovered candidates, not the entire IPv6 address space. JSON reports distinguish `address_mode: "discovered"` from `"enumerated"` and retain the interface scope. IPv4 and IPv6 currently use separate scans, and a dual-stack device can appear under multiple addresses.
 
 `--arp` adds direct IPv4 ARP requests on a matching local Ethernet interface, concurrently with the other discovery methods. It is disabled by default: macOS needs access to `/dev/bpf*` (normally administrator access), and Linux needs `CAP_NET_RAW`. If access is unavailable, a warning explains the missing capability and the remaining scan methods continue. Replies are marked `arp`, even if every IP probe is blocked. Direct ARP was verified on Linux ARM64; macOS BPF live exchange still needs privileged verification. See [discovery details](docs/discovery.md).
 

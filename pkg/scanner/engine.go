@@ -194,6 +194,9 @@ func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, 
 			func(ctx context.Context, p netip.Prefix, t time.Duration) ([]discoveryHit, error) {
 				return ssdpSweepOn(ctx, p, t, o.Interface)
 			},
+			func(ctx context.Context, p netip.Prefix, t time.Duration) ([]discoveryHit, error) {
+				return wsdSweepOn(ctx, p, t, o.Interface)
+			},
 		} {
 			discoveryWG.Add(1)
 			go func(sweep func(context.Context, netip.Prefix, time.Duration) ([]discoveryHit, error)) {

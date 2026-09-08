@@ -116,7 +116,7 @@ var Services = map[uint16]string{21: "ftp", 22: "ssh", 23: "telnet", 25: "smtp",
 func (d Device) Responsive() bool {
 	for _, e := range d.Evidence {
 		switch e {
-		case "arp", "ndp", "icmp", "tcp-open", "tcp-refused", "mdns", "ssdp", "netbios", "local-interface":
+		case "arp", "ndp", "icmp", "tcp-open", "tcp-refused", "mdns", "ssdp", "ws-discovery", "netbios", "local-interface":
 			return true
 		}
 	}

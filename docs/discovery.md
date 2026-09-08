@@ -76,7 +76,7 @@ Capture is limited to IPv6 frames and 2,048 bytes per frame, without enabling pr
 
 ## IPv6
 
-Individual addresses and small ranges are probed directly. Large ranges, including normal /64 networks, use candidate discovery from scoped ICMPv6 all-nodes echo, mDNS/SSDP, the NDP cache, and local interface addresses. The candidate list is bounded by `--max-hosts`; the address space is never exhaustively enumerated. `--ndp` optionally solicits these bounded candidates after discovery; it does not expand a /64 into an address sweep. Link-local addresses retain the interface zone in structured reports.
+Individual addresses and small ranges are probed directly. Large ranges, including normal /64 networks, use candidate discovery from scoped ICMPv6 all-nodes echo, mDNS/SSDP/WS-Discovery, the NDP cache, and local interface addresses. The candidate list is bounded by `--max-hosts`; the address space is never exhaustively enumerated. `--ndp` optionally solicits these bounded candidates after discovery; it does not expand a /64 into an address sweep. Link-local addresses retain the interface zone in structured reports.
 
 ## Protocol references
 
@@ -86,3 +86,15 @@ Individual addresses and small ranges are probed directly. Large ranges, includi
 - [RFC 826](https://www.rfc-editor.org/rfc/rfc826) defines Ethernet/IPv4 ARP fields and request/reply behavior.
 - [Linux packet socket manual](https://man7.org/linux/man-pages/man7/packet.7.html) describes AF_PACKET and its `CAP_NET_RAW` requirement.
 - [Apple's BPF ABI header](https://github.com/apple-oss-distributions/xnu/blob/main/bsd/net/bpf.h) defines Darwin capture record lengths and four-byte alignment. No Apple implementation code is incorporated.
+
+## WS-Discovery
+
+Standard/deep multicast discovery includes WS-Discovery over IPv4 and IPv6, in parallel with mDNS and SSDP. `--no-multicast` disables all three; quick mode skips them by default. The pass uses the selected interface and the existing multicast response window (at least one second).
+
+Lantern sends untyped SOAP 1.2 Probes for the 2005/04 and 2009/01 discovery namespaces to UDP 3702 (`239.255.255.250` or scoped `ff02::c`), with a multicast hop limit of one. Each version gets a fresh random UUID. Two retransmissions per version retain their message IDs, with a randomized 50–250 ms initial delay followed by doubled delay, while replies are received concurrently. The original deadline, cancellation, and 512-datagram limit still end the pass; UDP writes have a 10 ms deadline.
+
+Only ProbeMatches with the matching action, namespace, and `RelatesTo` request ID are retained. Replies are attributed to the in-target UDP sender and interface zone. Identical endpoint/message-ID replies from that sender are deduplicated. Discovery-proxy types are excluded; managed discovery, Hello/Bye listening, Resolve, HTTP metadata exchange, and control operations are not implemented. A correlated response is responsive evidence, not an authenticated identity.
+
+Parsing caps datagrams at 65,507 bytes, XML depth at 16, elements at 512, attributes/in-scope namespaces at 64, text per element at 8 KiB, matches at 32, and list fields at 64 values. Duplicate recognized fields, nested value elements, invalid correlation, and malformed XML are discarded. The original sender remains the only discovered address: advertised XAddrs never add targets or ports and are never fetched. ONVIF scope interpretation is described in [device recognition](recognition.md). Unexpected socket/send failures and exhausted packet budgets preserve earlier replies and mark multicast discovery incomplete.
+
+Protocol references: [WS-Discovery 1.1](https://docs.oasis-open.org/ws-dd/discovery/1.1/os/wsdd-discovery-1.1-spec-os.html) and [SOAP-over-UDP 1.1](https://docs.oasis-open.org/ws-dd/soapoverudp/1.1/os/wsdd-soapoverudp-1.1-spec-os.html). Controlled socket fixtures cover both versions and address families; physical Windows/printer/camera interoperability remains pending.

@@ -143,7 +143,7 @@ func help() {
     --json | --jsonl | --csv        Structured output
     --save scan.json               Save a snapshot atomically
     --no-dns | --no-icmp            Disable discovery components
-    --no-multicast                  Skip mDNS and SSDP (quick default)
+    --no-multicast                  Skip mDNS, SSDP, WS-Discovery (quick default)
     --no-descriptions               Skip UPnP/Shelly identity reads
     --details                      Show full device records
     --banners                      Read SSH/HTTP/service banners

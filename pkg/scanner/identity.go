@@ -56,6 +56,9 @@ func identify(ads []Advertisement) *Identity {
 		if a.Protocol == "shelly" {
 			reference = shellyInfoReference
 		}
+		if a.Protocol == "ws-discovery" {
+			reference = onvifDiscoveryReference
+		}
 		claims = append(claims, IdentityClaim{Field: field, Value: value, Source: source, Key: key, Basis: "advertised", Reference: reference})
 	}
 	add := func(field, key string, a Advertisement) { addValue(field, key, a.Properties[key], a) }
@@ -68,6 +71,15 @@ func identify(ads []Advertisement) *Identity {
 	}
 	for _, a := range ads {
 		switch a.Protocol {
+		case "ws-discovery":
+			if a.Service != "probe-match" {
+				continue
+			}
+			for _, scope := range strings.Fields(a.Properties["scopes"]) {
+				if field, value := onvifScope(scope); field != "" {
+					addValue(field, scope, value, a)
+				}
+			}
 		case "shelly":
 			if a.Service != "device-info" {
 				continue

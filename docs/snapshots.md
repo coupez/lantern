@@ -44,7 +44,7 @@ Any listed method in the later report suppresses missing-address and response-st
 | `icmp`, `candidates` | No additional fields; retained addresses still receive independent field probes |
 | Unknown future method | All device fields |
 
-Multiple failures combine these restrictions. `multicast` covers both mDNS and SSDP; `neighbors` covers OS cache reads; `candidates` marks sparse IPv6 candidate truncation. `incomplete_methods` scan changes record failure or recovery even when device comparisons are suppressed. Once a later scan completes without reported discovery errors, normal comparisons resume, including newly recovered observations. This does not establish a physical change during the partial cycle.
+Multiple failures combine these restrictions. `multicast` covers mDNS, SSDP, and WS-Discovery; `neighbors` covers OS cache reads; `candidates` marks sparse IPv6 candidate truncation. `incomplete_methods` scan changes record failure or recovery even when device comparisons are suppressed. Once a later scan completes without reported discovery errors, normal comparisons resume, including newly recovered observations. This does not establish a physical change during the partial cycle.
 
 An absent list does not prove completeness. Silent/filtered hosts, packet loss without a reported collector error, and unsuccessful reverse DNS, banner, or description enrichment can still leave observations empty. Those enrichment failures are not currently tracked by this field. Older snapshots without the field retain observational behavior; warning text is not parsed to guess a failure's source.
 
