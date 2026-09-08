@@ -138,6 +138,7 @@ func help() {
     --interface en0                Select local network / IPv6 zone
     --ipv6                         Discover local IPv6 neighbors
     --arp                          Direct IPv4 ARP (needs raw link access)
+    --ndp                          Direct IPv6 NDP (needs raw link access)
     --netbios                      IPv4 NetBIOS names (deep default)
     --json | --jsonl | --csv        Structured output
     --save scan.json               Save a snapshot atomically
@@ -207,6 +208,7 @@ func scan(args []string, watch bool) error {
 	f.IntVar(&o.MaxHosts, "max-hosts", o.MaxHosts, "")
 	f.BoolVar(&o.Banners, "banners", false, "")
 	f.BoolVar(&o.NetBIOS, "netbios", false, "unicast IPv4 NetBIOS node-status discovery")
+	f.BoolVar(&o.NDP, "ndp", false, "direct IPv6 neighbor solicitation (requires raw link access)")
 	f.BoolVar(&o.ARP, "arp", false, "direct IPv4 ARP discovery (requires raw link access)")
 	f.BoolVar(&o.AllHosts, "all-hosts", false, "scan ports even without discovery responses")
 	f.Usage = help

@@ -70,16 +70,16 @@ Computer names, workgroups, registration flags, and reported unit IDs remain in 
 
 ## Check local capabilities
 
-`lantern doctor` checks actual ICMP, multicast, ARP, neighbor-table, and automatic target-selection access without sending discovery packets. Use `--interface en0` to select a network or `--json` for scripts. Optional failures include a reason and next step; socket access alone does not prove device reachability. See [diagnostics](docs/diagnostics.md).
+`lantern doctor` checks actual ICMP, multicast, ARP/NDP, neighbor-table, and automatic target-selection access without sending discovery packets. Use `--interface en0` to select a network or `--json` for scripts. Optional failures include a reason and next step; socket access alone does not prove device reachability. See [diagnostics](docs/diagnostics.md).
 
 ## Know what the results mean
 
-- **● Responsive** means a TCP/ICMP/ARP/mDNS/SSDP response or a local interface was observed. **○ Cached neighbor** means the OS has an address mapping; it does not prove the device is awake.
+- **● Responsive** means a TCP/ICMP/ARP/NDP/mDNS/SSDP/NetBIOS response or a local interface was observed. **○ Cached neighbor** means the OS has an address mapping; it does not prove the device is awake.
 - MAC vendors are registered IEEE organizations, which may differ from the device's retail brand. Randomized/private MACs are labeled explicitly and do not receive a guessed vendor.
 - Device types are hints based on services. An RTSP port can belong to a camera or another media device. Port names come from IANA/common conventions; a name does not prove which application is running there.
 - Device names and models are extracted from UPnP descriptions and known Bonjour printing, AirPlay, Cast, and HomeKit TXT fields. HomeKit also supplies **36 category codes** for more specific type hints without extra probes. Pinned MIT-licensed catalogs add manufacturers for **40 exact Cast model names**, plus **606 Apple/Beats hardware identifiers** with **886 model assignments**. The 124 identifiers with multiple product names retain every candidate. The JSON `identity.claims` records whether each field is advertised, protocol-interpreted, or catalog-derived, its source, and conflicting values; MAC ownership stays separate.
 - Advertisements and banners are device-reported, untrusted information. Advertised ports are separate from verified open TCP ports. Terminal control characters are removed before rendering.
-- Discovery can miss filtered, isolated, sleeping, or slow devices. MAC addresses normally exist only for hosts on the same link. Direct NDP, OS fingerprinting, and a persistent service are not implemented yet.
+- Discovery can miss filtered, isolated, sleeping, or slow devices. MAC addresses normally exist only for hosts on the same link. OS fingerprinting and a persistent service are not implemented yet.
 
 Use on networks you own or are authorized to inspect. Lantern makes ordinary discovery requests and connections; it does not log in to devices or execute remote commands.
 
@@ -90,6 +90,8 @@ UPnP descriptions are enabled in standard/deep mode. `--no-descriptions` disable
 IPv6 single addresses and small prefixes support TCP, ICMPv6, DNS, banners, and the same device recognition paths. Link-local targets need a zone (`fe80::1%en0`) or `--interface`. `--ipv6` discovers neighbors on one selected interface using all-nodes echo, IPv6 mDNS/SSDP, the NDP cache, and local addresses. Large IPv6 prefixes use this sparse discovery automatically: Lantern never enumerates a /64. `--max-hosts` caps the candidate list; `--all-hosts` checks all discovered candidates, not the entire IPv6 address space. JSON reports distinguish `address_mode: "discovered"` from `"enumerated"` and retain the interface scope. IPv4 and IPv6 currently use separate scans, and a dual-stack device can appear under multiple addresses.
 
 `--arp` adds direct IPv4 ARP requests on a matching local Ethernet interface, concurrently with the other discovery methods. It is disabled by default: macOS needs access to `/dev/bpf*` (normally administrator access), and Linux needs `CAP_NET_RAW`. If access is unavailable, a warning explains the missing capability and the remaining scan methods continue. Replies are marked `arp`, even if every IP probe is blocked. Direct ARP was verified on Linux ARM64; macOS BPF live exchange still needs privileged verification. See [discovery details](docs/discovery.md).
+
+`--ndp` adds direct IPv6 neighbor solicitation on the selected Ethernet interface, with the same raw-access requirements. Use `lantern scan fe80::1234%en0 --ndp` or `lantern scan --ipv6 --interface en0 --ndp`. It probes finite ranges or the bounded candidate list for large ranges, records fresh `ndp` MAC evidence, and finishes early when every requested neighbor answers. Linux kernel exchanges are verified; privileged macOS BPF exchange remains pending.
 
 Use `lantern models Mac16,9` to look up a hardware code offline, `lantern models` for the index count, or `lantern models sources` for provenance. Discovery maps Bonjour device-info/AirPlay `model` and RAOP `am` fields to these candidates. The reported `identity.model` stays intact; `identity.model_names` contains catalog candidates. A unique candidate appears in the report, while ambiguous matches are labeled and listed in `inspect` / `--details`. CSV appends `model_candidates`.
 
@@ -130,6 +132,6 @@ python3 scripts/update-data.py && make build # refresh the public indexes
 python3 scripts/build-apple-models.py --download # rebuild the pinned model catalog
 ```
 
-To reproduce Linux runtime verification, run `make linux-test` with Docker available. The container receives only `NET_RAW`, has no host mounts or published ports, and probes its own bridge gateway for the ARP check.
+To reproduce Linux runtime verification, run `make linux-test` with Docker available. The main container receives only `NET_RAW` and probes its own bridge gateway for the ARP check. Separate isolated fixtures use `NET_ADMIN` for temporary veth links and add `NET_RAW` only for direct NDP exchange; denied-capability cases are tested too. No test container uses host networking, host mounts, or published ports.
 
 The network integration test uses controlled IPv4/IPv6 localhost servers to verify ICMP, port detection, SSH/HTTP banners, DNS-SD follow-ups, UPnP description boundaries, and NetBIOS node status. The Linux container also checks interoperability with Samba’s actual name server. Regular tests don't send scan traffic. See [status and remaining work](docs/STATUS.md).

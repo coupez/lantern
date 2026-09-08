@@ -32,6 +32,7 @@ type ScanCoverage struct {
 	TCPPorts     []uint16 `json:"tcp_ports"`
 	ICMP         bool     `json:"icmp"`
 	ARP          bool     `json:"arp"`
+	NDP          bool     `json:"ndp"`
 	Multicast    bool     `json:"multicast"`
 	NetBIOS      bool     `json:"netbios"`
 	ReverseDNS   bool     `json:"reverse_dns"`
@@ -84,7 +85,9 @@ type Options struct {
 	// NetBIOS enables unicast IPv4 node-status discovery without authentication.
 	NetBIOS bool
 	// ARP enables direct IPv4 neighbor discovery; requires raw link access.
-	ARP          bool
+	ARP bool
+	// NDP enables direct IPv6 neighbor solicitation on the local Ethernet link.
+	NDP          bool
 	Banners      bool
 	Descriptions bool
 	Multicast    bool
@@ -107,7 +110,7 @@ var Services = map[uint16]string{21: "ftp", 22: "ssh", 23: "telnet", 25: "smtp",
 func (d Device) Responsive() bool {
 	for _, e := range d.Evidence {
 		switch e {
-		case "arp", "icmp", "tcp-open", "tcp-refused", "mdns", "ssdp", "netbios", "local-interface":
+		case "arp", "ndp", "icmp", "tcp-open", "tcp-refused", "mdns", "ssdp", "netbios", "local-interface":
 			return true
 		}
 	}

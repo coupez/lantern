@@ -19,6 +19,8 @@ type Engine struct {
 	NetBIOSSource func(context.Context, []netip.Addr, time.Duration) (NetBIOSResult, error)
 	// ARPSource optionally replaces native ARP exchange for integrations/tests.
 	ARPSource func(context.Context, Options, []netip.Addr) (ARPResult, error)
+	// NDPSource optionally replaces native IPv6 neighbor solicitation.
+	NDPSource func(context.Context, Options, []netip.Addr) (NDPResult, error)
 }
 
 func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, error) {
@@ -39,6 +41,9 @@ func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, 
 	if o.ARP && !o.Target.Addr().Is4() {
 		return r, fmt.Errorf("ARP requires an IPv4 target; IPv6 uses neighbor discovery")
 	}
+	if o.NDP && !o.Target.Addr().Is6() {
+		return r, fmt.Errorf("NDP requires an IPv6 target; IPv4 uses ARP")
+	}
 	if o.NetBIOS && !o.Target.Addr().Is4() {
 		return r, fmt.Errorf("NetBIOS discovery requires an IPv4 target")
 	}
@@ -54,6 +59,11 @@ func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, 
 		}
 	}
 	o.Ports = ports // Own the execution plan; never change the caller's slice.
+	if o.NDP && o.Interface == "" && e.NDPSource == nil {
+		if link, err := ndpInterface(o.Target, ""); err == nil {
+			o.Interface = link.iface.Name
+		}
+	}
 	r.Coverage = coverageFor(o)
 	sparse := sparseIPv6(o.Target, o.MaxHosts)
 	if o.Target.Addr().Is6() && !sparse && o.Target.Addr().IsLinkLocalUnicast() && o.Interface == "" {
@@ -229,6 +239,23 @@ func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, 
 			}
 		}()
 	}
+	var ndpWG sync.WaitGroup
+	var ndpResult NDPResult
+	if o.NDP {
+		ndpWG.Add(1)
+		go func() {
+			defer ndpWG.Done()
+			source := e.NDPSource
+			if source == nil {
+				source = ndpSweep
+			}
+			var err error
+			ndpResult, err = source(ctx, o, hosts)
+			if ctx.Err() == nil {
+				warn(err)
+			}
+		}()
+	}
 	var pingWG sync.WaitGroup
 	if o.ICMP {
 		pingWG.Add(1)
@@ -309,6 +336,7 @@ func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, 
 	pingWG.Wait()
 	discoveryWG.Wait()
 	arpWG.Wait()
+	ndpWG.Wait()
 	netbiosWG.Wait()
 	for _, ip := range netbiosResult.Probed {
 		if targeted[ip] {
@@ -323,23 +351,31 @@ func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, 
 		seenNetBIOS[reply.IP] = true
 		discovered = append(discovered, netbiosHit(reply))
 	}
-	for _, ip := range arpResult.Probed {
-		if targeted[ip] {
-			markAttempt(ip)
+	for _, result := range []struct {
+		evidence  string
+		probed    []netip.Addr
+		neighbors []Neighbor
+	}{
+		{"arp", arpResult.Probed, arpResult.Neighbors}, {"ndp", ndpResult.Probed, ndpResult.Neighbors},
+	} {
+		for _, ip := range result.probed {
+			if targeted[ip] {
+				markAttempt(ip)
+			}
 		}
-	}
-	for _, n := range arpResult.Neighbors {
-		if !targeted[n.IP] {
-			continue
+		for _, n := range result.neighbors {
+			if !targeted[n.IP] {
+				continue
+			}
+			mac, err := net.ParseMAC(n.MAC)
+			if err != nil || !validEthernetMAC(mac) {
+				continue
+			}
+			add(n.IP, result.evidence, n.RTT, 0)
+			d := found[n.IP]
+			d.MAC = mac.String()
+			d.Vendor, _ = vendors.Lookup(d.MAC)
 		}
-		mac, err := net.ParseMAC(n.MAC)
-		if err != nil || !validEthernetMAC(mac) {
-			continue
-		}
-		add(n.IP, "arp", n.RTT, 0)
-		d := found[n.IP]
-		d.MAC = mac.String()
-		d.Vendor, _ = vendors.Lookup(d.MAC)
 	}
 	for _, h := range discovered {
 		add(h.IP, h.Evidence, 0, 0)
@@ -368,7 +404,7 @@ func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, 
 		if mac, ok := table[ip]; ok {
 			add(ip, "neighbor-cache", 0, 0)
 			d := found[ip]
-			if !contains(d.Evidence, "arp") {
+			if !contains(d.Evidence, "arp") && !contains(d.Evidence, "ndp") {
 				d.MAC = mac
 				d.Vendor, _ = vendors.Lookup(mac)
 			}

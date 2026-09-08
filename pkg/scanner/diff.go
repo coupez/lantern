@@ -28,7 +28,7 @@ func coverageFor(o Options) *ScanCoverage {
 	if ports == nil {
 		ports = []uint16{}
 	}
-	return &ScanCoverage{TCPPorts: ports, ICMP: o.ICMP, ARP: o.ARP, Multicast: o.Multicast, NetBIOS: o.NetBIOS, ReverseDNS: o.Resolve, Descriptions: o.Descriptions, Banners: o.Banners, AllHosts: o.AllHosts}
+	return &ScanCoverage{TCPPorts: ports, ICMP: o.ICMP, ARP: o.ARP, NDP: o.NDP, Multicast: o.Multicast, NetBIOS: o.NetBIOS, ReverseDNS: o.Resolve, Descriptions: o.Descriptions, Banners: o.Banners, AllHosts: o.AllHosts}
 }
 func coverageKey(c *ScanCoverage) []string {
 	if c == nil {
@@ -38,13 +38,13 @@ func coverageKey(c *ScanCoverage) []string {
 	for _, flag := range []struct {
 		name    string
 		enabled bool
-	}{{"icmp", c.ICMP}, {"arp", c.ARP}, {"multicast", c.Multicast}, {"netbios", c.NetBIOS}, {"reverse-dns", c.ReverseDNS}, {"descriptions", c.Descriptions}, {"banners", c.Banners}, {"all-hosts", c.AllHosts}} {
+	}{{"icmp", c.ICMP}, {"arp", c.ARP}, {"ndp", c.NDP}, {"multicast", c.Multicast}, {"netbios", c.NetBIOS}, {"reverse-dns", c.ReverseDNS}, {"descriptions", c.Descriptions}, {"banners", c.Banners}, {"all-hosts", c.AllHosts}} {
 		out = append(out, flag.name+"="+strconv.FormatBool(flag.enabled))
 	}
 	return out
 }
 func sameDiscovery(a, b *ScanCoverage) bool {
-	return a == nil || b == nil || (a.ICMP == b.ICMP && a.ARP == b.ARP && a.Multicast == b.Multicast && a.NetBIOS == b.NetBIOS && a.AllHosts == b.AllHosts && (len(a.TCPPorts) > 0) == (len(b.TCPPorts) > 0))
+	return a == nil || b == nil || (a.ICMP == b.ICMP && a.ARP == b.ARP && a.NDP == b.NDP && a.Multicast == b.Multicast && a.NetBIOS == b.NetBIOS && a.AllHosts == b.AllHosts && (len(a.TCPPorts) > 0) == (len(b.TCPPorts) > 0))
 }
 func sameNames(a, b *ScanCoverage) bool {
 	return a == nil || b == nil || (a.Multicast == b.Multicast && a.NetBIOS == b.NetBIOS && a.ReverseDNS == b.ReverseDNS)
@@ -244,8 +244,8 @@ func commonPorts(a, b *ScanCoverage) (*portSet, bool) {
 	}
 	return &first, same
 }
-func coverageFlags(c *ScanCoverage) [8]bool {
-	return [8]bool{c.ICMP, c.ARP, c.Multicast, c.NetBIOS, c.ReverseDNS, c.Descriptions, c.Banners, c.AllHosts}
+func coverageFlags(c *ScanCoverage) [9]bool {
+	return [9]bool{c.ICMP, c.ARP, c.NDP, c.Multicast, c.NetBIOS, c.ReverseDNS, c.Descriptions, c.Banners, c.AllHosts}
 }
 func comparablePorts(old, now *Device, common *portSet) ([]string, []string) {
 	values := func(d *Device) []string {

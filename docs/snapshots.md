@@ -16,7 +16,7 @@ Name sets ignore order, duplicates, DNS letter case, and a terminal DNS dot. MAC
 
 ## Requested scan coverage
 
-New reports include an optional `coverage` object recording requested TCP ports and the ICMP, ARP, multicast, NetBIOS, reverse-DNS, UPnP-description, banner, and all-hosts options. It records configuration, not a guarantee that every probe completed or every protocol answered. Reports still use schema 1; older snapshots without coverage continue to load.
+New reports include an optional `coverage` object recording requested TCP ports and the ICMP, ARP, NDP, multicast, NetBIOS, reverse-DNS, UPnP-description, banner, and all-hosts options. It records configuration, not a guarantee that every probe completed or every protocol answered. Reports still use schema 1; older snapshots without coverage continue to load.
 
 `scan` changes have an empty `ip` and report changed target, interface, or requested coverage. They explain when two snapshots differ in how they were collected:
 

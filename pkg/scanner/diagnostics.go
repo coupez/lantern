@@ -70,7 +70,7 @@ func checkLocalSocket(open func() (io.Closer, error)) error {
 }
 
 // Diagnose inspects local interfaces, routing/neighbor tables and socket access.
-// It opens and closes the scanner's ICMP, multicast and optional ARP resources;
+// It opens and closes the scanner's ICMP, multicast and optional ARP/NDP resources;
 // it sends no packets, reads no captured frames and changes no permissions.
 // Only invalid interface input or cancellation returns an error. Individual
 // failures remain in the report so callers can explain partial capabilities.
@@ -166,6 +166,17 @@ func Diagnose(ctx context.Context, iface string) (Diagnostics, error) {
 			}
 			err = checkLocalSocket(func() (io.Closer, error) { return openARP(&link.iface) })
 			return "raw ARP resource opened and closed on " + link.iface.Name + "; no frame read or sent", err
+		}},
+		{"ndp", "NDP is optional (--ndp); use an IPv6 Ethernet interface with BPF access on macOS or CAP_NET_RAW on Linux.", func(context.Context) (string, error) {
+			if target6Err != nil {
+				return "", fmt.Errorf("target selection: %w", target6Err)
+			}
+			link, err := ndpInterface(target6, iface6)
+			if err != nil {
+				return "", err
+			}
+			err = checkLocalSocket(func() (io.Closer, error) { return openNDP(&link.iface) })
+			return "raw NDP resource opened and closed on " + link.iface.Name + "; no frame read or sent", err
 		}},
 		{"neighbors4", "The OS neighbor table is optional evidence; Linux needs the ip command and macOS uses /usr/sbin/arp.", func(ctx context.Context) (string, error) {
 			entries, err := neighborsOn(ctx, iface)

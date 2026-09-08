@@ -109,12 +109,16 @@ func parseARPReply(b []byte, local netip.Addr, mac net.HardwareAddr) (Neighbor, 
 	return Neighbor{IP: ip, MAC: net.HardwareAddr(b[22:28]).String()}, true
 }
 
-type arpConn interface {
+type frameConn interface {
 	ReadFrame() ([]byte, error)
 	WriteFrame([]byte) error
 	SetReadDeadline(time.Time) error
 	SetWriteDeadline(time.Time) error
 	Close() error
+}
+
+func openARP(iface *net.Interface) (frameConn, error) {
+	return openEthernet(iface, 0x0806, 64)
 }
 
 func arpSweep(ctx context.Context, o Options, hosts []netip.Addr) (ARPResult, error) {
@@ -132,7 +136,7 @@ func arpSweep(ctx context.Context, o Options, hosts []netip.Addr) (ARPResult, er
 	defer c.Close()
 	return exchangeARP(ctx, c, link, hosts, o.Timeout)
 }
-func exchangeARP(ctx context.Context, c arpConn, link arpLink, hosts []netip.Addr, timeout time.Duration) (ARPResult, error) {
+func exchangeARP(ctx context.Context, c frameConn, link arpLink, hosts []netip.Addr, timeout time.Duration) (ARPResult, error) {
 	result := ARPResult{}
 	stop := context.AfterFunc(ctx, func() { c.Close() })
 	defer stop()

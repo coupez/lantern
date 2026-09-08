@@ -29,7 +29,7 @@ func TestCSVFormulaProtection(t *testing.T) {
 	}
 }
 func TestInvalidCLI(t *testing.T) {
-	for _, args := range [][]string{{"scan", "127.0.0.1", "--ipv6"}, {"scan", "fe80::1%en0", "--interface", "en1"}, {"scan", "127.0.0.1", "--profile", "missing"}, {"scan", "127.0.0.1", "--json", "--csv"}, {"scan", "0.0.0.0/0"}, {"watch", "--interval", "0s"}, {"scan", "127.0.0.1", "--concurrency", "0"}} {
+	for _, args := range [][]string{{"scan", "127.0.0.1", "--ndp"}, {"scan", "127.0.0.1", "--ipv6"}, {"scan", "fe80::1%en0", "--interface", "en1"}, {"scan", "127.0.0.1", "--profile", "missing"}, {"scan", "127.0.0.1", "--json", "--csv"}, {"scan", "0.0.0.0/0"}, {"watch", "--interval", "0s"}, {"scan", "127.0.0.1", "--concurrency", "0"}} {
 		if e := run(args); e == nil {
 			t.Fatal("accepted invalid args", args)
 		}

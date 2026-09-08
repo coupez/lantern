@@ -1,12 +1,12 @@
 # Discovery and reachability
 
-Lantern keeps observed address mappings separate from active responses. An OS neighbor-cache entry is useful evidence but may be stale. TCP connection acceptance/refusal, a matching echo reply, a discovery advertisement, or a solicited ARP reply counts as a response. Proxy ARP, shared devices, and multiple IP addresses mean the number of reported addresses is not necessarily the number of physical devices. All network claims remain unauthenticated.
+Lantern keeps observed address mappings separate from active responses. An OS neighbor-cache entry is useful evidence but may be stale. TCP connection acceptance/refusal, a matching echo reply, a discovery advertisement, or a solicited ARP/NDP reply counts as a response. Proxy ARP/NDP, shared devices, and multiple IP addresses mean the number of reported addresses is not necessarily the number of physical devices. All network claims remain unauthenticated.
 
 ## Interface selection
 
 An automatic IPv4 CLI scan retains both the selected subnet and its interface, including when a default-route adapter shares a subnet with a virtual adapter. Reports and saved snapshots record that interface. Core callers can use `AutoTarget4(interfaceName)` to obtain the prefix and interface together, then pass both in `Options`; `AutoTarget` remains available for callers needing only the prefix.
 
-`--interface` selects the link used by local multicast and ARP discovery, filters OS neighbor mappings and local-address evidence, and scopes link-local IPv6 probes. Unknown interface names fail before scanning for both address families. Ordinary TCP connects still follow OS routing; the option does not bind all TCP sockets to a device or bypass VPN routing.
+`--interface` selects the link used by local multicast and ARP/NDP discovery, filters OS neighbor mappings and local-address evidence, and scopes link-local IPv6 probes. Unknown interface names fail before scanning for both address families. Ordinary TCP connects still follow OS routing; the option does not bind all TCP sockets to a device or bypass VPN routing.
 
 IPv4/IPv6 neighbor rows from another interface are excluded when an interface is selected, even if the same IP exists on both links. A row with no interface provenance is excluded from a scoped lookup. On Linux the full table is read before filtering because `ip neigh show dev NAME` removes the interface column from its output. A custom `Engine.NeighborSource` must provide observations already appropriate for the requested interface; its IP-to-MAC map has no separate interface field.
 
@@ -62,9 +62,21 @@ A response must match a successfully sent target address, transaction ID, and UD
 
 Active unique `<00>` and `<20>` registrations provide computer-name claims. Group `<00>` entries are retained as workgroup advertisements. Inactive, conflicted, or deregistering names do not become computer identity claims. Every name's original 16 bytes and flags are retained. Because the remote OEM code page is unknown, non-ASCII/control bytes are escaped for display instead of guessing a Unicode conversion. A reported unit ID stays in `reported_unit_id`; it never becomes the device's observed MAC or determines its vendor. Samba/Windows compatibility does not establish the operating system of a responder.
 
+## Direct IPv6 NDP
+
+`--ndp` runs neighbor solicitation alongside the TCP/ICMP discovery pass on an IPv6 Ethernet interface. Finite ranges use their enumerated addresses; large ranges use the bounded IPv6 candidate list described below. An IPv4 target with `--ndp` is rejected before probing. Raw access is optional and uses the same BPF/macOS or `CAP_NET_RAW`/Linux requirements as ARP; failures become warnings. `doctor` opens and closes the actual NDP resource without reading or sending frames.
+
+Requests use a real address and MAC from the selected interface. The scanner chooses a source in the target's configured prefix where possible, otherwise an eligible link-local source. It skips its own addresses, foreign zones, multicast/unspecified targets, and global addresses outside all configured interface prefixes. Ambiguous automatic interface selection requires `--interface`. These prefix checks limit local solicitation; they do not infer routers or reconstruct advertised on-link routing policy.
+
+Each unique eligible target receives one request, in bursts of 32 separated by 10 ms, with a 10 ms write deadline. The receive window uses `--timeout` after sending. It ends early if every requested address has replied; an initial write failure does not wait out the receive timeout. Cancellation closes the descriptor and joins the reader. Partial observations survive send/read failures. No neighbor-cache entries, routes, or interface settings are explicitly changed by Lantern; the operating system can update its own cache from ordinary protocol traffic.
+
+Solicitations carry a source link-layer option and use the target's solicited-node multicast destination. Replies must have hop limit 255, a valid ICMPv6 checksum, code zero, and the solicited flag. The decoder requires a unicast reply to the request's source address and local Ethernet destination, plus a target MAC matching the Ethernet sender. Only actually requested targets are retained; unsolicited and duplicate observations are ignored. These checks follow the relevant [RFC 4861 message formats and validation rules](https://www.rfc-editor.org/rfc/rfc4861). Fragmented NDP is rejected, including atomic fragments, as required by [RFC 6980](https://www.rfc-editor.org/rfc/rfc6980).
+
+Capture is limited to IPv6 frames and 2,048 bytes per frame, without enabling promiscuous mode. Up to eight hop-by-hop/destination extension headers are decoded. Routing/authentication headers and raw tagged trunks are excluded; select VLAN subinterfaces directly. NDP claims remain unauthenticated and may come from a proxy. The `ndp` evidence denotes a fresh solicited mapping, not a unique physical-device identity. That mapping takes precedence over stale cached MACs and counts as responsive even with no TCP ports open. `NDPResult` and optional `Engine.NDPSource` expose the same observations to core integrations; injected link-local addresses must carry the selected zone.
+
 ## IPv6
 
-Individual addresses and small ranges are probed directly. Large ranges, including normal /64 networks, use candidate discovery from scoped ICMPv6 all-nodes echo, mDNS/SSDP, the NDP cache, and local interface addresses. The candidate list is bounded by `--max-hosts`; the address space is never exhaustively enumerated. Direct NDP solicitation is not implemented yet. Link-local addresses retain the interface zone in structured reports.
+Individual addresses and small ranges are probed directly. Large ranges, including normal /64 networks, use candidate discovery from scoped ICMPv6 all-nodes echo, mDNS/SSDP, the NDP cache, and local interface addresses. The candidate list is bounded by `--max-hosts`; the address space is never exhaustively enumerated. `--ndp` optionally solicits these bounded candidates after discovery; it does not expand a /64 into an address sweep. Link-local addresses retain the interface zone in structured reports.
 
 ## Protocol references
 
