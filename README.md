@@ -105,6 +105,8 @@ Shelly devices advertising `_shelly._tcp` gain an instance-name fallback and sma
 
 Use `lantern models Mac16,9` to look up a hardware code offline, `lantern models` for the index count, or `lantern models sources` for provenance. Discovery maps Bonjour device-info/AirPlay `model` and RAOP `am` fields to these candidates. The reported `identity.model` stays intact; `identity.model_names` contains catalog candidates. A unique candidate appears in the report, while ambiguous matches are labeled and listed in `inspect` / `--details`. CSV includes `model_candidates`.
 
+Watch also labels catalog-only identities: one match appears as `Catalog · <product>`, while multiple matches show a candidate count. Enter opens the full candidate list. Existing names, MAC vendors, and reported models retain display priority.
+
 ### Useful watch activity
 
 Watch and snapshot diffs report name/model/vendor/workgroup changes, open-port observations, and transitions from responsive to cached-only evidence. New snapshots record requested scan coverage: changing profiles or scanning fewer ports does not fabricate disappearing services. Interrupted scans do not erase existing observations. Reported discovery failures suppress missing-address claims and comparisons of dependent fields; optional `incomplete_methods` metadata records which methods failed or reached collection limits. Changes are address-based observations, not proof that a physical device joined or went offline. See [snapshot comparison semantics](docs/snapshots.md) for structured fields and legacy-file behavior.

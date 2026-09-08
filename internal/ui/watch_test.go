@@ -183,6 +183,69 @@ func TestWatchPartialReportDoesNotClaimMissing(t *testing.T) {
 	}
 }
 
+func TestWatchCatalogOnlyIdentity(t *testing.T) {
+	ip := netip.MustParseAddr("192.0.2.1")
+	for _, names := range [][]string{{"Sensor P2"}, {"Sensor A", "Sensor B"}} {
+		d := scanner.Device{IP: ip, Identity: &scanner.Identity{ModelNames: names}, Evidence: []string{"mdns"}}
+		m := watchModel{}
+		m.accept(scanner.Report{Devices: []scanner.Device{d}})
+		want := "Catalog · Sensor P2"
+		if len(names) > 1 {
+			want = "Catalog · 2 candidates"
+		}
+		for _, width := range []int{60, 100} {
+			frame := m.frame(&UI{}, width, 24, time.Now())
+			if !strings.Contains(frame, want) || strings.Contains(frame, "Unknown device") {
+				t.Fatalf("catalog-only identity hidden at width %d: %s", width, frame)
+			}
+		}
+		m.key("enter")
+		frame := m.frame(&UI{}, 100, 40, time.Now())
+		for _, name := range names {
+			if !strings.Contains(frame, name) {
+				t.Fatal("inspector lost catalog candidate", name)
+			}
+		}
+		if d.Identity.Name != "" || d.Identity.Model != "" || d.Identity.Manufacturer != "" {
+			t.Fatal("catalog display invented advertised identity", d.Identity)
+		}
+		// Refresh must replace the fallback, including an active candidate query.
+		m.query = names[0]
+		if len(m.devices()) != 1 {
+			t.Fatal("candidate not searchable")
+		}
+		next := d.Clone()
+		next.Identity.ModelNames = nil
+		m.accept(scanner.Report{Devices: []scanner.Device{next}})
+		if len(m.devices()) != 0 {
+			t.Fatal("removed candidate remained searchable")
+		}
+		m.key("escape")
+		if frame := m.frame(&UI{}, 100, 24, time.Now()); !strings.Contains(frame, "Unknown device") || strings.Contains(frame, "Catalog ·") {
+			t.Fatal("removed candidate remained visible", frame)
+		}
+	}
+}
+
+func TestWatchCatalogDoesNotReplaceReportedIdentity(t *testing.T) {
+	base := scanner.Device{Identity: &scanner.Identity{ModelNames: []string{"Catalog candidate"}}}
+	for _, tc := range []struct {
+		name string
+		set  func(*scanner.Device)
+	}{
+		{"Reported name", func(d *scanner.Device) { d.Identity.Name = "Reported name" }},
+		{"DNS name", func(d *scanner.Device) { d.Names = []string{"DNS name"} }},
+		{"MAC vendor", func(d *scanner.Device) { d.Vendor.Name = "MAC vendor" }},
+		{"Reported model", func(d *scanner.Device) { d.Identity.Model = "Reported model" }},
+	} {
+		d := base.Clone()
+		tc.set(&d)
+		if got := deviceName(d); got != tc.name {
+			t.Fatalf("catalog replaced existing display: %q, want %q", got, tc.name)
+		}
+	}
+}
+
 func TestActivityRetainsWarningsAndBoundsHistory(t *testing.T) {
 	m := fixtureWatch()
 	for i := 0; i < 5; i++ {

@@ -66,6 +66,12 @@ func deviceName(d scanner.Device) string {
 	if d.Identity != nil && d.Identity.Model != "" {
 		return d.Identity.Model
 	}
+	if d.Identity != nil && len(d.Identity.ModelNames) > 0 {
+		if len(d.Identity.ModelNames) == 1 {
+			return "Catalog · " + d.Identity.ModelNames[0]
+		}
+		return fmt.Sprintf("Catalog · %d candidates", len(d.Identity.ModelNames))
+	}
 	if d.Identity != nil && d.Identity.Firmware != "" {
 		return d.Identity.Firmware
 	}
