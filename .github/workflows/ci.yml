@@ -23,6 +23,7 @@ jobs:
       - run: python3 scripts/test-doctor.py
       - run: python3 scripts/test-watch-pty.py
       - run: python3 scripts/test-snapshot-cli.py
+      - run: python3 scripts/test-ethernet-fixture.py
       - name: Native Bonjour Matter interoperability on loopback
         if: runner.os == 'macOS'
         run: python3 scripts/test-matter-dnssd.py
