@@ -27,10 +27,15 @@ func testWSDProbes(t *testing.T) []wsdProbe {
 }
 func TestWSDVersionsAndIdentity(t *testing.T) {
 	probes := testWSDProbes(t)
-	if len(probes) != 2 || probes[0].id == probes[1].id {
+	if len(probes) != 4 || probes[0].id == probes[1].id {
 		t.Fatal(probes)
 	}
-	for _, p := range probes {
+	seenIDs := map[string]bool{}
+	for index, p := range probes {
+		if seenIDs[p.id] {
+			t.Fatal("duplicate request ID")
+		}
+		seenIDs[p.id] = true
 		root, err := readWSDXML(p.packet)
 		if err != nil {
 			t.Fatal(err)
@@ -39,6 +44,13 @@ func TestWSDVersionsAndIdentity(t *testing.T) {
 		action, _ := header.value(p.version.addressing, "Action", true)
 		if action != p.version.discovery+"/Probe" {
 			t.Fatal(action)
+		}
+
+		body, _ := root.child(wsdSOAP, "Body", true)
+		probe, _ := body.child(p.version.discovery, "Probe", true)
+		types, err := probe.value(p.version.discovery, "Types", false)
+		if err != nil || (index%2 == 0 && types != "") || (index%2 == 1 && (types != "wsdp:Device" || probe.namespaces["wsdp"] != p.version.profile)) {
+			t.Fatal("wrong typed/untyped probe", types, err)
 		}
 		ads, err := parseWSD([]byte(wsdFixture(p)), probes)
 		if err != nil || len(ads) != 1 {
@@ -75,7 +87,7 @@ func TestWSDRejectsInvalidAndUncorrelatedReplies(t *testing.T) {
 	fixture := wsdFixture(p)
 	for name, bad := range map[string]string{
 		"wrong nonce":            strings.ReplaceAll(fixture, p.id, "urn:uuid:other"),
-		"wrong version nonce":    strings.ReplaceAll(fixture, p.id, probes[1].id),
+		"wrong version nonce":    strings.ReplaceAll(fixture, p.id, probes[2].id),
 		"hello":                  strings.ReplaceAll(fixture, "/ProbeMatches", "/Hello"),
 		"namespace lookalike":    strings.ReplaceAll(fixture, p.version.discovery, p.version.discovery+"/fake"),
 		"duplicate correlation":  strings.ReplaceAll(fixture, "</a:RelatesTo>", "</a:RelatesTo><a:RelatesTo>other</a:RelatesTo>"),

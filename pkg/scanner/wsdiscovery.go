@@ -26,11 +26,11 @@ const (
 	maxWSDBytes             = 65507
 )
 
-type wsdVersion struct{ discovery, addressing, to, anonymous string }
+type wsdVersion struct{ discovery, addressing, to, anonymous, profile string }
 
 var wsdVersions = []wsdVersion{
-	{"http://schemas.xmlsoap.org/ws/2005/04/discovery", "http://schemas.xmlsoap.org/ws/2004/08/addressing", "urn:schemas-xmlsoap-org:ws:2005:04:discovery", "http://schemas.xmlsoap.org/ws/2004/08/addressing/role/anonymous"},
-	{"http://docs.oasis-open.org/ws-dd/ns/discovery/2009/01", "http://www.w3.org/2005/08/addressing", "urn:docs-oasis-open-org:ws-dd:ns:discovery:2009:01", "http://www.w3.org/2005/08/addressing/anonymous"},
+	{"http://schemas.xmlsoap.org/ws/2005/04/discovery", "http://schemas.xmlsoap.org/ws/2004/08/addressing", "urn:schemas-xmlsoap-org:ws:2005:04:discovery", "http://schemas.xmlsoap.org/ws/2004/08/addressing/role/anonymous", "http://schemas.xmlsoap.org/ws/2006/02/devprof"},
+	{"http://docs.oasis-open.org/ws-dd/ns/discovery/2009/01", "http://www.w3.org/2005/08/addressing", "urn:docs-oasis-open-org:ws-dd:ns:discovery:2009:01", "http://www.w3.org/2005/08/addressing/anonymous", "http://docs.oasis-open.org/ws-dd/ns/dpws/2009/01"},
 }
 
 type wsdProbe struct {
@@ -42,17 +42,23 @@ type wsdProbe struct {
 func newWSDProbes() ([]wsdProbe, error) {
 	var probes []wsdProbe
 	for _, version := range wsdVersions {
-		var id [16]byte
-		if _, err := rand.Read(id[:]); err != nil {
-			return nil, err
+		for _, typed := range []bool{false, true} {
+			var id [16]byte
+			if _, err := rand.Read(id[:]); err != nil {
+				return nil, err
+			}
+			id[6] = id[6]&0x0f | 0x40
+			id[8] = id[8]&0x3f | 0x80
+			messageID := fmt.Sprintf("urn:uuid:%x-%x-%x-%x-%x", id[:4], id[4:6], id[6:8], id[8:10], id[10:])
+			// Keep broad discovery and also query DPWS Device explicitly: some
+			// deployed hosts (including wsdd 0.7) ignore untyped Probes.
+			types := ""
+			if typed {
+				types = "<d:Types>wsdp:Device</d:Types>"
+			}
+			packet := fmt.Sprintf(`<s:Envelope xmlns:s="%s" xmlns:a="%s" xmlns:d="%s" xmlns:wsdp="%s"><s:Header><a:Action>%s/Probe</a:Action><a:MessageID>%s</a:MessageID><a:To>%s</a:To><a:ReplyTo><a:Address>%s</a:Address></a:ReplyTo></s:Header><s:Body><d:Probe>%s</d:Probe></s:Body></s:Envelope>`, wsdSOAP, version.addressing, version.discovery, version.profile, version.discovery, messageID, version.to, version.anonymous, types)
+			probes = append(probes, wsdProbe{messageID, version, []byte(packet)})
 		}
-		id[6] = id[6]&0x0f | 0x40
-		id[8] = id[8]&0x3f | 0x80
-		messageID := fmt.Sprintf("urn:uuid:%x-%x-%x-%x-%x", id[:4], id[4:6], id[6:8], id[8:10], id[10:])
-		// An untyped Probe asks for discoverable endpoints of any type. ReplyTo is
-		// explicit for older DPWS implementations; responses return to this UDP port.
-		packet := fmt.Sprintf(`<s:Envelope xmlns:s="%s" xmlns:a="%s" xmlns:d="%s"><s:Header><a:Action>%s/Probe</a:Action><a:MessageID>%s</a:MessageID><a:To>%s</a:To><a:ReplyTo><a:Address>%s</a:Address></a:ReplyTo></s:Header><s:Body><d:Probe/></s:Body></s:Envelope>`, wsdSOAP, version.addressing, version.discovery, version.discovery, messageID, version.to, version.anonymous)
-		probes = append(probes, wsdProbe{messageID, version, []byte(packet)})
 	}
 	return probes, nil
 }

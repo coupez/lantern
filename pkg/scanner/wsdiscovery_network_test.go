@@ -26,7 +26,7 @@ func TestWSDNetworkIntegration(t *testing.T) {
 			go func() {
 				counts := map[string]int{}
 				b := make([]byte, 8192)
-				for range 6 {
+				for range 3 * len(probes) {
 					n, peer, err := server.ReadFromUDP(b)
 					if err != nil {
 						results <- err
@@ -56,7 +56,7 @@ func TestWSDNetworkIntegration(t *testing.T) {
 						return
 					}
 				}
-				if len(counts) != 2 {
+				if len(counts) != len(probes) {
 					results <- fmt.Errorf("missing protocol version: %v", counts)
 					return
 				}
@@ -152,7 +152,7 @@ func TestWSDMulticastEngineNetworkIntegration(t *testing.T) {
 	}()
 	go func() {
 		b := make([]byte, 8192)
-		for range 6 {
+		for range 12 {
 			n, peer, err := server.ReadFromUDP(b)
 			if err != nil {
 				done <- err
