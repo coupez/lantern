@@ -159,7 +159,10 @@ func multicastSocket(ctx context.Context, local netip.Addr, iface *net.Interface
 		c.Close()
 		return nil, nil, err
 	}
-	c.SetDeadline(time.Now().Add(timeout))
+	if err := c.SetDeadline(time.Now().Add(timeout)); err != nil {
+		c.Close()
+		return nil, nil, err
+	}
 	stop := context.AfterFunc(ctx, func() { c.Close() })
 	return c, func() { stop(); c.Close() }, nil
 }

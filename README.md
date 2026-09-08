@@ -68,6 +68,10 @@ Deep IPv4 scans and `lantern inspect IP` include a unicast NetBIOS node-status p
 
 Computer names, workgroups, registration flags, and reported unit IDs remain in the raw advertisements; recognized computer names also enter the name/identity fields. A workgroup is not a host name, and a reported unit ID does not override an observed MAC. Registrations are service hints, not verified open TCP ports or operating-system identification. NetBIOS-disabled systems need the other discovery paths. This protocol supports IPv4 and the default empty NetBIOS scope only.
 
+## Check local capabilities
+
+`lantern doctor` checks actual ICMP, multicast, ARP, neighbor-table, and automatic target-selection access without sending discovery packets. Use `--interface en0` to select a network or `--json` for scripts. Optional failures include a reason and next step; socket access alone does not prove device reachability. See [diagnostics](docs/diagnostics.md).
+
 ## Know what the results mean
 
 - **● Responsive** means a TCP/ICMP/ARP/mDNS/SSDP response or a local interface was observed. **○ Cached neighbor** means the OS has an address mapping; it does not prove the device is awake.

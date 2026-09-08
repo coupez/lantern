@@ -21,6 +21,7 @@ clean:
 linux-test:
 	docker build -f scripts/Dockerfile.linux-test -t lantern-linux-test:local .
 	docker run --rm --cap-drop ALL --cap-add NET_RAW lantern-linux-test:local
+	docker run --rm --cap-drop ALL lantern-linux-test:local sh -c 'go build -o /tmp/lantern ./cmd/lantern && python3 /usr/local/bin/test-doctor.py /tmp/lantern --expect-arp unavailable'
 
 terminal-test: build
 	python3 scripts/test-watch-pty.py

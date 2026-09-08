@@ -5,6 +5,7 @@ The workspace started empty. A runnable CLI and reusable discovery engine now ex
 ## Implemented
 
 - Go CLI with styled adaptive-width output, live discoveries/progress, inspect view, quick/standard/deep profiles, automatic default-route selection, and explicit target/interface selection.
+- Local capability diagnostics (`doctor`, `--interface`, `--json`) with actual socket/neighbor-table checks, cancellation, partial failures, and reusable core API; no discovery packets sent.
 - Interactive watch dashboard with selection, grapheme-aware search/rendering, scrollable device details, bounded activity history, warnings, pause/refresh controls, synthetic demo, and terminal restoration. Plain and structured watch streams remain available.
 - Cancellable core with deduplicated incremental port jobs, bounded TCP concurrency, bounded ICMP writes and queue-pressure retries, immediate completion for fully answered echo sweeps, per-scan echo counters, neighbor observation, mDNS/DNS-SD, SSDP, reverse DNS, and bounded parallel service banners with fragmented-response handling.
 - Unicast IPv4 NetBIOS node-status discovery with source-attributed computer names, workgroups, raw registration bytes, cancellation, bounded pacing, and live Samba interoperability checks.

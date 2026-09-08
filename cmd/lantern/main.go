@@ -15,7 +15,6 @@ import (
 	"net"
 	"os"
 	"os/signal"
-	"runtime"
 	"strconv"
 	"strings"
 	"syscall"
@@ -99,16 +98,9 @@ func run(args []string) error {
 		}
 		return json.NewEncoder(os.Stdout).Encode(scanner.Diff(a, b))
 	case "doctor":
-		fmt.Printf("Lantern %s · %s/%s\nOffline vendor assignments: %d\n", buildVersion(), runtime.GOOS, runtime.GOARCH, vendors.Count())
-		n, err := scanner.Networks()
-		if err != nil {
-			return err
-		}
-		for _, v := range n {
-			fmt.Printf("Network: %s on %s\n", v.CIDR, v.Interface)
-		}
-		fmt.Println("Discovery: ICMP echo + TCP connect + neighbor cache\nNo account, cloud lookup, telemetry, or root required on macOS.\nLinux ICMP availability depends on ping_group_range; TCP remains available.")
-		return nil
+		ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		defer cancel()
+		return doctorCommand(ctx, args, os.Stdout, scanner.Diagnose)
 	case "wake":
 		return wake(args)
 	case "demo":
@@ -135,7 +127,7 @@ func help() {
   lantern vendors [sources]       Database size and provenance
   lantern diff before.json after.json
   lantern wake MAC [broadcast-IP] Send a Wake-on-LAN packet
-  lantern doctor                  Check local capabilities
+  lantern doctor [--json]         Check local capabilities without sending probes
   lantern demo [--watch]          Preview with synthetic data; no network use
 
   Scan options

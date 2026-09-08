@@ -9,6 +9,7 @@ COPY internal ./internal
 COPY pkg ./pkg
 COPY LICENSE NOTICE THIRD_PARTY_LICENSES README.md Makefile ./
 COPY scripts/test-install.py scripts/release.sh ./scripts/
+COPY scripts/test-doctor.py /usr/local/bin/test-doctor.py
 COPY scripts/test-snapshot-cli.py /usr/local/bin/test-snapshot-cli.py
 COPY scripts/test-watch-pty.py /usr/local/bin/test-watch-pty.py
 COPY scripts/test-netbios-samba.sh /usr/local/bin/test-netbios-samba.sh

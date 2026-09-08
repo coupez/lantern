@@ -47,12 +47,15 @@ func networksFor(v6 bool) ([]Network, error) {
 	return out, nil
 }
 func AutoTarget(iface string) (netip.Prefix, error) {
+	return autoTargetContext(context.Background(), iface)
+}
+func autoTargetContext(ctx context.Context, iface string) (netip.Prefix, error) {
 	networks, err := Networks()
 	if err != nil {
 		return netip.Prefix{}, err
 	}
 	if iface == "" {
-		if preferred := defaultInterface(); preferred != "" {
+		if preferred := defaultInterfaceContext(ctx, false); preferred != "" {
 			for _, n := range networks {
 				if n.Interface == preferred {
 					return netip.ParsePrefix(n.CIDR)
@@ -155,10 +158,13 @@ func inTarget(p netip.Prefix, a netip.Addr) bool { return p.Contains(a.WithZone(
 // AutoTarget6 selects one interface, then discovers its IPv6 neighbors without
 // attempting to enumerate its full address space.
 func AutoTarget6(iface string) (netip.Prefix, string, error) {
+	return autoTarget6Context(context.Background(), iface)
+}
+func autoTarget6Context(ctx context.Context, iface string) (netip.Prefix, string, error) {
 	if iface == "" {
-		iface = defaultInterfaceFor(true)
+		iface = defaultInterfaceContext(ctx, true)
 		if iface == "" {
-			iface = defaultInterface()
+			iface = defaultInterfaceContext(ctx, false)
 		}
 	}
 	selected, _, err := ipv6Interface(netip.MustParsePrefix("::/0"), iface)
@@ -202,7 +208,10 @@ func ParsePorts(s string) ([]uint16, error) {
 
 func defaultInterface() string { return defaultInterfaceFor(false) }
 func defaultInterfaceFor(v6 bool) string {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	return defaultInterfaceContext(context.Background(), v6)
+}
+func defaultInterfaceContext(ctx context.Context, v6 bool) string {
+	ctx, cancel := context.WithTimeout(ctx, time.Second)
 	defer cancel()
 	var command *exec.Cmd
 	switch runtime.GOOS {
