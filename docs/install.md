@@ -1,6 +1,6 @@
 # Install Lantern
 
-The configured GitHub repository is currently private, and no GitHub release assets have been published. Source builds require access to a checkout. Public downloads remain a release step; the commands below do not change repository visibility.
+The configured GitHub repository is currently private, and no GitHub release assets have been published. Authenticated installation of the integration revision from GitHub has been verified; access is still required. Public downloads remain a release step; the commands below do not change repository visibility.
 
 ## Build from a checkout
 
@@ -22,13 +22,15 @@ The default destination is `$HOME/.local/bin/lantern`. Add `$HOME/.local/bin` to
 
 ## Versioned Go installation
 
-The module path is `github.com/coupez/lantern`. Once the canonical-module revision is available remotely, Go can install a selected tag, commit, or branch without a checkout:
+The module path is `github.com/coupez/lantern`. The current CLI integration is available on `integration/cli-release-candidate`, with [draft PR #1](https://github.com/coupez/lantern/pull/1) tracking its review. Install that branch without a checkout:
 
 ```sh
-GOPRIVATE=github.com/coupez/lantern go install github.com/coupez/lantern/cmd/lantern@latest
+GOPRIVATE=github.com/coupez/lantern go install github.com/coupez/lantern/cmd/lantern@integration/cli-release-candidate
 ```
 
-While the repository is private, Git must already have permission and authentication to read it. `GOPRIVATE` prevents private-module requests from going to public Go proxies; it does not grant access. A public repository can omit this environment variable. `@latest` selects the version available upstream, which may differ from an unmerged local branch. A versioned install reports its module version through `lantern version`.
+While the repository is private, Git must already have permission and authentication to read it. `GOPRIVATE` prevents private-module requests from going to public Go proxies; it does not grant access. A public repository can omit this environment variable. Replace the branch with a tag or commit to select a specific revision. `@latest` may select the older main branch until the integration is merged or tagged. A versioned install reports its module version through `lantern version`.
+
+Revision `43cab67f3491ab74b07301bafc208d0af2b0c92a` was fetched and installed from GitHub in an empty temporary module cache on macOS ARM64. Automatic toolchain selection downloaded Go 1.26.8 and all dependencies, and the installed executable passed version, offline catalog, and demo checks. If `GOTOOLCHAIN=local` is set, the installed Go must already be at least 1.26.8; the bootstrap Go 1.26.3 correctly refused this build when automatic selection was disabled.
 
 Go installs commands into `GOBIN` when set, otherwise into the first `GOPATH` entry's `bin` directory (normally `$HOME/go/bin`). Put that directory on `PATH` to invoke `lantern` directly.
 
