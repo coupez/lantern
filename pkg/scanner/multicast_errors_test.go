@@ -10,6 +10,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"golang.org/x/net/dns/dnsmessage"
 )
@@ -21,6 +22,14 @@ type scriptedDiscoveryUDP struct {
 	readErr, writeErr          error
 	failWrite, shortWrite      int
 	beforeRead                 func(int)
+	readDeadline               time.Time
+	deadlineErr                error
+	waitDeadline               bool
+}
+
+func (c *scriptedDiscoveryUDP) SetReadDeadline(deadline time.Time) error {
+	c.readDeadline = deadline
+	return c.deadlineErr
 }
 
 func (c *scriptedDiscoveryUDP) WriteToUDP(b []byte, _ *net.UDPAddr) (int, error) {
@@ -40,6 +49,9 @@ func (c *scriptedDiscoveryUDP) ReadFromUDP(b []byte) (int, *net.UDPAddr, error) 
 	c.reads++
 	if c.reads <= c.packetCount {
 		return copy(b, c.packet), c.peer, nil
+	}
+	if c.waitDeadline {
+		time.Sleep(time.Until(c.readDeadline))
 	}
 	return 0, nil, c.readErr
 }
@@ -65,7 +77,7 @@ func multicastErrorFixture(t *testing.T, protocol string, pointers int) *scripte
 func collectFixture(ctx context.Context, protocol string, c *scriptedDiscoveryUDP) ([]discoveryHit, error) {
 	target := netip.MustParsePrefix("192.0.2.0/24")
 	if protocol == "mDNS" {
-		return collectMDNS(ctx, c, c.peer, target)
+		return collectMDNS(ctx, c, c.peer, target, time.Time{})
 	}
 	return collectSSDP(ctx, c, c.peer, target, "fixture0")
 }

@@ -82,8 +82,68 @@ func TestMDNSSplitReplyNetworkIntegration(t *testing.T) {
 		})
 	}
 }
-func testMDNSSplitReply(t *testing.T, address, service, model string) {
+
+func TestMDNSLostQueriesNetworkIntegration(t *testing.T) {
+	for _, address := range []string{"127.0.0.1", "::1"} {
+		t.Run(address, func(t *testing.T) { testMDNSSplitReply(t, address, "_matterc._udp", "256", true) })
+	}
+}
+
+func TestMDNSRetryCancellationNetworkIntegration(t *testing.T) {
 	requireNetwork(t)
+	server, err := net.ListenUDP("udp4", &net.UDPAddr{IP: net.IPv4(127, 0, 0, 1)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer server.Close()
+	client, err := net.ListenUDP("udp4", &net.UDPAddr{IP: net.IPv4(127, 0, 0, 1)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer client.Close()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	stop := context.AfterFunc(ctx, func() { client.Close() })
+	defer stop()
+	deadline := time.Now().Add(3 * time.Second)
+	client.SetDeadline(deadline)
+	server.SetReadDeadline(deadline)
+	done := make(chan bool, 1)
+	go func() {
+		seen := map[dnsmessage.Question]bool{}
+		b := make([]byte, 9000)
+		for {
+			n, _, err := server.ReadFromUDP(b)
+			if err != nil {
+				done <- false
+				return
+			}
+			var message dnsmessage.Message
+			if message.Unpack(b[:n]) != nil {
+				continue
+			}
+			for _, question := range message.Questions {
+				if seen[question] {
+					cancel()
+					done <- true
+					return
+				}
+				seen[question] = true
+			}
+		}
+	}()
+	start := time.Now()
+	hits, err := collectMDNS(ctx, client, server.LocalAddr().(*net.UDPAddr), netip.MustParsePrefix("127.0.0.1/32"), deadline)
+	server.Close()
+	retried := <-done
+	if !retried || err != nil || len(hits) != 0 || ctx.Err() == nil || time.Since(start) > 2*time.Second {
+		t.Fatal("retry cancellation failed to release the collector", retried, hits, err, time.Since(start))
+	}
+}
+
+func testMDNSSplitReply(t *testing.T, address, service, model string, loseFirst ...bool) {
+	requireNetwork(t)
+	loss := len(loseFirst) > 0 && loseFirst[0]
 	modelKey := "model"
 	port := uint16(8765)
 	var shellyReads atomic.Int32
@@ -117,7 +177,13 @@ func testMDNSSplitReply(t *testing.T, address, service, model string) {
 		t.Fatal(err)
 	}
 	defer client.Close()
-	client.SetDeadline(time.Now().Add(300 * time.Millisecond))
+	window := 300 * time.Millisecond
+	if loss {
+		window = 4 * time.Second
+	}
+	deadline := time.Now().Add(window)
+	client.SetDeadline(deadline)
+	queryTimes := map[dnsmessage.Question][]time.Time{}
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
@@ -132,6 +198,10 @@ func testMDNSSplitReply(t *testing.T, address, service, model string) {
 				continue
 			}
 			for _, q := range m.Questions {
+				queryTimes[q] = append(queryTimes[q], time.Now())
+				if loss && len(queryTimes[q]) == 1 {
+					continue // Drop the first PTR, SRV, TXT, and address query.
+				}
 				var body dnsmessage.ResourceBody
 				switch strings.ToLower(q.Name.String()) {
 				case "_services._dns-sd._udp.local.":
@@ -174,9 +244,32 @@ func testMDNSSplitReply(t *testing.T, address, service, model string) {
 		}
 	}()
 	target, _ := ParseTarget(address)
-	hits, err := collectMDNS(context.Background(), client, server.LocalAddr().(*net.UDPAddr), target)
+	hits, err := collectMDNS(context.Background(), client, server.LocalAddr().(*net.UDPAddr), target, deadline)
 	server.Close()
 	<-done
+	if loss {
+		if time.Since(deadline) > 500*time.Millisecond {
+			t.Fatal("recovery extended the original deadline")
+		}
+		total := 0
+		for q, times := range queryTimes {
+			total += len(times)
+			if len(times) > 3 {
+				t.Fatal("unbounded retransmission", q, len(times))
+			}
+			for i := 1; i < len(times); i++ {
+				if times[i].Sub(times[i-1]) < time.Duration(1<<uint(i-1))*time.Second-20*time.Millisecond {
+					t.Fatal("query retried without backoff", q, times)
+				}
+			}
+			if len(times) > 2 && q.Name.String() == service+".local." {
+				t.Fatal("answered PTR was retried", q, times)
+			}
+		}
+		if total > maxMDNSQueries {
+			t.Fatal("wire query cap exceeded", total)
+		}
+	}
 	if err != nil || len(hits) != 1 || len(hits[0].Ads) != 1 || hits[0].Ads[0].Service != service || hits[0].Ads[0].Port != port || hits[0].Ads[0].Properties[modelKey] != model {
 		t.Fatalf("hits=%+v err=%v", hits, err)
 	}

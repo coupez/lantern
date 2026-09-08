@@ -177,6 +177,7 @@ func mdnsSweepOn(ctx context.Context, target netip.Prefix, timeout time.Duration
 	if ctx.Err() != nil {
 		return nil, nil
 	}
+	deadline := time.Now().Add(timeout)
 	c, iface, local, close, err := openMulticastSocket(ctx, target, preferred, timeout)
 	if err != nil {
 		return nil, discoveryCompletion(ctx, "mDNS", fmt.Errorf("mDNS socket: %w", err), 0, 0)
@@ -189,7 +190,7 @@ func mdnsSweepOn(ctx context.Context, target netip.Prefix, timeout time.Duration
 	if local.Is6() {
 		destination = &net.UDPAddr{IP: net.ParseIP("ff02::fb"), Port: 5353, Zone: iface.Name}
 	}
-	return collectMDNS(ctx, c, destination, target)
+	return collectMDNS(ctx, c, destination, target, deadline)
 }
 
 var mdnsKinds = []string{"_services._dns-sd._udp", "_workstation._tcp", "_http._tcp", "_https._tcp", "_ssh._tcp", "_smb._tcp", "_ipp._tcp", "_ipps._tcp", "_printer._tcp", "_pdl-datastream._tcp", "_airplay._tcp", "_raop._tcp", "_googlecast._tcp", "_hap._tcp", "_matterc._udp", "_matterd._udp", "_matter._tcp", "_esphomelib._tcp", "_shelly._tcp", "_home-assistant._tcp", "_spotify-connect._tcp", "_device-info._tcp"}
@@ -266,29 +267,80 @@ func (r *mdnsRecords) followups(family6 ...bool) []dnsmessage.Question {
 	return out
 }
 
-// collectMDNS stays within the socket's original deadline; answers cannot extend
-// scan duration. A 128-query budget prevents unbounded service enumeration.
-func collectMDNS(ctx context.Context, c discoveryUDPConn, destination *net.UDPAddr, target netip.Prefix) ([]discoveryHit, error) {
+type mdnsUDPConn interface {
+	discoveryUDPConn
+	SetReadDeadline(time.Time) error
+}
+
+type mdnsQueryAttempt struct {
+	question dnsmessage.Question
+	attempts int
+	next     time.Time
+}
+
+// answered identifies questions with at least one usable response. This is a
+// bounded one-shot resolver, not a continuous shared-record browser: once a
+// PTR has any answer we do not repeat it to seek other responders.
+func (r *mdnsRecords) answered(q dnsmessage.Question) bool {
+	name := strings.ToLower(q.Name.String())
+	switch q.Type {
+	case dnsmessage.TypePTR:
+		return len(r.pointers[name]) > 0
+	case dnsmessage.TypeSRV:
+		_, ok := r.services[name]
+		return ok
+	case dnsmessage.TypeTXT:
+		_, ok := r.txt[name]
+		return ok
+	case dnsmessage.TypeA, dnsmessage.TypeAAAA:
+		for _, ip := range r.addresses[name] {
+			if ip.Is4() == (q.Type == dnsmessage.TypeA) && !ip.IsUnspecified() && !ip.IsMulticast() {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// collectMDNS stays within the owner's absolute deadline. A zero deadline is
+// reserved for fault-test sockets that supply their own terminal read errors.
+// Unanswered questions get at most two retries, spaced at least 1s then 2s;
+// every transmission counts toward the existing 128-query traffic budget.
+func collectMDNS(ctx context.Context, c mdnsUDPConn, destination *net.UDPAddr, target netip.Prefix, deadline time.Time) ([]discoveryHit, error) {
 	if ctx.Err() != nil {
 		return nil, nil
 	}
 	sent := map[dnsmessage.Question]bool{}
+	var pending []*mdnsQueryAttempt
+	queries := 0
 	r := newMDNSRecords()
 	packets := 0
 	finish := func(err error) ([]discoveryHit, error) {
-		return scopedHits(r.hits(target), destination.Zone), discoveryCompletion(ctx, "mDNS", err, packets, len(sent))
+		return scopedHits(r.hits(target), destination.Zone), discoveryCompletion(ctx, "mDNS", err, packets, queries)
 	}
-	send := func(q dnsmessage.Question) error {
-		if sent[q] || len(sent) >= maxMDNSQueries || ctx.Err() != nil {
+	transmit := func(attempt *mdnsQueryAttempt) error {
+		if queries >= maxMDNSQueries || ctx.Err() != nil || (!deadline.IsZero() && !time.Now().Before(deadline)) {
 			return nil
 		}
-		sent[q] = true
-		m := dnsmessage.Message{Header: dnsmessage.Header{ID: 0x4c41}, Questions: []dnsmessage.Question{q}}
+		m := dnsmessage.Message{Header: dnsmessage.Header{ID: 0x4c41}, Questions: []dnsmessage.Question{attempt.question}}
 		b, err := m.Pack()
 		if err != nil {
 			return err
 		}
-		return writeDiscoveryDatagram(c, b, destination)
+		queries++
+		err = writeDiscoveryDatagram(c, b, destination)
+		attempt.attempts++
+		attempt.next = time.Now().Add(time.Second << uint(attempt.attempts-1))
+		return err
+	}
+	send := func(q dnsmessage.Question) error {
+		if sent[q] || queries >= maxMDNSQueries || ctx.Err() != nil || (!deadline.IsZero() && !time.Now().Before(deadline)) {
+			return nil
+		}
+		sent[q] = true
+		attempt := &mdnsQueryAttempt{question: q}
+		pending = append(pending, attempt)
+		return transmit(attempt)
 	}
 	for _, kind := range mdnsKinds {
 		name, _ := dnsmessage.NewName(kind + ".local.")
@@ -298,8 +350,34 @@ func collectMDNS(ctx context.Context, c discoveryUDPConn, destination *net.UDPAd
 	}
 	b := make([]byte, 9000)
 	for packets < maxDiscoveryPackets && ctx.Err() == nil {
+		if !deadline.IsZero() {
+			if !time.Now().Before(deadline) {
+				return finish(nil)
+			}
+			readUntil := deadline
+			for _, attempt := range pending {
+				if queries >= maxMDNSQueries || attempt.attempts >= 3 || r.answered(attempt.question) {
+					continue
+				}
+				if !time.Now().Before(attempt.next) {
+					if err := transmit(attempt); err != nil {
+						return finish(fmt.Errorf("mDNS retry: %w", err))
+					}
+				}
+				if attempt.attempts < 3 && attempt.next.Before(readUntil) {
+					readUntil = attempt.next
+				}
+			}
+			if err := c.SetReadDeadline(readUntil); err != nil {
+				return finish(fmt.Errorf("mDNS read deadline: %w", err))
+			}
+		}
 		n, peer, err := c.ReadFromUDP(b)
 		if err != nil {
+			var timeout net.Error
+			if !deadline.IsZero() && errors.As(err, &timeout) && timeout.Timeout() && time.Now().Before(deadline) {
+				continue
+			}
 			return finish(discoveryReceiveError("mDNS", err))
 		}
 		packets++
@@ -313,7 +391,7 @@ func collectMDNS(ctx context.Context, c discoveryUDPConn, destination *net.UDPAd
 		if !r.ingest(b[:n]) {
 			continue
 		}
-		if len(sent) >= maxMDNSQueries {
+		if queries >= maxMDNSQueries {
 			continue
 		}
 		for _, q := range r.followups(target.Addr().Is6()) {

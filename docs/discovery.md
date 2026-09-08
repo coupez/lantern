@@ -87,6 +87,14 @@ Individual addresses and small ranges are probed directly. Large ranges, includi
 - [Linux packet socket manual](https://man7.org/linux/man-pages/man7/packet.7.html) describes AF_PACKET and its `CAP_NET_RAW` requirement.
 - [Apple's BPF ABI header](https://github.com/apple-oss-distributions/xnu/blob/main/bsd/net/bpf.h) defines Darwin capture record lengths and four-byte alignment. No Apple implementation code is incorporated.
 
+## mDNS query recovery
+
+The mDNS pass uses one absolute window of `max(--timeout, 1 second)`, including socket setup. In longer scans, unanswered PTR, SRV, TXT, A, and AAAA questions receive at most two retries, with intervals of at least one second and then two seconds. For example, `--timeout 4s` leaves room to recover a dropped service query and subsequent lost detail queries. The default one-second window does not grow to accommodate retries.
+
+Every transmission, including retries, counts toward the shared 128-query cap. The existing 512-received-datagram cap also remains in force. Reaching either limit marks multicast discovery incomplete. A retry write or read-deadline failure returns the observations already collected with an error; cancellation closes the owned socket and stops recovery. Read wakeups schedule retries without adding a background worker or extending the original deadline.
+
+This remains a bounded resolver using ephemeral source ports and legacy unicast replies. It stops retrying a question after receiving an answer; an empty TXT record counts as an answer, and an IPv4 address does not satisfy an AAAA question. A PTR answer can describe only one of several services, so stopping its retries is not proof of complete enumeration. Lantern does not implement continuous browsing or persistent Known-Answer caching. See [RFC 6762 sections 5 and 6.7](https://www.rfc-editor.org/rfc/rfc6762.html#section-5) for query modes and retry guidance. Packet loss or a short discovery window can still leave devices or identity details unobserved.
+
 ## WS-Discovery
 
 Standard/deep multicast discovery includes WS-Discovery over IPv4 and IPv6, in parallel with mDNS and SSDP. `--no-multicast` disables all three; quick mode skips them by default. The pass uses the selected interface and the existing multicast response window (at least one second).
