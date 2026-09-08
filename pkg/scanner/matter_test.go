@@ -116,3 +116,39 @@ func TestMatterEmbeddedTypes(t *testing.T) {
 		t.Fatal("vendor-specific example escaped selection", name)
 	}
 }
+
+func TestMatterCatalogSelectionAndIsolation(t *testing.T) {
+	a := matterAd("_matterc._udp", map[string]string{"dn": "Front door", "vp": "4447+8194", "dt": "21"})
+	before, _ := json.Marshal(a)
+	id := identify([]Advertisement{a})
+	if id.Model != "" || id.Manufacturer != "" || !reflect.DeepEqual(id.ModelNames, []string{"Aqara Door and Window Sensor P2"}) {
+		t.Fatal("catalog label missing or substituted for advertised model/maker", id)
+	}
+	found := false
+	for _, claim := range id.Claims {
+		if claim.Field == "model_name" {
+			found = true
+			if claim.Basis != "catalog" || claim.Key != "vp" || claim.Identifier != "matter:4447:8194" || !strings.Contains(claim.Catalog, "SmartThingsEdgeDrivers/blob/") {
+				t.Fatal(claim)
+			}
+		}
+	}
+	after, _ := json.Marshal(a)
+	if !found || string(before) != string(after) {
+		t.Fatal("lost provenance or mutated advertisement")
+	}
+	// An independently advertised model keeps ownership of selected candidates.
+	apple := Advertisement{Protocol: "mdns", Service: "_airplay._tcp", Instance: "TV._airplay._tcp.local", Properties: map[string]string{"model": "Mac16,9"}}
+	id = identify([]Advertisement{a, apple})
+	if id.Model != "Mac16,9" || len(id.ModelNames) != 1 || id.ModelNames[0] != "Mac Studio (M4 Max, 2025)" {
+		t.Fatal("mixed catalog namespaces", id)
+	}
+	for _, service := range []string{"_matter._tcp", "_http._tcp"} {
+		other := a
+		other.Service = service
+		id = identify([]Advertisement{other})
+		if id != nil && len(id.ModelNames) != 0 {
+			t.Fatal("product catalog applied to unsupported service", id)
+		}
+	}
+}

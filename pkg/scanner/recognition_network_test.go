@@ -76,6 +76,9 @@ func TestMDNSSplitReplyNetworkIntegration(t *testing.T) {
 			t.Run("esphome", func(t *testing.T) { testMDNSSplitReply(t, address, "_esphomelib._tcp", "2026.8.1") })
 			t.Run("shelly", func(t *testing.T) { testMDNSSplitReply(t, address, "_shelly._tcp", "2") })
 			t.Run("homekit", func(t *testing.T) { testMDNSSplitReply(t, address, "_hap._tcp", "Fixture Light 7") })
+			t.Run("matter-catalog", func(t *testing.T) {
+				testMDNSSplitReply(t, address, "_matterc._udp", "256", mdnsReplyOptions{matterCatalog: true})
+			})
 			for _, service := range []string{"_matterc._udp", "_matterd._udp", "_matter._tcp"} {
 				t.Run(service, func(t *testing.T) { testMDNSSplitReply(t, address, service, "256") })
 			}
@@ -85,7 +88,9 @@ func TestMDNSSplitReplyNetworkIntegration(t *testing.T) {
 
 func TestMDNSLostQueriesNetworkIntegration(t *testing.T) {
 	for _, address := range []string{"127.0.0.1", "::1"} {
-		t.Run(address, func(t *testing.T) { testMDNSSplitReply(t, address, "_matterc._udp", "256", true) })
+		t.Run(address, func(t *testing.T) {
+			testMDNSSplitReply(t, address, "_matterc._udp", "256", mdnsReplyOptions{loss: true})
+		})
 	}
 }
 
@@ -141,9 +146,15 @@ func TestMDNSRetryCancellationNetworkIntegration(t *testing.T) {
 	}
 }
 
-func testMDNSSplitReply(t *testing.T, address, service, model string, loseFirst ...bool) {
+type mdnsReplyOptions struct{ loss, matterCatalog bool }
+
+func testMDNSSplitReply(t *testing.T, address, service, model string, options ...mdnsReplyOptions) {
 	requireNetwork(t)
-	loss := len(loseFirst) > 0 && loseFirst[0]
+	var option mdnsReplyOptions
+	if len(options) > 0 {
+		option = options[0]
+	}
+	loss := option.loss
 	modelKey := "model"
 	port := uint16(8765)
 	var shellyReads atomic.Int32
@@ -223,7 +234,11 @@ func testMDNSSplitReply(t *testing.T, address, service, model string, loseFirst 
 							txt = append(txt, "CI=5", "id=AA:BB:CC:DD:EE:FF")
 						}
 						if matterRole(service) != "" {
-							txt = append(txt, "DN=Kitchen Light", "VP=65521+32769")
+							vp := "65521+32769"
+							if option.matterCatalog {
+								vp = "4447+6145"
+							}
+							txt = append(txt, "DN=Kitchen Light", "VP="+vp)
 						}
 						body = &dnsmessage.TXTResource{TXT: txt}
 					}
@@ -314,6 +329,9 @@ func testMDNSSplitReply(t *testing.T, address, service, model string, loseFirst 
 		}
 		if id == nil || id.Name != wantName || id.Model != "" || id.Manufacturer != "" || inferKind(d) != wantKind || d.MAC != "" || len(d.Ports) != 0 {
 			t.Fatal("packet-to-Matter integration", d)
+		}
+		if option.matterCatalog && (len(id.ModelNames) != 1 || id.ModelNames[0] != "Aqara LED Bulb T2 RGB CCT") {
+			t.Fatal("packet-to-product catalog failed", id)
 		}
 	}
 }

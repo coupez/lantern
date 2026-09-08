@@ -54,5 +54,6 @@ func LookupShelly(identifier string, generation int) []Match {
 func Sources() []Source {
 	load()
 	loadShelly()
-	return []Source{source, shellySource}
+	loadMatter()
+	return []Source{source, shellySource, matterSource}
 }

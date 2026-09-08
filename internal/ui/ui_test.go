@@ -75,6 +75,28 @@ func TestNetBIOSIsResponsiveEvidence(t *testing.T) {
 	}
 }
 
+func TestCatalogCandidatesWithoutAdvertisedModel(t *testing.T) {
+	for _, names := range [][]string{{"Aqara Door and Window Sensor P2"}, {"Candidate A", "Candidate B"}} {
+		var out bytes.Buffer
+		r := scanner.Report{Devices: []scanner.Device{{IP: netip.MustParseAddr("192.0.2.1"), Identity: &scanner.Identity{ModelNames: names}}}}
+		u := UI{Out: &out, Width: 80}
+		u.Report(r)
+		if !strings.Contains(out.String(), "Catalog") || (len(names) == 1 && !strings.Contains(out.String(), names[0])) || (len(names) > 1 && !strings.Contains(out.String(), "2 possible models")) {
+			t.Fatal(out.String())
+		}
+		out.Reset()
+		u.Details(r)
+		for _, name := range names {
+			if !strings.Contains(out.String(), name) {
+				t.Fatal("lost candidate", out.String())
+			}
+		}
+		if r.Devices[0].Identity.Model != "" {
+			t.Fatal("display invented a reported model")
+		}
+	}
+}
+
 func TestProtocolClaimsAndUntrustedTXTDisplay(t *testing.T) {
 	var b bytes.Buffer
 	id := &scanner.Identity{Model: "Fixture Light", Claims: []scanner.IdentityClaim{{Field: "kind", Value: "light", Source: "mdns:Fixture", Key: "ci", Basis: "protocol", Identifier: "5", Reference: "https://example.com/protocol"}}}

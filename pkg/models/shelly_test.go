@@ -9,7 +9,7 @@ import (
 
 func TestShellyCatalogIntegrityAndNamespaces(t *testing.T) {
 	sources := Sources()
-	if len(sources) != 2 || Count() != 761 {
+	if len(sources) != 3 || Count() != 1759 {
 		t.Fatal(sources, Count())
 	}
 	s := sources[1]

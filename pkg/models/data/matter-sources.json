@@ -1,0 +1,60 @@
+{
+  "name": "SmartThings Edge Matter",
+  "url": "https://github.com/SmartThingsCommunity/SmartThingsEdgeDrivers",
+  "commit": "71bbd3da8178b1c38332a6d9342ea23a3ce5b3dd",
+  "license": "Apache-2.0",
+  "retrieved": "2026-09-09",
+  "license_sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+  "selection": "Only unconditional matterManufacturer entries with exact non-test vendorId/productId and a deviceLabel. Preserve labels and conflicting candidates; omit profiles, implementation, vendor-name inference, and generic device-type fingerprints.",
+  "input_sources": [
+    {
+      "path": "drivers/SmartThings/matter-appliance/fingerprints.yml",
+      "sha256": "344a45147154eb039bc8cbe257b89fd9e5f738c46540190d44d1045fbb9d76b6"
+    },
+    {
+      "path": "drivers/SmartThings/matter-energy/fingerprints.yml",
+      "sha256": "9da9856a974020f10256fa9fdcf3e6871e846bf51eab71ef4120e3c26eeda8ec"
+    },
+    {
+      "path": "drivers/SmartThings/matter-hrap/fingerprints.yml",
+      "sha256": "3773d3fb2b6e8989e76ec54b21a10c31e9c57de4f24fff5cf484bdf762171a7c"
+    },
+    {
+      "path": "drivers/SmartThings/matter-lock/fingerprints.yml",
+      "sha256": "dd1aea208e3a6cb9b8fd9e9fdc1b571ecc4a470e525403f44df0af7945e439a3"
+    },
+    {
+      "path": "drivers/SmartThings/matter-media/fingerprints.yml",
+      "sha256": "f0959d0407006fc3ee67e1b8cf310dde095dfbbf4233f852da63aecb951401f0"
+    },
+    {
+      "path": "drivers/SmartThings/matter-pump/fingerprints.yml",
+      "sha256": "85ab3c058bf2eb229cf0d9172e57a98c6ea8c05375781501378ddc44d1927e14"
+    },
+    {
+      "path": "drivers/SmartThings/matter-rvc/fingerprints.yml",
+      "sha256": "84e77e47965591d571df7890461d7623e176166996d5e5ae9f61b73146d7c3b5"
+    },
+    {
+      "path": "drivers/SmartThings/matter-sensor/fingerprints.yml",
+      "sha256": "48f4e292997cef0c81fb4a07902ac8c0f73e7b286208f4470a60d5e166daed5b"
+    },
+    {
+      "path": "drivers/SmartThings/matter-switch/fingerprints.yml",
+      "sha256": "2db18dbc120bbfeca10bc7c21f4d201820ccdcb63cdcda4e066294cc70fba3ac"
+    },
+    {
+      "path": "drivers/SmartThings/matter-thermostat/fingerprints.yml",
+      "sha256": "81168b156774d5876c8499198cc5b9b1ce9a708a8bda1c363ea98c030ba61e35"
+    },
+    {
+      "path": "drivers/SmartThings/matter-window-covering/fingerprints.yml",
+      "sha256": "afcb7d3500939e6a72ceadc4d6efa44c6e0ef37208d25cf785d909b9cdd0fa39"
+    }
+  ],
+  "index_sha256": "97a44ec55db5216cc16daf1a057bac29c89c5046bbce048e7e443599529a910d",
+  "input_records": 998,
+  "identifiers": 998,
+  "assignments": 998,
+  "ambiguous_identifiers": 0
+}

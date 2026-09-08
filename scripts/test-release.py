@@ -42,7 +42,7 @@ required = {'lantern','LICENSE','NOTICE','THIRD_PARTY_LICENSES','README.md','doc
             'pkg/models/data/sources.json','pkg/vendors/data/sources.json','pkg/scanner/data/sources.json',
             'pkg/scanner/data/cast-models.json','pkg/models/data/shelly-models.json',
             'pkg/models/data/shelly-sources.json','pkg/scanner/data/matter-types.json',
-            'research/fing-static-analysis.json'}
+            'pkg/models/data/matter-sources.json','research/fing-static-analysis.json'}
 for system,arch in targets:
     filename = f'lantern-{version}-{system}-{arch}.tar.gz'
     path = dist/filename
@@ -70,6 +70,9 @@ for system,arch in targets:
         assert matter['source']['license'] == 'Apache-2.0' and len(matter['types']) == 65
         assert b'Project CHIP Authors' in content['NOTICE']
         assert b'LIMITED RIGHTS TO THE MATTER SDK' in content['THIRD_PARTY_LICENSES']
+        matter_models = json.loads(content['pkg/models/data/matter-sources.json'])
+        assert matter_models['identifiers'] == 998 and matter_models['license'] == 'Apache-2.0'
+        assert b'SmartThings' in content['NOTICE'] and b'SmartThings' in content['THIRD_PARTY_LICENSES']
         for name,data in content.items():
             if name.endswith('.json'):
                 json.loads(data)
@@ -99,7 +102,8 @@ for system,arch in targets:
                 assert 'cisco' in json.loads(run('lookup','00:00:0c:12:34:56'))['name'].lower()
                 assert json.loads(run('models','Mac16,9'))
                 assert json.loads(run('models','SNSW-001X16EU'))[0]['name'] == 'Shelly Plus 1'
-                assert len(json.loads(run('models','sources'))) == 2
+                assert len(json.loads(run('models','sources'))) == 3
+                assert json.loads(run('models','matter:4447:8194'))[0]['name'] == 'Aqara Door and Window Sensor P2'
                 diagnostics = json.loads(run('doctor', '--json'))
                 assert diagnostics['os'] == system and diagnostics['arch'] == arch, diagnostics
                 assert diagnostics['version'] == version, diagnostics
@@ -128,7 +132,8 @@ with tempfile.TemporaryDirectory(prefix='lantern-archive-') as tmp:
     assert 'cisco' in json.loads(run('lookup', '00:00:0c:12:34:56'))['name'].lower()
     assert json.loads(run('models', 'Mac16,9'))
     assert json.loads(run('models', 'SNSW-001X16EU'))[0]['name'] == 'Shelly Plus 1'
-    assert len(json.loads(run('models', 'sources'))) == 2
+    assert len(json.loads(run('models', 'sources'))) == 3
+    assert json.loads(run('models','matter:4447:8194'))[0]['name'] == 'Aqara Door and Window Sensor P2'
     report = json.loads(run('doctor', '--json'))
     assert report['os'] == 'linux' and report['arch'] == os.environ['LANTERN_EXPECT_GOARCH'], report
     assert report['version'] == os.environ['LANTERN_EXPECT_VERSION'], report

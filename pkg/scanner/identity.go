@@ -27,7 +27,8 @@ type Identity struct {
 	Model           string `json:"model,omitempty"`
 	Firmware        string `json:"firmware,omitempty"`
 	FirmwareVersion string `json:"firmware_version,omitempty"`
-	// ModelNames contains catalog candidates for the selected advertised model.
+	// ModelNames contains catalog candidates for the selected advertised model,
+	// or a Matter vendor/product pair when no explicit model was advertised.
 	ModelNames []string        `json:"model_names,omitempty"`
 	Claims     []IdentityClaim `json:"claims,omitempty"`
 }
@@ -228,6 +229,15 @@ func identify(ads []Advertisement) *Identity {
 			}
 		}
 	}
+	modelIdentifier := result.Model
+	if modelIdentifier == "" {
+		for _, c := range result.Claims {
+			if c.Field == "matter_product_id" && c.Identifier != "" {
+				selectedModel, modelIdentifier = c, c.Identifier
+				break
+			}
+		}
+	}
 	for _, c := range result.Claims {
 		if c.Field == "firmware_version" && c.Source == selectedFirmware.Source && result.FirmwareVersion == "" {
 			result.FirmwareVersion = c.Value
@@ -236,7 +246,7 @@ func identify(ads []Advertisement) *Identity {
 		if c.Field == "manufacturer" && result.Manufacturer == "" && (c.Basis != "catalog" || linked) {
 			result.Manufacturer = c.Value
 		}
-		if c.Field == "model_name" && c.Basis == "catalog" && c.Source == selectedModel.Source && c.Key == selectedModel.Key && strings.EqualFold(c.Identifier, result.Model) && !contains(result.ModelNames, c.Value) {
+		if c.Field == "model_name" && c.Basis == "catalog" && c.Source == selectedModel.Source && c.Key == selectedModel.Key && strings.EqualFold(c.Identifier, modelIdentifier) && !contains(result.ModelNames, c.Value) {
 			result.ModelNames = append(result.ModelNames, c.Value)
 		}
 	}

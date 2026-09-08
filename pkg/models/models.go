@@ -84,6 +84,12 @@ func load() {
 // Lookup uses an exact identifier, ignoring surrounding whitespace and case.
 // Unknown values return an empty list. Returned records are independent copies.
 func Lookup(identifier string) []Match {
+	if len(identifier) > 256 {
+		return []Match{}
+	}
+	if strings.HasPrefix(strings.ToLower(strings.TrimSpace(identifier)), "matter:") {
+		return lookupMatterIdentifier(identifier)
+	}
 	return append(LookupApple(identifier), LookupShelly(identifier, 0)...)
 }
 
@@ -104,7 +110,12 @@ func LookupApple(identifier string) []Match {
 	}
 	return result
 }
-func Count() int { load(); loadShelly(); return len(index) + len(shellyIndex) }
+func Count() int {
+	load()
+	loadShelly()
+	loadMatter()
+	return len(index) + len(shellyIndex) + len(matterIndex)
+}
 
 // Provenance returns the original AppleDB source. Use Sources for all catalogs.
 func Provenance() Source { load(); return source }

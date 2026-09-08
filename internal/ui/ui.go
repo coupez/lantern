@@ -170,9 +170,13 @@ func (u *UI) Report(r scanner.Report) {
 			label := strings.TrimSpace(d.Identity.Firmware + " " + d.Identity.FirmwareVersion)
 			fmt.Fprintf(u.Out, "    %s\n", u.style("38;5;245", fit("Firmware · "+label, max(12, u.Width-6))))
 		}
-		if d.Identity != nil && d.Identity.Model != "" {
+		if d.Identity != nil && (d.Identity.Model != "" || len(d.Identity.ModelNames) > 0) {
 			label := d.Identity.Model
-			if len(d.Identity.ModelNames) == 1 {
+			if label == "" && len(d.Identity.ModelNames) == 1 {
+				label = "Catalog · " + d.Identity.ModelNames[0]
+			} else if label == "" {
+				label = fmt.Sprintf("Catalog · %d possible models", len(d.Identity.ModelNames))
+			} else if len(d.Identity.ModelNames) == 1 {
 				label = d.Identity.ModelNames[0] + " · " + label
 			} else if len(d.Identity.ModelNames) > 1 {
 				label += fmt.Sprintf(" · %d possible models", len(d.Identity.ModelNames))

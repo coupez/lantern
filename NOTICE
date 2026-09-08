@@ -45,3 +45,12 @@ cluster/control definitions are omitted. Source revisions, hashes, and selection
 rules are in pkg/scanner/data/matter-types.json. The upstream copyright, NOTICE,
 and license are reproduced in THIRD_PARTY_LICENSES. These are protocol category
 labels, not a retail model or manufacturer database or a certification claim.
+
+Matter product-label candidates are adapted from SmartThingsCommunity's
+SmartThingsEdgeDrivers under Apache-2.0. Only unconditional exact vendor/product
+ID pairs and deviceLabel strings are retained; device profiles, implementation,
+generic category fingerprints, and reserved/test IDs are omitted. The source
+revision, per-file hashes, generated index hash, counts, and selection rules are
+in pkg/models/data/matter-sources.json. The upstream license is reproduced in
+THIRD_PARTY_LICENSES. Labels are catalog candidates, not authenticated model,
+manufacturer, certification, or SmartThings compatibility claims.

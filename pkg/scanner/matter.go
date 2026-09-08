@@ -7,6 +7,8 @@ import (
 	"strings"
 	"sync"
 	"unicode/utf8"
+
+	"github.com/coupez/lantern/pkg/models"
 )
 
 const matterTXTReference = "https://github.com/project-chip/connectedhomeip/blob/43aa98c2d30ee547c6b587b9de7bbb794f175ece/src/lib/dnssd/TxtFields.h"
@@ -92,6 +94,13 @@ func matterClaims(a Advertisement) []IdentityClaim {
 		add("matter_vendor_id", "vp", vendor, "advertised", matterTXTReference)
 		if hasProduct {
 			add("matter_product_id", "vp", product, "advertised", matterTXTReference)
+			vid, _ := strconv.ParseUint(vendor, 10, 16)
+			pid, _ := strconv.ParseUint(product, 10, 16)
+			claims[len(claims)-1].Identifier = models.MatterIdentifier(uint16(vid), uint16(pid))
+			for _, match := range models.LookupMatter(uint16(vid), uint16(pid)) {
+				claims = append(claims, IdentityClaim{Field: "model_name", Key: "vp", Value: match.Name, Source: "mdns:" + a.Instance,
+					Basis: "catalog", Catalog: match.Source, Identifier: match.Identifier})
+			}
 		}
 	}
 	if raw := a.Properties["dt"]; matterNumber(raw, 32) {
