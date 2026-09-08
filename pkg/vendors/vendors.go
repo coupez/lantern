@@ -21,11 +21,13 @@ var Sources string
 
 // Match identifies the registered organization, not necessarily the device brand.
 type Match struct {
-	Name      string `json:"name,omitempty"`
-	Prefix    string `json:"prefix,omitempty"`
-	Registry  string `json:"registry,omitempty"`
-	Private   bool   `json:"private"`
-	Multicast bool   `json:"multicast"`
+	// AddressRole is independent of the registered organization in Name.
+	AddressRole *AddressRole `json:"address_role,omitempty"`
+	Name        string       `json:"name,omitempty"`
+	Prefix      string       `json:"prefix,omitempty"`
+	Registry    string       `json:"registry,omitempty"`
+	Private     bool         `json:"private"`
+	Multicast   bool         `json:"multicast"`
 }
 
 var once sync.Once
@@ -59,10 +61,12 @@ func Lookup(mac string) (Match, error) {
 	if m.Private || m.Multicast {
 		return m, nil
 	}
+	m.AddressRole = addressRole(hw)
 	once.Do(initIndex)
 	key := strings.ToUpper(hex.EncodeToString(hw))
 	for _, n := range []int{9, 7, 6} {
 		if v, ok := index[key[:n]]; ok {
+			v.AddressRole = m.AddressRole
 			return v, nil
 		}
 	}

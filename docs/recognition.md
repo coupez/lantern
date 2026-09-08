@@ -8,6 +8,7 @@ Lantern combines independent MAC assignment records with device-reported protoco
 | --- | --- | --- |
 | NetBIOS node status (UDP 137) | Active unique computer names, workgroups, raw registration bytes/flags, reported unit ID | Unauthenticated registration claims; no OS, manufacturer, or open-port inference |
 | IEEE MA-L / MA-M / MA-S / IAB | Registered MAC organization | Registry assignment; not the retail brand |
+| Specified virtual-router MAC ranges | Range label, group identifier, prefix, source references | Address interpretation; no active protocol or physical identity inference |
 | Bonjour printing `_ipp`, `_ipps`, `_printer`, `_pdl-datastream` | `usb_MFG`, `usb_MDL`, `ty`, `product` | Advertised manufacturer, model, or display description |
 | `_airplay._tcp`, `_device-info._tcp`; `_raop._tcp` | `model`; `am` | Original advertised model identifier |
 | Pinned AppleDB hardware catalog | 606 identifiers → 886 assignments, including 124 ambiguous identifiers | Catalog-derived product-name candidates; all source variants retained |
@@ -25,6 +26,24 @@ Lantern combines independent MAC assignment records with device-reported protoco
 The `identity` object offers selected name/manufacturer/model/firmware fields, plus all recognized claims and their provenance. The advertised `model` remains unchanged. `model_names` contains unique, sorted catalog candidates for that selected model, or for a selected Matter vendor/product pair when no explicit model is advertised; one candidate is a catalog interpretation, and several candidates indicate unresolved variants. Each catalog claim records the exact input identifier and pinned source-file URL. Explicit standardized fields precede printer display descriptions; catalog-derived manufacturer claims rank below device-reported manufacturer fields. Ties are resolved deterministically by source/key/value, not packet arrival order. Catalog names attach to the selected model or Matter pair; catalog manufacturers attach only to the selected model claim; metadata from a conflicting, unselected model cannot silently populate the selected identity. Conflicting claims remain visible. A claim is not an authenticated hardware identity.
 
 The CLI shows identity fields in `inspect` / `--details`; JSON and saved snapshots retain claims and raw advertisements. CSV includes reported-name, manufacturer, model, model-candidate, firmware, and firmware-version columns. The two firmware columns are appended after `model_candidates`; earlier column positions stay the same.
+
+## Virtual-router MAC ranges
+
+`vendors.Lookup` retains the IEEE registrant in `Name` and optionally returns an independently owned `AddressRole`. JSON exposes it as `vendor.address_role`, with `name`, `prefix`, numeric `identifier`, and `references`. The identifier is the range's encoded VRID, VHID, or HSRP group number. CSV appends `mac_address_role` and `mac_address_role_id` after the existing twelve columns; HSRP group zero is written as `0`, while unmatched addresses leave both cells empty.
+
+| Range label | Prefix | Accepted identifiers | Primary source |
+| --- | --- | --- | --- |
+| VRRP/CARP virtual MAC range | `00:00:5e:00:01:00/40` | 1–255 | [RFC 9568 §7.3](https://www.rfc-editor.org/rfc/rfc9568.html#section-7.3), [OpenBSD CARP implementation](https://github.com/openbsd/src/blob/d11ef3f2eb061fd729dc1885eaf71ab411202b53/sys/netinet/ip_carp.c) |
+| VRRP IPv6 virtual MAC range | `00:00:5e:00:02:00/40` | 1–255 | [RFC 9568](https://www.rfc-editor.org/rfc/rfc9568.html#section-7.3) |
+| HSRP v1 virtual MAC range | `00:00:0c:07:ac:00/40` | 0–255 | [Cisco HSRP configuration](https://www.cisco.com/c/en/us/td/docs/routers/ios/config/17-x/ntw-servs/b-network-services/m_fhp-hsrp-0.html) |
+| HSRP v2 IPv4 virtual MAC range | `00:00:0c:9f:f0:00/36` | 0–4095 | [Cisco HSRP configuration](https://www.cisco.com/c/en/us/td/docs/routers/ios/config/17-x/ntw-servs/b-network-services/m_fhp-hsrp-0.html) |
+| HSRP v2 IPv6 virtual MAC range | `00:05:73:a0:00:00/36` | 0–4095 | [Cisco Nexus HSRP guide, page 3](https://www.cisco.com/c/en/us/td/docs/dcn/nx-os/nexus9000/104x/unicast-routing-configuration/cisco-nexus-9000-series-nx-os-unicast-routing-configuration-guide/m_configuring_hsrp.pdf#page=3) |
+
+CARP shares the first range and can use it for IPv6 as well. A MAC alone therefore cannot distinguish CARP from IPv4 VRRP or determine the observed peer's IP family. VRID/VHID zero, adjacent prefixes, multicast addresses, and locally administered addresses receive no range label. Only valid 48-bit MAC inputs are accepted.
+
+These are original range checks based on the linked primary specifications and implementation; no Wireshark table or code is imported. They add no IEEE records or hardware-model catalog entries. Matching does not classify the device as a router, populate its model/manufacturer, or establish responsiveness. Cached neighbors stay cached observations. Custom virtual MACs and spoofed addresses make range matching insufficient to establish whether a protocol is running.
+
+The regular report shows the range and ID; the inspector also lists the prefix and references. Watch uses the range as a fallback after reported/DNS names and supports searching its label, prefix, and `id N`. Snapshots preserve the optional metadata without generating an independent device-change event for derived labels. Lookup and device-event results own their nested references so consumer mutation cannot affect later results.
 
 ## Matter recognition
 

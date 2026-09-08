@@ -407,7 +407,7 @@ func scan(args []string, watch bool) error {
 }
 func writeCSV(w io.Writer, r scanner.Report) error {
 	c := csv.NewWriter(w)
-	if err := c.Write([]string{"ip", "mac", "vendor", "names", "ports", "evidence", "reported_name", "manufacturer", "model", "model_candidates", "firmware", "firmware_version"}); err != nil {
+	if err := c.Write([]string{"ip", "mac", "vendor", "names", "ports", "evidence", "reported_name", "manufacturer", "model", "model_candidates", "firmware", "firmware_version", "mac_address_role", "mac_address_role_id"}); err != nil {
 		return err
 	}
 	for _, d := range r.Devices {
@@ -420,6 +420,11 @@ func writeCSV(w io.Writer, r scanner.Report) error {
 			row = append(row, d.Identity.Name, d.Identity.Manufacturer, d.Identity.Model, strings.Join(d.Identity.ModelNames, ";"), d.Identity.Firmware, d.Identity.FirmwareVersion)
 		} else {
 			row = append(row, "", "", "", "", "", "")
+		}
+		if role := d.Vendor.AddressRole; role != nil {
+			row = append(row, role.Name, strconv.Itoa(int(role.Identifier)))
+		} else {
+			row = append(row, "", "")
 		}
 		for i, s := range row {
 			if len(s) > 0 && strings.ContainsAny(s[:1], "=+-@\t\r") {

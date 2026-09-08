@@ -2,6 +2,10 @@
 
 Scan time depends on the requested probes, interface, device responses, kernel queues, and timeouts. The measurements below state their workload; they are not comparisons with Fing or guarantees for another network.
 
+## Virtual MAC range lookup
+
+On macOS ARM64 / Apple M4 Max with Go 1.26.8, three warm samples measured a median **99.68 ns/op** for `00:00:5e:00:01:2a` (120 bytes, four allocations) and **76.04 ns/op** for the ordinary-address `BenchmarkLookup` (24 bytes, two allocations). Virtual range results include independently owned metadata and references. These measurements exclude lazy database initialization and network activity. Reproduce with `go test ./pkg/vendors -run '^$' -bench 'Benchmark(VirtualMACLookup|Lookup)$' -benchmem -count=3`. Local log: `research/results/virtual-mac-lookup-benchmark.log` (ignored).
+
 ## Full-port result collection
 
 The core's probe plan already deduplicates requested ports and excludes initial-discovery ports from the second phase. Every address/port pair therefore executes once. Previously, each open-port result still searched the entire list already recorded for that device. An all-open 65,535-port scan performed roughly two billion redundant comparisons while holding the result lock.

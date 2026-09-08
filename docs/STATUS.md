@@ -24,6 +24,7 @@ The workspace started empty. A runnable CLI and reusable discovery engine now ex
 - Opt-in direct IPv6 NDP with paced solicitations, validated/checksummed replies, early completion, scoped fresh MAC evidence, partial failure handling, capability diagnostics, and real Linux kernel veth verification. Privileged macOS NDP exchange remains pending.
 - Explicit direct IPv4 ARP discovery with bounded sending, Linux packet sockets, macOS BPF backend, permission fallback, and solicited-reply validation. Linux ARM64 runtime verified; macOS raw exchange remains unverified.
 - Embedded 58,421-entry IEEE MAC database with /24, /28, /36 longest-prefix matching, private/multicast MAC handling, and registry provenance.
+- Five source-linked VRRP/CARP and HSRP virtual MAC ranges with group IDs, separate from registered vendor and physical/protocol identity. Offline lookup, scan/watch displays, JSON/CSV, snapshots, and independently owned core events retain the metadata.
 - Embedded 5,889-entry IANA TCP service database, public-data refresh tooling.
 - mDNS service-type enumeration and follow-up queries; bounded UPnP description reads with embedded-device matching; source-attributed names/models; rejection of duplicate or nested-markup UPnP identity fields; 40 MIT-licensed Cast model/manufacturer mappings.
 - ESPHome discovery and firmware recognition with direct DNS-SD queries, friendly names, source-linked build/project claims, firmware exports/search/diffs, and separate IPv4/IPv6 socket fixtures. Physical ESPHome-device coverage remains pending.

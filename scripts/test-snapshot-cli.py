@@ -58,6 +58,24 @@ with tempfile.TemporaryDirectory(prefix='lantern-diff-') as directory:
     changes = compare(partial,recovered)
     assert len(changes) == 1 and changes[0]['field'] == 'incomplete_methods' and not changes[0].get('after'), changes
 
+    for mac, role_name, identifier in [('00:00:5e:00:01:2a', 'VRRP/CARP', 42),
+                                      ('00:00:5e:00:02:ff', 'VRRP IPv6', 255),
+                                      ('00:00:0c:07:ac:00', 'HSRP v1', 0),
+                                      ('00:00:0c:9f:ff:ff', 'HSRP v2 IPv4', 4095),
+                                      ('00:05:73:a0:0f:ff', 'HSRP v2 IPv6', 4095)]:
+        lookup = subprocess.run([binary, 'lookup', mac], capture_output=True, timeout=5, check=True)
+        vendor = json.loads(lookup.stdout)
+        role = vendor['address_role']
+        assert role_name in role['name'] and role['identifier'] == identifier and role['references'], vendor
+        assert vendor['name'] and not vendor['private'] and not vendor['multicast'], vendor
+        snapshot = {'schema': 1, 'devices': [{'ip': '192.0.2.1', 'mac': mac, 'vendor': vendor}]}
+        legacy = copy.deepcopy(snapshot)
+        del legacy['devices'][0]['vendor']['address_role']
+        assert not compare(snapshot, snapshot) and not compare(legacy, snapshot)
+    for mac in ['02:00:5e:00:01:2a', '01:00:5e:00:01:2a', '00:00:5e:00:01:00']:
+        lookup = subprocess.run([binary, 'lookup', mac], capture_output=True, timeout=5, check=True)
+        assert 'address_role' not in json.loads(lookup.stdout)
+
     for devices in ([{}], [{'ip': None}], [{'ip': '::'}],
                     [{'ip': '192.0.2.1'}, {'ip': '192.0.2.1'}],
                     [{'ip': '2001:db8::1'}, {'ip': '2001:db8:0:0:0:0:0:1'}]):
@@ -71,4 +89,4 @@ with tempfile.TemporaryDirectory(prefix='lantern-diff-') as directory:
             assert result.returncode == 1 and not result.stdout, result
             assert b'device' in result.stderr and str(bad_path).encode() in result.stderr, result.stderr
             assert [path.read_bytes() for path in (left, right)] == originals
-print('PASS snapshot CLI: identity, coverage, cancellation, legacy files, partial recovery, invalid/duplicate device rejection')
+print('PASS snapshot CLI: identity, coverage, cancellation, legacy files, partial recovery, invalid/duplicate devices, virtual MAC range lookup/metadata')

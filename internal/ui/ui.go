@@ -170,6 +170,9 @@ func (u *UI) Report(r scanner.Report) {
 			label := strings.TrimSpace(d.Identity.Firmware + " " + d.Identity.FirmwareVersion)
 			fmt.Fprintf(u.Out, "    %s\n", u.style("38;5;245", fit("Firmware · "+label, max(12, u.Width-6))))
 		}
+		if role := d.Vendor.AddressRole; role != nil {
+			fmt.Fprintf(u.Out, "    %s\n", u.style("38;5;245", fit(fmt.Sprintf("MAC range · %s · ID %d", role.Name, role.Identifier), max(12, u.Width-6))))
+		}
 		if d.Identity != nil && (d.Identity.Model != "" || len(d.Identity.ModelNames) > 0) {
 			label := d.Identity.Model
 			if label == "" && len(d.Identity.ModelNames) == 1 {
@@ -218,6 +221,14 @@ func (u *UI) Details(r scanner.Report) {
 		field("Names", strings.Join(d.Names, ", "))
 		field("MAC", d.MAC)
 		field("Vendor", d.Vendor.Name)
+		if role := d.Vendor.AddressRole; role != nil {
+			field("MAC range", role.Name)
+			field("Range ID", fmt.Sprint(role.Identifier))
+			field("Prefix", role.Prefix)
+			for _, reference := range role.References {
+				field("Range source", reference)
+			}
+		}
 		if d.Identity != nil {
 			field("Reported name", d.Identity.Name)
 			field("Maker", d.Identity.Manufacturer)

@@ -31,6 +31,7 @@ lantern scan --jsonl               # streaming discovery events + final report
 lantern scan --csv > network.csv
 lantern diff before.json after.json
 lantern lookup 00:00:0c:12:34:56
+lantern lookup 00:00:5e:00:01:2a
 lantern vendors sources
 lantern interfaces
 lantern wake 00:11:22:33:44:55 192.168.1.255
@@ -76,6 +77,7 @@ Computer names, workgroups, registration flags, and reported unit IDs remain in 
 
 - **● Responsive** means a TCP/ICMP/ARP/NDP/mDNS/SSDP/WS-Discovery/NetBIOS response or a local interface was observed. **○ Cached neighbor** means the OS has an address mapping; it does not prove the device is awake.
 - MAC vendors are registered IEEE organizations, which may differ from the device's retail brand. Randomized/private MACs are labeled explicitly and do not receive a guessed vendor.
+- Known virtual-router MAC ranges carry a separate label and group ID. For example, `00:00:5e:00:01:2a` matches the shared VRRP/CARP range with ID 42. This describes the address assignment; it does not establish a running protocol or hardware identity. Reports, watch, and JSON/snapshots retain this metadata; CSV appends `mac_address_role` and `mac_address_role_id` after `firmware_version`. See [supported ranges](docs/recognition.md#virtual-router-mac-ranges).
 - Device types are hints based on services. An RTSP port can belong to a camera or another media device. Port names come from IANA/common conventions; a name does not prove which application is running there.
 - Device names and models are extracted from UPnP descriptions and known Bonjour printing, AirPlay, Cast, and HomeKit TXT fields. HomeKit also supplies **36 category codes** for more specific type hints without extra probes. Pinned MIT-licensed catalogs add manufacturers for **40 exact Cast model names**, plus **606 Apple/Beats hardware identifiers** with **886 model assignments**. The 124 identifiers with multiple product names retain every candidate. The JSON `identity.claims` records whether each field is advertised, protocol-interpreted, or catalog-derived, its source, and conflicting values; MAC ownership stays separate.
 - Advertisements and banners are device-reported, untrusted information. Advertised ports are separate from verified open TCP ports. Terminal control characters are removed before rendering.

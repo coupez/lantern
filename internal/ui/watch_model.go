@@ -60,6 +60,9 @@ func deviceName(d scanner.Device) string {
 	if len(d.Names) > 0 {
 		return d.Names[0]
 	}
+	if d.Vendor.AddressRole != nil {
+		return d.Vendor.AddressRole.Name
+	}
 	if d.Vendor.Name != "" {
 		return d.Vendor.Name
 	}
@@ -130,6 +133,9 @@ func (m *watchModel) devices() []scanner.Device {
 			m.searchText = make([]string, len(m.report.Devices))
 			for i, d := range m.report.Devices {
 				haystack := d.IP.String() + " " + d.MAC + " " + d.Vendor.Name + " " + strings.Join(d.Names, " ") + " " + deviceName(d) + " " + deviceServices(d)
+				if role := d.Vendor.AddressRole; role != nil {
+					haystack += " " + role.Name + " id " + strconv.Itoa(int(role.Identifier)) + " " + role.Prefix
+				}
 				if d.Identity != nil {
 					haystack += " " + d.Identity.Manufacturer + " " + d.Identity.Model + " " + d.Identity.Firmware + " " + d.Identity.FirmwareVersion + " " + strings.Join(d.Identity.ModelNames, " ")
 					if len(d.Identity.Claims) > 0 {
