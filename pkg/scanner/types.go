@@ -1,0 +1,66 @@
+// Package scanner is a cancellable network discovery engine independent of the CLI.
+package scanner
+
+import (
+	"context"
+	"lantern/pkg/vendors"
+	"net/netip"
+	"time"
+)
+
+type Port struct {
+	Number  uint16 `json:"port"`
+	Service string `json:"service"`
+	Banner  string `json:"banner,omitempty"`
+}
+type Device struct {
+	Advertisements []Advertisement `json:"advertisements,omitempty"`
+	IP             netip.Addr      `json:"ip"`
+	MAC            string          `json:"mac,omitempty"`
+	Vendor         vendors.Match   `json:"vendor"`
+	Names          []string        `json:"names,omitempty"`
+	Ports          []Port          `json:"ports,omitempty"`
+	Kind           string          `json:"kind,omitempty"`
+	Evidence       []string        `json:"evidence"`
+	LatencyMS      float64         `json:"latency_ms,omitempty"`
+}
+type Report struct {
+	Schema     int       `json:"schema"`
+	Target     string    `json:"target"`
+	Started    time.Time `json:"started"`
+	DurationMS int64     `json:"duration_ms"`
+	Targets    int       `json:"targets"`
+	Probed     int       `json:"probed"`
+	Devices    []Device  `json:"devices"`
+	Warnings   []string  `json:"warnings,omitempty"`
+	Cancelled  bool      `json:"cancelled,omitempty"`
+}
+type Event struct {
+	Type      string  `json:"type"`
+	Device    *Device `json:"device,omitempty"`
+	Completed int     `json:"completed,omitempty"`
+	Total     int     `json:"total,omitempty"`
+	Message   string  `json:"message,omitempty"`
+}
+type Options struct {
+	Target      netip.Prefix
+	Ports       []uint16
+	Concurrency int
+	Timeout     time.Duration
+	Resolve     bool
+	ICMP        bool
+	Banners     bool
+	Multicast   bool
+	AllHosts    bool
+	MaxHosts    int
+}
+
+func Defaults() Options {
+	return Options{Multicast: true, Concurrency: 512, Timeout: 300 * time.Millisecond, Resolve: true, ICMP: true, MaxHosts: 4096, Ports: []uint16{22, 53, 80, 443, 445, 554, 631, 3389, 5000, 7000, 8008, 8080, 8443, 9100}}
+}
+
+type Dialer interface {
+	Probe(context.Context, netip.Addr, uint16, time.Duration) (bool, bool, time.Duration, error)
+}
+
+var Services = map[uint16]string{21: "ftp", 22: "ssh", 23: "telnet", 25: "smtp", 53: "dns", 80: "http", 110: "pop3", 139: "netbios", 143: "imap", 443: "https", 445: "smb", 554: "rtsp", 631: "ipp", 1883: "mqtt", 3000: "http", 3306: "mysql", 3389: "rdp", 5000: "http", 5353: "mdns", 5432: "postgres", 5900: "vnc", 6379: "redis", 7000: "airplay", 8008: "http", 8009: "cast", 8080: "http", 8443: "https", 9000: "http", 9100: "printer"}

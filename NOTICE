@@ -1,0 +1,19 @@
+Lantern code is provided under the MIT license in LICENSE.
+
+Embedded factual registry data is sourced from:
+- IEEE Registration Authority public MA-L, MA-M, MA-S, and IAB registries:
+  https://standards-oui.ieee.org/
+- IANA Service Name and Transport Protocol Port Number Registry:
+  https://www.iana.org/assignments/service-names-port-numbers/
+
+The code license does not relicense upstream registry material. Organization
+names and trademarks remain those of their respective owners. Source URLs,
+retrieval dates, counts, and hashes accompany each generated dataset.
+
+Go dependencies golang.org/x/net, golang.org/x/sys, and golang.org/x/term use
+the BSD 3-Clause license. Their license texts are retained in the module cache
+and available in their upstream repositories.
+
+Fing is a trademark of its owner. Lantern is independent and is not affiliated
+with Fing. No Fing application binaries, extracted code, or proprietary
+recognition tables are included in the Lantern build or source distribution.

@@ -1,0 +1,228 @@
+{
+  "version": "4.0.5",
+  "sha256": "01ad0f63c86c7f94711715aab917dd193c45b20d106f10b8f025e901f3e48eca",
+  "url": "https://get.fing.com/fing-desktop-releases/mac-v4/Fing.dmg",
+  "files": [
+    {
+      "path": "Contents/CodeResources",
+      "size": 2073,
+      "sha256": "c9d128d085370f01941ad61f1fab5156bd8e95033cd742cb81152fba7ddb9249"
+    },
+    {
+      "path": "Contents/Info.plist",
+      "size": 1221,
+      "sha256": "c7827acf288df2a031fd6de5c8d1afa4f743d5f6792edd82147998e02b90afe9"
+    },
+    {
+      "path": "Contents/_CodeSignature/CodeResources",
+      "size": 9868,
+      "sha256": "03e80bf0d6c2b0d5f636ac1e62c0607db3ac2ab29f951d75dad94953cbaebf3c"
+    },
+    {
+      "path": "Contents/MacOS/Fing",
+      "size": 23805968,
+      "sha256": "79fec0bd27b4219fbc9fd3fe7fe6a1f53771a54bd37b1b500e5bd4bf9611ee23"
+    },
+    {
+      "path": "Contents/Resources/icon.icns",
+      "size": 175602,
+      "sha256": "c1401b85e79594cbac97d80bc8f87283073a02ad58387c2484996e7c41477fd9"
+    },
+    {
+      "path": "Contents/Resources/fingagent.env",
+      "size": 201,
+      "sha256": "9f822df2c1ec746ae8e6c5e0cd0e44d9fb9064ae2902f2b06672216a82e2d7d5"
+    },
+    {
+      "path": "Contents/Resources/service/fing",
+      "size": 665,
+      "sha256": "cfca77c11988cf8620570a9f958375a2aa0f82cdcbccb2dbe7f4bb1af5ec5d45"
+    },
+    {
+      "path": "Contents/Resources/service/lib/libz.dylib",
+      "size": 108176,
+      "sha256": "9517591ffdbb4bb961ccb0c13effcd597ae856ab6c2ac9d0769a78a25d49dac6"
+    },
+    {
+      "path": "Contents/Resources/service/lib/libboost_thread.dylib",
+      "size": 176112,
+      "sha256": "4e50456625650b4baa4207cc36dcd7955bdf6bc92d171f3322e305d480b99946"
+    },
+    {
+      "path": "Contents/Resources/service/lib/fingagent.bin",
+      "size": 10966512,
+      "sha256": "865649aa860837bf93b0bd3126d042d508f0d3846b5fdc7ca519e7299fd35e52"
+    },
+    {
+      "path": "Contents/Resources/service/lib/ndt7-client.bin",
+      "size": 7852192,
+      "sha256": "073801dd53bb381f26ffe760c7774d109b8ee68e65bed5217c6611ad63cf4127"
+    },
+    {
+      "path": "Contents/Resources/service/lib/libboost_iostreams.dylib",
+      "size": 149888,
+      "sha256": "d06c7fafcb5890d4d7b54ae1a6527510620c585e8ac1afe133f4da601c3379a6"
+    },
+    {
+      "path": "Contents/Resources/service/lib/libbz2.dylib",
+      "size": 120272,
+      "sha256": "a89b33b001faf3fbff02cabf2aef619afc181950902e4d7c5a2fe29878994921"
+    },
+    {
+      "path": "Contents/Resources/service/lib/libpcap.1.10.5.dylib",
+      "size": 644544,
+      "sha256": "7172ea69899a7e0e0f7c6a17633c52ea4479ca93417d580cfcfff9688ceae48c"
+    },
+    {
+      "path": "Contents/Resources/service/lib/libnetsnmp.40.dylib",
+      "size": 701040,
+      "sha256": "852602be1ce618fe159dcf2b0327c26aa766a553f1276b0d029681cd80dc1d71"
+    },
+    {
+      "path": "Contents/Resources/service/lib/libboost_locale.dylib",
+      "size": 588816,
+      "sha256": "9bbb520d7d986338dcb047669d200aa3cb494b62b44a0328b649023d8e9ac85c"
+    },
+    {
+      "path": "Contents/Resources/service/lib/libssl.dylib",
+      "size": 397424,
+      "sha256": "b7548efa07b55e380978a98878e2e44a1e30da0f655b84257ab059168ed927db"
+    },
+    {
+      "path": "Contents/Resources/service/lib/libboost_regex.dylib",
+      "size": 961152,
+      "sha256": "49765ad535cb0e1060294dce57d7df5ffe611e218daafc953df399953be56ec0"
+    },
+    {
+      "path": "Contents/Resources/service/lib/libcrypto.1.0.0.dylib",
+      "size": 1548096,
+      "sha256": "fba2f9247d92dfdf38cc9f1d4dd80c6f4d676c50fe7519cfc2ff721b6529b36f"
+    },
+    {
+      "path": "Contents/Resources/service/lib/libboost_program_options.dylib",
+      "size": 467840,
+      "sha256": "bf365109ba021f00a5d7d008d2589cbf71a3bdf1bd446bb0279c2f1468ec9b4d"
+    },
+    {
+      "path": "Contents/Resources/service/lib/liboverlook.dylib",
+      "size": 7890128,
+      "sha256": "409b671ddd9db91eaf8410cb2122361915326a53cdbe18455477db7e6debe967"
+    },
+    {
+      "path": "Contents/Resources/service/lib/libbz2.1.0.8.dylib",
+      "size": 120272,
+      "sha256": "56cebc07d1fabb5aff12ce33584bebc51b8e241084424e19b582391b2df8b572"
+    },
+    {
+      "path": "Contents/Resources/service/lib/libcrypto.dylib",
+      "size": 1548096,
+      "sha256": "fba2f9247d92dfdf38cc9f1d4dd80c6f4d676c50fe7519cfc2ff721b6529b36f"
+    },
+    {
+      "path": "Contents/Resources/service/lib/libssl.1.0.0.dylib",
+      "size": 397424,
+      "sha256": "b7548efa07b55e380978a98878e2e44a1e30da0f655b84257ab059168ed927db"
+    },
+    {
+      "path": "Contents/Resources/service/lib/libprotobuf.dylib",
+      "size": 1011232,
+      "sha256": "764f870cecead12ac7ddf20322aef2ad0f1b39d12464cf4c832ecb9f1aa685c3"
+    },
+    {
+      "path": "Contents/Resources/service/lib/libboost_filesystem.dylib",
+      "size": 143456,
+      "sha256": "d42564898be84ee2fe7d44b40cf396db0fa0797d3764410e6bbc88ac94c2a789"
+    },
+    {
+      "path": "Contents/Resources/service/lib/libboost_date_time.dylib",
+      "size": 90576,
+      "sha256": "e02535fa57e48f5e2a5d52bdd607f56c6256d7ef0239b7370fe1fcf740e96bd5"
+    },
+    {
+      "path": "Contents/Resources/service/lib/libbz2.1.0.dylib",
+      "size": 120272,
+      "sha256": "a89b33b001faf3fbff02cabf2aef619afc181950902e4d7c5a2fe29878994921"
+    },
+    {
+      "path": "Contents/Resources/service/lib/libz.1.dylib",
+      "size": 108176,
+      "sha256": "9517591ffdbb4bb961ccb0c13effcd597ae856ab6c2ac9d0769a78a25d49dac6"
+    },
+    {
+      "path": "Contents/Resources/service/lib/libprotobuf.8.dylib",
+      "size": 1011232,
+      "sha256": "764f870cecead12ac7ddf20322aef2ad0f1b39d12464cf4c832ecb9f1aa685c3"
+    },
+    {
+      "path": "Contents/Resources/service/lib/libboost_system.dylib",
+      "size": 58672,
+      "sha256": "f8e6c9c31aed320f4a12333d669d56f1d539e82d3691e9d525e0dbb1d14cbd9f"
+    },
+    {
+      "path": "Contents/Resources/service/lib/libboost_chrono.dylib",
+      "size": 74240,
+      "sha256": "3196ed41bc565bf78f64c60f2537849819e8cd1fb3ed00277319996de0f1ac71"
+    },
+    {
+      "path": "Contents/Resources/service/template/conf/ip-services.properties",
+      "size": 90928,
+      "sha256": "f0075151bceefe74a999a1f3bef9abcc45abce42cf27d97f9e1af564f8c8133a"
+    }
+  ],
+  "zlib_streams": [
+    {
+      "binary": "Fing",
+      "offset": 11976410,
+      "bytes": 560280,
+      "file": "Fing-b6beda.inflated"
+    },
+    {
+      "binary": "Fing",
+      "offset": 12158156,
+      "bytes": 560280,
+      "file": "Fing-b984cc.inflated"
+    },
+    {
+      "binary": "Fing",
+      "offset": 12373733,
+      "bytes": 560280,
+      "file": "Fing-bccee5.inflated"
+    },
+    {
+      "binary": "Fing",
+      "offset": 12642124,
+      "bytes": 147648,
+      "file": "Fing-c0e74c.inflated"
+    },
+    {
+      "binary": "Fing",
+      "offset": 12665678,
+      "bytes": 560280,
+      "file": "Fing-c1434e.inflated"
+    },
+    {
+      "binary": "Fing",
+      "offset": 12826794,
+      "bytes": 560280,
+      "file": "Fing-c3b8aa.inflated"
+    },
+    {
+      "binary": "Fing",
+      "offset": 13143779,
+      "bytes": 560280,
+      "file": "Fing-c88ee3.inflated"
+    },
+    {
+      "binary": "Fing",
+      "offset": 13303689,
+      "bytes": 560280,
+      "file": "Fing-caff89.inflated"
+    },
+    {
+      "binary": "Fing",
+      "offset": 13504178,
+      "bytes": 560280,
+      "file": "Fing-ce0eb2.inflated"
+    }
+  ]
+}

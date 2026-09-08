@@ -1,0 +1,88 @@
+# ◈ Lantern
+
+**See your network clearly.** A fast, local-first network scanner with a modern terminal interface and a reusable Go engine. No account, cloud recognition, telemetry, or background daemon.
+
+> Early development. macOS is exercised on real networks; Linux builds but still needs live network validation.
+
+```sh
+make build
+./bin/lantern             # select the default-route network automatically
+./bin/lantern demo        # preview the interface without sending packets
+```
+
+Go 1.25 or newer is required to build. The resulting executable contains the vendor and service databases and runs offline. macOS scanning works without root. Linux requires `ip` from iproute2 for neighbor discovery; ICMP permissions depend on the host's ping socket configuration.
+
+## Everyday commands
+
+```sh
+lantern scan --profile quick
+lantern scan 192.168.1.0/24
+lantern inspect 192.168.1.42
+lantern scan 192.168.1.42 --ports 1-65535
+lantern watch --interval 10s --save latest.json
+lantern scan --json > network.json
+lantern scan --jsonl               # streaming discovery events + final report
+lantern scan --csv > network.csv
+lantern diff before.json after.json
+lantern lookup 00:00:0c:12:34:56
+lantern vendors sources
+lantern interfaces
+lantern wake 00:11:22:33:44:55 192.168.1.255
+```
+
+Use `./bin/lantern` until you put the binary on your PATH. Options work before or after the target. `lantern help` lists every option. `NO_COLOR=1` disables terminal styling. Redirected output is plain text; JSON and CSV contain no progress messages.
+
+## Discovery and speed
+
+Lantern combines ICMP echo, TCP connect/refusal, the OS neighbor table, mDNS/DNS-SD, and SSDP. It scans common discovery ports across the target first, then checks requested ports on discovered devices. A single-IP target always checks all requested ports; `--all-hosts` does the same for every address in a subnet.
+
+The TCP worker pool defaults to 512 concurrent probes. Deadlines bound TCP and ICMP sends; large port ranges are produced incrementally rather than allocated as a host × port matrix. DNS enrichment uses its own bounded pool. Ctrl-C cancels sockets and returns partial results.
+
+| Profile | Behavior |
+| --- | --- |
+| `quick` | ICMP + TCP discovery + neighbor lookup; checks 80/443; skips multicast |
+| `standard` | Adds mDNS/SSDP and 14 common TCP service ports |
+| `deep` | 28 common service ports, mDNS/SSDP, and protocol banner reads |
+
+`--timeout 300ms` controls each probe. Increase it for congested Wi-Fi or sleeping devices. Standard and deep scans allow at least one second for multicast responses. A full TCP scan is `--ports 1-65535`; deep is not a full-port scan. `--ports none` disables TCP probes, leaving ICMP, multicast, and neighbor observations as enabled.
+
+The initial live macOS benchmark scanned **1,022 addresses in 2.39 seconds** in standard mode at 512 TCP workers. A full 65,535-port localhost scan completed in **0.86 seconds**. This is one network measurement, not a completeness guarantee or a comparison with Fing. The earlier 256-worker quick scan took 3.77 seconds. Warm offline vendor lookup measured **76.7 ns/op** on an Apple M4 Max. See [verification](docs/verification.md).
+
+## Know what the results mean
+
+- **● Responsive** means a TCP/ICMP/mDNS/SSDP response or a local interface was observed. **○ Cached neighbor** means the OS has an address mapping; it does not prove the device is awake.
+- MAC vendors are registered IEEE organizations, which may differ from the device's retail brand. Randomized/private MACs are labeled explicitly and do not receive a guessed vendor.
+- Device types are hints based on services. An RTSP port can belong to a camera or another media device. Port names come from IANA/common conventions; a name does not prove which application is running there.
+- Advertisements and banners are device-reported, untrusted information. Advertised ports are separate from verified open TCP ports. Terminal control characters are removed before rendering.
+- Discovery can miss filtered, isolated, sleeping, or slow devices. MAC addresses normally exist only for hosts on the same link. IPv6, privileged active ARP/NDP, OS fingerprinting, and a persistent service are not implemented yet.
+
+Use on networks you own or are authorized to inspect. Lantern makes ordinary discovery requests and connections; it does not log in to devices or execute remote commands.
+
+## Open data and Fing inspection
+
+The binary includes **58,421 MAC assignments** from IEEE MA-L, MA-M, MA-S, and IAB, with longest-prefix matching, plus **5,889 IANA TCP service names**. Dataset source URLs, retrieval dates, and SHA-256 hashes are checked in next to the embedded indexes. Source data is attributed separately from the code's MIT license; see [NOTICE](NOTICE).
+
+Fing macOS 4.0.5 and 3.10.1 were downloaded from official URLs and inspected locally without installation. No standalone MAC assignment database was found. The native library references an absent `ethernet-ouis.properties`; the legacy UI asks its agent for recognition details. Extracted binaries and proprietary resources stay outside the distributable source. [Inspection evidence](docs/fing-research.md) records exactly what was found and what remains unknown.
+
+## A core for the future app
+
+```go
+options := scanner.Defaults()
+options.Target = netip.MustParsePrefix("192.168.1.0/24")
+report, err := (scanner.Engine{}).Scan(ctx, options, func(event scanner.Event) {
+    // Stream progress into a CLI, UI, or future service transport.
+})
+```
+
+`pkg/scanner` owns discovery, enrichment, reports, snapshots, and diffs. `pkg/vendors` owns offline lookups. `internal/ui` owns terminal rendering; `cmd/lantern` owns flags and signals. The engine takes `context.Context`, produces structured records, and has no dependency on terminal output, process exits, or a daemon. Callbacks run serially and should return promptly. Network test doubles are injectable.
+
+## Development
+
+```sh
+make check
+LANTERN_NETWORK_TESTS=1 go test -race ./pkg/scanner -run TestNetworkIntegration -v
+go test ./pkg/vendors -bench BenchmarkLookup -benchmem -run '^$'
+python3 scripts/update-data.py && make build # refresh the public indexes
+```
+
+The network integration test uses a controlled localhost TCP server to verify real ICMP, port detection, and SSH banner reads. Regular tests don't send scan traffic. See [status and remaining work](docs/STATUS.md).

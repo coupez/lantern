@@ -1,0 +1,6 @@
+{
+  "url": "https://www.iana.org/assignments/service-names-port-numbers/service-names-port-numbers.csv",
+  "retrieved": "2026-09-08",
+  "sha256": "9777be6d2451ab61ac3c64443b0cfb968bbdeddea3cc5e640eb81f3ec045b7a4",
+  "tcp_assignments": 5889
+}

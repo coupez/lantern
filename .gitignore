@@ -1,0 +1,11 @@
+/bin/
+/research/downloads/
+/research/extracted/
+*.test
+coverage.out
+.DS_Store
+/research/results/
+/research/fing-legacy-asar-inventory.json
+/dist/
+__pycache__/
+*.pyc
