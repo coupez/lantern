@@ -126,6 +126,20 @@ func (m *watchModel) devices() []scanner.Device {
 				haystack := d.IP.String() + " " + d.MAC + " " + d.Vendor.Name + " " + strings.Join(d.Names, " ") + " " + deviceName(d) + " " + deviceServices(d)
 				if d.Identity != nil {
 					haystack += " " + d.Identity.Manufacturer + " " + d.Identity.Model + " " + d.Identity.Firmware + " " + d.Identity.FirmwareVersion + " " + strings.Join(d.Identity.ModelNames, " ")
+					if len(d.Identity.Claims) > 0 {
+						// Keep secondary identities searchable without changing the
+						// selected display values or rebuilding this on every frame.
+						var text strings.Builder
+						text.Grow(len(haystack))
+						text.WriteString(haystack)
+						for _, claim := range d.Identity.Claims {
+							text.WriteByte(' ')
+							text.WriteString(claim.Field)
+							text.WriteByte(' ')
+							text.WriteString(claim.Value)
+						}
+						haystack = text.String()
+					}
 				}
 				m.searchText[i] = strings.ToLower(scanner.CleanText(haystack))
 			}

@@ -123,3 +123,36 @@ func TestWatchInspectorRetainsLastPort(t *testing.T) {
 		t.Fatal("inspector truncated ports")
 	}
 }
+
+func TestWatchSearchIncludesUnselectedIdentityClaims(t *testing.T) {
+	device := scanner.Device{IP: netip.MustParseAddr("192.0.2.1"), Identity: &scanner.Identity{
+		Name: "Front Door", Model: "Selected model", Claims: []scanner.IdentityClaim{
+			{Field: "hardware", Value: "Board/42"},
+			{Field: "model", Value: "Alternative Model"},
+			{Field: "firmware_build", Value: "release-abc123"},
+		},
+	}}
+	m := watchModel{}
+	m.accept(scanner.Report{Devices: []scanner.Device{device}})
+	for _, query := range []string{"BOARD/42", "alternative model", "release-abc123", "hardware board/42", "selected model", "front door"} {
+		m.query = query
+		if len(m.devices()) != 1 {
+			t.Errorf("identity claim not searchable: %q", query)
+		}
+	}
+	// A new scan replaces old claims, including any previously selected search.
+	next := device.Clone()
+	next.Identity.Claims = []scanner.IdentityClaim{{Field: "hardware", Value: "Board/43"}}
+	m.accept(scanner.Report{Devices: []scanner.Device{next}})
+	m.query = "board/42"
+	if len(m.devices()) != 0 {
+		t.Fatal("stale claim remained searchable")
+	}
+	m.query = "board/43"
+	if len(m.devices()) != 1 {
+		t.Fatal("new claim missing from rebuilt search")
+	}
+	if device.Identity.Model != "Selected model" || device.Identity.Claims[0].Value != "Board/42" {
+		t.Fatal("search changed device identity")
+	}
+}

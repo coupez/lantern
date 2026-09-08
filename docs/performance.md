@@ -58,3 +58,9 @@ go test ./internal/ui -run '^$' -bench BenchmarkWatchBuildViews -benchtime=3x -c
 ```
 
 Regression tests compare width-limited service summaries with full rendering across Unicode/control cases; verify searching and scrolling to port 65,535; and exercise report/device updates, progress-only reuse, selection, resize, and firmware search refreshes. Local measurements are in `research/results/watch-large-baseline.txt`, `watch-large-optimized.txt`, `watch-build-views.txt`, and `watch-render-summary.json` (ignored development evidence).
+
+## Search across identity claims
+
+`BenchmarkWatchClaimSearch` uses 1,024 synthetic devices, 14 ports and 64 identity claims per device, and a 120×40 watch frame. On the Apple M4 Max (macOS ARM64), medians of three samples with five iterations each were **14.312 ms** to build/filter search text after a report change, **0.976 ms** to change a query using the cached text, and **0.302 ms** for a steady filtered redraw. Median allocations were 10,742,107, 229,688, and 71,993 bytes respectively. These are local UI workloads, not discovery latency or real-network throughput.
+
+Identity claim fields and values are appended with a string builder, avoiding repeated copying of the growing index for each claim. The index remains lazy and cached; reports without an active query do not build it. Logs and calculated medians: `research/results/watch-claims-benchmark.log` and `.json` (ignored).

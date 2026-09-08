@@ -62,3 +62,41 @@ func BenchmarkWatchBuildViews(b *testing.B) {
 		})
 	}
 }
+
+func BenchmarkWatchClaimSearch(b *testing.B) {
+	for _, mode := range []string{"new-report", "changing-query", "steady-frame"} {
+		b.Run(mode, func(b *testing.B) {
+			m := largeWatchFixture(1024, 14)
+			for i := range m.report.Devices {
+				id := &scanner.Identity{Name: fmt.Sprintf("Device %d", i), Model: "Selected model"}
+				for j := range 64 {
+					id.Claims = append(id.Claims, scanner.IdentityClaim{Field: "hardware", Value: fmt.Sprintf("Board-%04d revision-%02d", i, j)})
+				}
+				m.report.Devices[i].Identity = id
+			}
+			m.query = "revision-63"
+			m.devices()
+			u, now := &UI{}, time.Unix(0, 0)
+			b.ReportAllocs()
+			b.ResetTimer()
+			toggle := false
+			for b.Loop() {
+				switch mode {
+				case "new-report":
+					m.invalidateDeviceView()
+					m.devices()
+				case "changing-query":
+					toggle = !toggle
+					if toggle {
+						m.query = "revision-62"
+					} else {
+						m.query = "revision-63"
+					}
+					m.devices()
+				case "steady-frame":
+					m.frame(u, 120, 40, now)
+				}
+			}
+		})
+	}
+}
