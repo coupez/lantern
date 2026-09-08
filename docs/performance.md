@@ -68,3 +68,24 @@ Identity claim fields and values are appended with a string builder, avoiding re
 ## Offline Matter product lookup
 
 On macOS ARM64 / Apple M4 Max, `BenchmarkMatterProductLookup` measured **117.8 ns/op** median across three samples (112.8–123.2 ns/op), with 308 bytes and five allocations per returned result. It resolves an exact vendor/product pair against the 998-pair SmartThings catalog and returns an independently owned match with provenance. This warm measurement excludes the first lazy decompression/JSON load and all network activity; it is not a scan-time benchmark. Reproduce with `go test ./pkg/models -run '^$' -bench BenchmarkMatterProductLookup -benchmem -count=3`. Log: `research/results/matter-product-benchmark.log` (ignored).
+
+## Comparing repeated port observations
+
+Snapshot and watch comparisons previously copied, sorted, and formatted both devices' port lists before checking whether the sets differed. Comparing 16 unchanged devices with all 65,535 ports created over two million temporary allocations.
+
+The core now checks equal ordered port numbers directly. When lists differ, it filters to shared requested coverage, sorts and deduplicates owned numeric lists, and compares those before formatting changed sets. Legacy snapshots and custom core reports can still supply unordered or duplicate port observations. Changed sets retain their complete numeric ordering and independently owned structured values.
+
+`BenchmarkDiffPortObservations` uses 16 devices with separately owned before/after lists. The changed case removes the highest port from one device; the other fifteen stay unchanged. On Apple M4 Max / Go 1.26.8 / macOS ARM64, medians of three samples with three iterations each were:
+
+| Ports observed per device | Change | Before | After | Allocated bytes before → after |
+| --- | --- | ---: | ---: | ---: |
+| 14 | None | 0.0205 ms | 0.0131 ms | 11,880 → 3,688 |
+| 14 | One device loses one port | 0.0266 ms | 0.0123 ms | 13,608 → 5,928 |
+| 65,535 | None | 27.357 ms | 0.920 ms | 52,669,048 → 3,688 |
+| 65,535 | One device loses one port | 31.317 ms | 6.685 ms | 60,254,520 → 10,618,605 |
+
+These are in-memory core comparisons without network traffic, terminal output, or CPU profiling. Reports are built outside the timed section, and both revisions use the same benchmark. Changed large sets still cost memory to format and return; this does not truncate their contents. The reference is `d144ced`. Raw logs and calculated medians are under `research/results/diff-ports-{baseline.log,optimized.log,summary.json}` (ignored).
+
+```sh
+go test ./pkg/scanner -run '^$' -bench BenchmarkDiffPortObservations -benchtime=3x -count=3 -benchmem
+```

@@ -257,11 +257,9 @@ func nameValues(values []string) []string {
 	return stringSet(out)
 }
 func portValues(ports []uint16) []string {
-	sorted := slices.Clone(ports)
-	slices.Sort(sorted)
-	sorted = slices.Compact(sorted)
-	out := make([]string, 0, len(sorted))
-	for _, p := range sorted {
+	// The comparison normalizes numbers before converting changed sets to text.
+	out := make([]string, 0, len(ports))
+	for _, p := range ports {
 		out = append(out, strconv.Itoa(int(p)))
 	}
 	return out
@@ -291,16 +289,36 @@ func coverageFlags(c *ScanCoverage) [9]bool {
 	return [9]bool{c.ICMP, c.ARP, c.NDP, c.Multicast, c.NetBIOS, c.ReverseDNS, c.Descriptions, c.Banners, c.AllHosts}
 }
 func comparablePorts(old, now *Device, common *portSet) ([]string, []string) {
-	values := func(d *Device) []string {
+	// Completed scans normally retain the same ordered port observations. Avoid
+	// copying, sorting, and formatting those lists on every watch refresh. Service
+	// labels/banners are deliberately outside this port-number comparison.
+	if len(old.Ports) == len(now.Ports) {
+		same := true
+		for i, p := range old.Ports {
+			if p.Number != now.Ports[i].Number {
+				same = false
+				break
+			}
+		}
+		if same {
+			return nil, nil
+		}
+	}
+	values := func(d *Device) []uint16 {
 		ports := make([]uint16, 0, len(d.Ports))
 		for _, p := range d.Ports {
 			if common == nil || common[p.Number/64]&(uint64(1)<<(p.Number%64)) != 0 {
 				ports = append(ports, p.Number)
 			}
 		}
-		return portValues(ports)
+		slices.Sort(ports)
+		return slices.Compact(ports)
 	}
-	return values(old), values(now)
+	a, b := values(old), values(now)
+	if slices.Equal(a, b) {
+		return nil, nil
+	}
+	return portValues(a), portValues(b)
 }
 func displayValues(values []string) string {
 	if len(values) == 0 {
