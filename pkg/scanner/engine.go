@@ -42,13 +42,18 @@ func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, 
 	if o.NetBIOS && !o.Target.Addr().Is4() {
 		return r, fmt.Errorf("NetBIOS discovery requires an IPv4 target")
 	}
-	requestedPorts := make(map[uint16]bool, len(o.Ports))
+	requestedPorts := make(map[uint16]bool, min(len(o.Ports), 65535))
+	ports := make([]uint16, 0, min(len(o.Ports), 65535))
 	for _, p := range o.Ports {
 		if p == 0 {
 			return r, fmt.Errorf("port must be between 1 and 65535")
 		}
-		requestedPorts[p] = true
+		if !requestedPorts[p] {
+			requestedPorts[p] = true
+			ports = append(ports, p)
+		}
 	}
+	o.Ports = ports // Own the execution plan; never change the caller's slice.
 	r.Coverage = coverageFor(o)
 	sparse := sparseIPv6(o.Target, o.MaxHosts)
 	if o.Target.Addr().Is6() && !sparse && o.Target.Addr().IsLinkLocalUnicast() && o.Interface == "" {
@@ -409,6 +414,7 @@ func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, 
 	run(scanHosts, scanPorts)
 	// Enrichment is bounded independently; slow DNS cannot hold sockets open.
 	enrich := make(chan *Device)
+	bannerSlots := make(chan struct{}, min(32, o.Concurrency))
 	var wg sync.WaitGroup
 	for i := 0; i < min(32, len(found)); i++ {
 		wg.Add(1)
@@ -429,9 +435,7 @@ func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, 
 					}
 				}
 				if o.Banners && ctx.Err() == nil {
-					for i := range d.Ports {
-						d.Ports[i].Banner = readBanner(ctx, d.IP, d.Ports[i], o.Timeout)
-					}
+					enrichBanners(ctx, d, o.Timeout, bannerSlots, readBanner)
 				}
 				if o.Descriptions && ctx.Err() == nil {
 					enrichDescriptions(ctx, d, o.Timeout)

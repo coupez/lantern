@@ -58,6 +58,8 @@ The TCP worker pool defaults to 512 concurrent probes. Deadlines bound TCP and I
 
 `--timeout 300ms` controls each probe. Increase it for congested Wi-Fi or sleeping devices. Standard and deep scans allow at least one second for multicast responses. A full TCP scan is `--ports 1-65535`; deep is not a full-port scan. `--ports none` disables TCP probes, leaving ICMP, multicast, and neighbor observations as enabled.
 
+Deep scans read service banners in parallel, with at most four connections per device and 32 across the scan (fewer when `--concurrency` is lower). Each banner connection shares one timeout across dialing and reading. See [discovery limits](docs/discovery.md).
+
 The initial live macOS benchmark scanned **1,022 addresses in 2.39 seconds** in standard mode at 512 TCP workers. A full 65,535-port localhost scan completed in **0.86 seconds**. This is one network measurement, not a completeness guarantee or a comparison with Fing. Later alternating quick-scan runs with ICMP retries completed in **0.90–1.05 seconds**, versus **3.85–4.02 seconds** for the saved earlier build; both observed two addresses. Retry recovery and remaining send failures are recorded in the reports. These timings depend on local queue/cache state. Warm offline vendor lookup measured **76.7 ns/op** on an Apple M4 Max. See [verification](docs/verification.md).
 
 ### NetBIOS names

@@ -2,6 +2,14 @@
 
 Lantern keeps observed address mappings separate from active responses. An OS neighbor-cache entry is useful evidence but may be stale. TCP connection acceptance/refusal, a matching echo reply, a discovery advertisement, or a solicited ARP reply counts as a response. Proxy ARP, shared devices, and multiple IP addresses mean the number of reported addresses is not necessarily the number of physical devices. All network claims remain unauthenticated.
 
+## TCP probes and service banners
+
+The core deduplicates requested TCP ports without modifying the caller's slice. Port zero is rejected before network work. Host/port jobs are produced incrementally, including full `1-65535` scans; the engine does not allocate the complete host-by-port product. `--concurrency` limits simultaneous TCP probes.
+
+With banners enabled, open ports labeled HTTP, SSH, FTP, or SMTP receive a separate connection. HTTP sends a HEAD request; the other protocols read a greeting. Up to four banner exchanges run per device, with a shared scan limit of `min(32, --concurrency)`. Waiting for a slot does not consume a port's response budget: every eligible port is attempted unless the scan is cancelled. Each exchange shares one `--timeout` deadline across connection setup, writes, and reads, bounded by the caller's context deadline. Cancellation closes active connections and stops queued work. DNS and device descriptions retain their own enrichment limits.
+
+Banner parsing assembles fragmented TCP lines and bounds each response to 8 KiB, each line to 2 KiB, and HTTP inspection to 64 lines including the status line. HTTP uses the first Server header, falling back to the status line; body text is never interpreted as a header. Oversized or interrupted lines are discarded. Terminal and directional controls are removed from returned text. These limits intentionally keep banner collection lightweight; a missing banner does not mean an open service is unavailable.
+
 ## ICMP scheduling and counters
 
 Unicast echo uses a random per-scan nonce and per-target sequence numbers. Replies must match the peer address (including IPv6 zone), nonce, sequence, type, and code. Duplicate replies do not create extra observations or inflate responder counts. When every target has replied, the echo phase finishes immediately. If any target remains unanswered, the configured response window after sending still applies. IPv6 all-nodes candidate discovery has an unknown responder set and keeps its full response window.
