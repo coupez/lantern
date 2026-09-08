@@ -14,7 +14,7 @@ The runner accepts only these two platforms and uses a separate local image for 
 
 Running a foreign architecture requires a translation/emulation runtime already supported by Docker. The runner does not install one or silently skip failed tests. Native runs do not require cross-architecture support.
 
-Each architecture runs vet/race tests, controlled IPv4/IPv6 protocol exchanges, isolated module installation/core imports, terminal and snapshot checks, JSONL cancellation/broken-pipe fixtures, Samba interoperability, and ARP/NDP runtime tests. Capability variants exercise raw-access denial as well as successful discovery. Temporary veth links exist only in disposable test containers. Containers have no host mounts, host networking, or published ports.
+Each architecture runs vet/race tests, controlled IPv4/IPv6 protocol exchanges, a full 1–65,535 TCP-port loopback scan, isolated module installation/core imports, terminal and snapshot checks, JSONL cancellation/broken-pipe fixtures, Samba interoperability, and ARP/NDP runtime tests. Capability variants exercise raw-access denial as well as successful discovery. Temporary veth links exist only in disposable test containers. Containers have no host mounts, host networking, or published ports.
 
 ## Packaged binaries
 

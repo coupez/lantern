@@ -141,19 +141,14 @@ func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, 
 			d.Evidence = append(d.Evidence, evidence)
 		}
 		if port > 0 {
-			exists := false
-			for _, p := range d.Ports {
-				if p.Number == port {
-					exists = true
-				}
+			// Only TCP jobs supply ports. The owned, deduplicated plan probes
+			// each address/port once across discovery and the remaining ports.
+			// Rescanning the growing slice here would make all-open scans O(P²).
+			service := serviceName(port)
+			if service == "" {
+				service = "unknown"
 			}
-			if !exists {
-				service := serviceName(port)
-				if service == "" {
-					service = "unknown"
-				}
-				d.Ports = append(d.Ports, Port{Number: port, Service: service})
-			}
+			d.Ports = append(d.Ports, Port{Number: port, Service: service})
 		}
 		if fresh && emit != nil {
 			snapshot := d.Clone()

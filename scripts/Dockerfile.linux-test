@@ -11,6 +11,7 @@ COPY LICENSE NOTICE THIRD_PARTY_LICENSES README.md Makefile ./
 COPY scripts/test-install.py scripts/release.sh ./scripts/
 COPY scripts/test-ndp-linux.py /usr/local/bin/test-ndp-linux.py
 COPY scripts/test-neighbor-interfaces.py /usr/local/bin/test-neighbor-interfaces.py
+COPY scripts/test-full-ports.py /usr/local/bin/test-full-ports.py
 COPY scripts/test-event-stream.py /usr/local/bin/test-event-stream.py
 COPY scripts/test-doctor.py /usr/local/bin/test-doctor.py
 COPY scripts/test-snapshot-cli.py /usr/local/bin/test-snapshot-cli.py

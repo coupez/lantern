@@ -22,6 +22,7 @@ go test -race ./pkg/scanner -run NetworkIntegration -v
 python3 scripts/test-install.py
 go build -trimpath -o /tmp/lantern ./cmd/lantern
 python3 /usr/local/bin/test-event-stream.py /tmp/lantern
+python3 /usr/local/bin/test-full-ports.py /tmp/lantern
 python3 /usr/local/bin/test-doctor.py /tmp/lantern --expect-arp available
 python3 /usr/local/bin/test-watch-pty.py /tmp/lantern
 python3 /usr/local/bin/test-snapshot-cli.py /tmp/lantern

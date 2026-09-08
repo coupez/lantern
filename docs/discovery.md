@@ -12,7 +12,7 @@ IPv4/IPv6 neighbor rows from another interface are excluded when an interface is
 
 ## TCP probes and service banners
 
-The core deduplicates requested TCP ports without modifying the caller's slice. Port zero is rejected before network work. Host/port jobs are produced incrementally, including full `1-65535` scans; the engine does not allocate the complete host-by-port product. `--concurrency` limits simultaneous TCP probes.
+The core deduplicates requested TCP ports without modifying the caller's slice. Each address/port pair is scheduled once across initial discovery and the remaining-port phase. Open-port observations therefore append directly without repeatedly searching a growing per-device list; results are sorted once after enrichment. Port zero is rejected before network work. Host/port jobs are produced incrementally, including full `1-65535` scans; the engine does not allocate the complete host-by-port product. `--concurrency` limits simultaneous TCP probes. See [performance measurements](performance.md) for the full-port aggregation benchmark and real loopback fixture.
 
 With banners enabled, open ports labeled HTTP, SSH, FTP, or SMTP receive a separate connection. HTTP sends a HEAD request; the other protocols read a greeting. Up to four banner exchanges run per device, with a shared scan limit of `min(32, --concurrency)`. Waiting for a slot does not consume a port's response budget: every eligible port is attempted unless the scan is cancelled. Each exchange shares one `--timeout` deadline across connection setup, writes, and reads, bounded by the caller's context deadline. Cancellation closes active connections and stops queued work. DNS and device descriptions retain their own enrichment limits.
 
