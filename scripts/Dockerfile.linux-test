@@ -8,6 +8,7 @@ COPY cmd ./cmd
 COPY internal ./internal
 COPY pkg ./pkg
 COPY LICENSE NOTICE THIRD_PARTY_LICENSES ./
+COPY scripts/test-snapshot-cli.py /usr/local/bin/test-snapshot-cli.py
 COPY scripts/test-watch-pty.py /usr/local/bin/test-watch-pty.py
 COPY scripts/test-netbios-samba.sh /usr/local/bin/test-netbios-samba.sh
 COPY scripts/test-linux-container.sh /usr/local/bin/lantern-test

@@ -85,6 +85,10 @@ IPv6 single addresses and small prefixes support TCP, ICMPv6, DNS, banners, and 
 
 Use `lantern models Mac16,9` to look up a hardware code offline, `lantern models` for the index count, or `lantern models sources` for provenance. Discovery maps Bonjour device-info/AirPlay `model` and RAOP `am` fields to these candidates. The reported `identity.model` stays intact; `identity.model_names` contains catalog candidates. A unique candidate appears in the report, while ambiguous matches are labeled and listed in `inspect` / `--details`. CSV appends `model_candidates`.
 
+### Useful watch activity
+
+Watch and snapshot diffs report name/model/vendor/workgroup changes, open-port observations, and transitions from responsive to cached-only evidence. New snapshots record requested scan coverage: changing profiles or scanning fewer ports does not fabricate disappearing services. Interrupted scans do not erase existing observations. Changes are address-based observations, not proof that a physical device joined or went offline. See [snapshot comparison semantics](docs/snapshots.md) for structured fields and legacy-file behavior.
+
 ## Open data and Fing inspection
 
 The binary includes **58,421 MAC assignments** from IEEE MA-L, MA-M, MA-S, and IAB, with longest-prefix matching, plus **5,889 IANA TCP service names**. Dataset source URLs, retrieval dates, and SHA-256 hashes are checked in next to the embedded indexes. Source data is attributed separately from the code's MIT license; see [NOTICE](NOTICE).

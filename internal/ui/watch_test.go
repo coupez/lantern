@@ -156,3 +156,13 @@ func TestActivityRetainsWarningsAndBoundsHistory(t *testing.T) {
 		t.Fatal("did not return to devices")
 	}
 }
+
+func TestWatchActivityReportsIdentityChanges(t *testing.T) {
+	m := watchModel{}
+	ip := netip.MustParseAddr("192.0.2.1")
+	m.accept(scanner.Report{Devices: []scanner.Device{{IP: ip, Identity: &scanner.Identity{Name: "Before"}}}})
+	m.accept(scanner.Report{Devices: []scanner.Device{{IP: ip, Identity: &scanner.Identity{Name: "After"}}}})
+	if len(m.changes) != 1 || !strings.Contains(m.changes[0], "reported name") || !strings.Contains(m.changes[0], "After") {
+		t.Fatal(m.changes)
+	}
+}

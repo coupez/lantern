@@ -25,9 +25,25 @@ type Device struct {
 	Evidence       []string        `json:"evidence"`
 	LatencyMS      float64         `json:"latency_ms,omitempty"`
 }
+
+// ScanCoverage records requested probes/enrichment, not successful responses.
+// A nil Report.Coverage denotes a legacy snapshot with unknown configuration.
+type ScanCoverage struct {
+	TCPPorts     []uint16 `json:"tcp_ports"`
+	ICMP         bool     `json:"icmp"`
+	ARP          bool     `json:"arp"`
+	Multicast    bool     `json:"multicast"`
+	NetBIOS      bool     `json:"netbios"`
+	ReverseDNS   bool     `json:"reverse_dns"`
+	Descriptions bool     `json:"descriptions"`
+	Banners      bool     `json:"banners"`
+	AllHosts     bool     `json:"all_hosts"`
+}
+
 type Report struct {
-	ICMP      *ICMPStats `json:"icmp,omitempty"`
-	Interface string     `json:"interface,omitempty"`
+	Coverage  *ScanCoverage `json:"coverage,omitempty"`
+	ICMP      *ICMPStats    `json:"icmp,omitempty"`
+	Interface string        `json:"interface,omitempty"`
 	// AddressMode is enumerated for finite ranges or discovered for sparse IPv6.
 	AddressMode string    `json:"address_mode,omitempty"`
 	Schema      int       `json:"schema"`
@@ -76,3 +92,15 @@ type Dialer interface {
 }
 
 var Services = map[uint16]string{21: "ftp", 22: "ssh", 23: "telnet", 25: "smtp", 53: "dns", 80: "http", 110: "pop3", 139: "netbios", 143: "imap", 443: "https", 445: "smb", 554: "rtsp", 631: "ipp", 1883: "mqtt", 3000: "http", 3306: "mysql", 3389: "rdp", 5000: "http", 5353: "mdns", 5432: "postgres", 5900: "vnc", 6379: "redis", 7000: "airplay", 8008: "http", 8009: "cast", 8080: "http", 8443: "https", 9000: "http", 9100: "printer"}
+
+// Responsive reports active discovery evidence or a local-interface observation
+// in this record. It does not guarantee that every service is reachable.
+func (d Device) Responsive() bool {
+	for _, e := range d.Evidence {
+		switch e {
+		case "arp", "icmp", "tcp-open", "tcp-refused", "mdns", "ssdp", "netbios", "local-interface":
+			return true
+		}
+	}
+	return false
+}

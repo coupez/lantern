@@ -95,3 +95,12 @@ These checks establish functional behavior and one-network performance, not exha
 - A controlled UDP loopback exchange passed on macOS ARM64 and Linux ARM64. `FuzzNetBIOSReply` completed 2,440,511 inputs in ten seconds without a failure.
 - The Linux test image includes Samba only as a test dependency; no Samba source/library is linked or bundled with Lantern. `scripts/test-netbios-samba.sh` runs `nmbd` inside the disposable container without starting an SMB file server or publishing ports. Samba 4.17.12-Debian supplied `LANTERN-SAMBA` and `LANTERN-LAB`; completed node-status-only scans took 4–5 ms. The test verifies name provenance, preserved group registration, no manufactured TCP ports, deep/inspect defaults, and the explicit disable override. Startup readiness is bounded and the daemon is stopped by the script's cleanup trap.
 - These results establish protocol interoperability with a real Samba implementation, not Windows hardware coverage or a universal latency claim. Modern hosts with NetBIOS disabled will not answer. Broad real-network identification/coverage comparisons remain pending.
+
+
+## Snapshot and watch comparisons (2026-09-08)
+
+- Added requested scan coverage to schema-1 reports, structured before/after change fields, name/model/vendor/workgroup comparisons, and responsive-to-cached evidence transitions. Tests cover legacy snapshots, cancellation, interface changes, different port plans, case/order/duplicate normalization, control-safe detail strings, coverage ownership, persistence, and dashboard identity activity.
+- `scripts/test-snapshot-cli.py` checks the actual CLI against saved JSON fixtures without network traffic; it is included in CI and the Linux runtime suite.
+- The full-port-coverage benchmark compares 1,024 device records with one observed open port/name each and all 65,535 requested ports. Shared bitsets avoid rebuilding a large port map for every device. On the local Apple M4 Max, the optimized comparison measured approximately 0.45 ms with 344 KiB allocated; this is a comparison benchmark, not a network-scan timing.
+
+- macOS ARM64 race/vet and snapshot CLI checks passed, as did the isolated Linux ARM64 race/protocol/terminal/Samba/snapshot suite. All four macOS/Linux ARM64/x86-64 release archives rebuilt successfully.

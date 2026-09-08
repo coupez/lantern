@@ -49,6 +49,7 @@ func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, 
 		}
 		requestedPorts[p] = true
 	}
+	r.Coverage = coverageFor(o)
 	sparse := sparseIPv6(o.Target, o.MaxHosts)
 	if o.Target.Addr().Is6() && !sparse && o.Target.Addr().IsLinkLocalUnicast() && o.Interface == "" {
 		return r, fmt.Errorf("link-local IPv6 target needs --interface or an %%interface zone")
