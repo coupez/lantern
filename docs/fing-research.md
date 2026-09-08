@@ -50,6 +50,7 @@ Local research artifacts are under `research/downloads/` and `research/extracted
 | aioshelly (Apache-2.0) | Shelly model identifiers + generation → product names | 155 records; generation-aware matching and offline lookup |
 | Reverse DNS | PTR names | Bounded optional lookup |
 | SSH / HTTP / FTP / SMTP responses | Device-reported software banners | Bounded explicit/deep inspection |
-| Wireshark manuf / Nmap fingerprints / community catalogs | Potential extra mappings and fingerprints | Not imported; provenance and applicable source terms need evaluation |
+| Wireshark manufacturer / well-known-address sources | IEEE-derived prefixes and protocol address roles | Pinned comparison found no additional global-unicast manufacturer prefixes; [review and provenance](manufacturer-source-review.md). No data imported |
+| Nmap fingerprints / other community catalogs | Potential extra mappings and fingerprints | Not imported; provenance and applicable source terms need evaluation |
 
 MAC assignment alone cannot identify every device model or undo a randomized MAC. Lantern keeps protocol evidence distinct from inferred device types.
