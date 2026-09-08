@@ -23,14 +23,15 @@ The workspace started empty. A runnable CLI and reusable discovery engine now ex
 - HomeKit model/name recognition and 36 protocol category codes, with source-linked type hints, conflict preservation, exact service matching, and IPv4/IPv6 socket fixtures. Physical HomeKit-device coverage remains pending.
 - 606 MIT-licensed AppleDB hardware identifiers with 886 source assignments, ambiguity-preserving product names, RAOP model recognition, and an offline `models` lookup command.
 - JSON, JSONL, CSV, atomic snapshots, and snapshot/watch changes for identity and response evidence, with requested scan coverage, interruption handling, common-port comparisons, and interface isolation. Wake-on-LAN and a no-network demo.
-- MIT code license, upstream data notices, repeatable build and tests; local macOS/Linux ARM64/x86-64 release archives.
+- MIT code license, upstream data notices, repeatable build and tests; local macOS/Linux ARM64/x86-64 release archives. All four packaged binaries passed socket/terminal/snapshot CLI fixtures; x86-64 ran through installed translation, not native Intel/AMD hardware.
+- Architecture-selectable Linux runtime suites with explicit platform assertions and separate images; full ARM64 and translated x86-64 suites passed, including raw ARP/NDP and denied-capability fixtures.
 - Official Fing 4.0.5 and 3.10.1 downloaded and inspected. No standalone MAC registry recovered; exact findings are documented.
 
 ## Still required before calling the broad goal finished
 
 1. Expand identification: broader device/model catalogs, additional protocol fingerprints, and real-device coverage of the implemented mDNS/UPnP model paths. No claim of mapping everything.
 2. Improve discovery coverage and speed further: privileged macOS ARP/NDP runtime verification, broader IPv6 real-device coverage, broader pacing/retry validation under sustained network pressure, and benchmark/accuracy comparisons across real device networks. The current quick scan is fast but can miss filtered/sleeping devices.
-3. Broaden Linux/macOS hardware and x86-64 runtime coverage beyond the passing Linux ARM64 container tests; broaden terminal-emulator and accessibility coverage beyond the passing narrow/wide layout and macOS/Linux pseudo-terminal checks; harden all exported core options and large/full-port scans, and extend cancel/watch/error integration coverage.
+3. Broaden physical Linux/macOS hardware coverage, including native Intel/AMD execution beyond the passing ARM64 and translated x86-64 runtime checks; broaden terminal-emulator and accessibility coverage beyond the passing narrow/wide layout and macOS/Linux pseudo-terminal checks; harden all exported core options and large/full-port scans, and extend cancel/watch/error integration coverage.
 4. Investigate any further recoverable Fing mapping data if useful. An absent standalone resource is not proof that no mapping exists in compiled or runtime-fetched form. Do not copy proprietary resources into an open-source release without an applicable redistribution basis.
 5. Public release publication. GitHub API checks on 2026-09-08 confirm `coupez/lantern` is private and has no release assets. Canonical module installation, core imports from another module, staged installation, and self-contained local archives are verified locally; public retrieval remains unverified until the canonical revision is published and repository/release visibility is resolved.
 

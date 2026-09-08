@@ -1,6 +1,16 @@
 #!/bin/sh
 set -eu
 go version
+if [ -n "${LANTERN_EXPECT_GOARCH:-}" ]; then
+    test "$(go env GOOS)" = linux
+    test "$(go env GOARCH)" = "$LANTERN_EXPECT_GOARCH"
+    case "$LANTERN_EXPECT_GOARCH" in
+        amd64) test "$(uname -m)" = x86_64 ;;
+        arm64) test "$(uname -m)" = aarch64 ;;
+        *) exit 2 ;;
+    esac
+    printf 'Verified container architecture: linux/%s (%s)\n' "$LANTERN_EXPECT_GOARCH" "$(uname -m)"
+fi
 go vet ./...
 go test -race ./...
 # The bridge gateway is a known peer in this container's own network namespace.

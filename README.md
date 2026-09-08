@@ -134,6 +134,8 @@ python3 scripts/update-data.py && make build # refresh the public indexes
 python3 scripts/build-apple-models.py --download # rebuild the pinned model catalog
 ```
 
-To reproduce Linux runtime verification, run `make linux-test` with Docker available. The main container receives only `NET_RAW` and probes its own bridge gateway for the ARP check. Separate isolated fixtures use `NET_ADMIN` for temporary veth links and add `NET_RAW` only for direct NDP exchange; denied-capability cases are tested too. No test container uses host networking, host mounts, or published ports.
+To reproduce Linux runtime verification, run `make linux-test` with Docker available. Set `LINUX_PLATFORM=linux/amd64` or `LINUX_PLATFORM=linux/arm64` to select an architecture explicitly; foreign targets need installed Docker translation support. The main container receives only `NET_RAW` and probes its own bridge gateway for the ARP check. Separate isolated fixtures use `NET_ADMIN` for temporary veth links and add `NET_RAW` only for direct NDP exchange; denied-capability cases are tested too. No test container uses host networking, host mounts, or published ports.
 
 The network integration test uses controlled IPv4/IPv6 localhost servers to verify ICMP, port detection, SSH/HTTP banners, DNS-SD follow-ups, UPnP description boundaries, and NetBIOS node status. The Linux container also checks interoperability with Samba’s actual name server. Regular tests don't send scan traffic. See [status and remaining work](docs/STATUS.md).
+
+[Platform testing](docs/platform-testing.md) documents architecture assertions and how to execute both Linux release archives and the Intel Mac archive, including the CLI socket/terminal fixtures.

@@ -21,6 +21,8 @@ result = run(*selection, '--json')
 assert result.returncode == 0 and not result.stderr, result
 report = json.loads(result.stdout)
 assert report['schema'] == 1 and report['version'] and report['vendor_assignments'] > 0 and report['model_identifiers'] > 0
+if os.environ.get('LANTERN_EXPECT_GOARCH'):
+    assert report['os'] == 'linux' and report['arch'] == os.environ['LANTERN_EXPECT_GOARCH'], report
 checks = {check['name']: check for check in report['checks']}
 assert len(checks) == len(report['checks']) == 13, checks
 assert checks['remote_reachability']['status'] == 'not_checked'

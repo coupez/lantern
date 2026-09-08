@@ -28,6 +28,6 @@ jobs:
         run: |
           sh scripts/release.sh ci
           python3 scripts/test-release.py ci
-      - name: Linux protocol and ARP runtime tests
+      - name: Linux protocol, ARP, and NDP runtime tests
         if: runner.os == 'Linux'
         run: make linux-test

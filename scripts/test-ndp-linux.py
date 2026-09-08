@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Solicit real Linux kernel neighbors over an isolated Ethernet veth pair."""
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -42,7 +43,10 @@ try:
         assert report['devices'][0]['evidence'] == ['neighbor-cache'], report
         assert any('NDP unavailable' in w and 'operation not permitted' in w.lower() for w in report['warnings']), report
         doctor = subprocess.run([binary, 'doctor', '--interface', 'ndp0', '--json'], capture_output=True, text=True, timeout=5, check=True)
-        checks = {c['name']: c for c in json.loads(doctor.stdout)['checks']}
+        diagnostics = json.loads(doctor.stdout)
+        if os.environ.get('LANTERN_EXPECT_GOARCH'):
+            assert diagnostics['arch'] == os.environ['LANTERN_EXPECT_GOARCH'], diagnostics
+        checks = {c['name']: c for c in diagnostics['checks']}
         assert checks['target6']['status'] == 'available' and checks['ndp']['status'] == 'unavailable', checks
         assert 'operation not permitted' in checks['ndp']['detail'].lower(), checks['ndp']
         print('PASS NDP without raw capability: warning, cached-only fallback, no probes, doctor reports permission denial')
@@ -73,7 +77,10 @@ try:
         report = scan('fd99::2', timeout='100ms')
         assert report['probed'] == 0 and not report['devices'], report
         doctor = subprocess.run([binary, 'doctor', '--interface', 'ndp0', '--json'], capture_output=True, text=True, timeout=5, check=True)
-        ndp = next(c for c in json.loads(doctor.stdout)['checks'] if c['name'] == 'ndp')
+        diagnostics = json.loads(doctor.stdout)
+        if os.environ.get('LANTERN_EXPECT_GOARCH'):
+            assert diagnostics['arch'] == os.environ['LANTERN_EXPECT_GOARCH'], diagnostics
+        ndp = next(c for c in diagnostics['checks'] if c['name'] == 'ndp')
         assert ndp['status'] == 'available', ndp
         print('PASS direct NDP: real kernel global/link-local replies, fresh MAC precedence, scoped evidence, early completion, finite/sparse ranges, off-link exclusion, doctor')
 
