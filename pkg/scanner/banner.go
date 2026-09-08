@@ -112,10 +112,18 @@ func bannerResponse(src io.Reader, service string) string {
 		text := strings.TrimSpace(string(line))
 		if i == 0 {
 			first = CleanText(text)
-			if service != "http" {
+			if service != "http" && service != "ssh" {
 				return first
 			}
-		} else {
+		}
+		if service == "ssh" {
+			// RFC 4253 section 4.2 permits lines before the identification.
+			// Prefer its literal wire prefix; retain the first diagnostic if
+			// no identification arrives within the existing exchange limits.
+			if strings.HasPrefix(string(line), "SSH-") {
+				return CleanText(text)
+			}
+		} else if i > 0 {
 			if text == "" {
 				return first
 			}

@@ -1,0 +1,118 @@
+{
+  "reviewed": "2026-09-09",
+  "catalogs": {
+    "recog": {
+      "revision": "d3d20938da9f5f1e442c2419fe6c30cd651b6878",
+      "sources": [
+        {
+          "path": "LICENSE",
+          "url": "https://raw.githubusercontent.com/rapid7/recog/d3d20938da9f5f1e442c2419fe6c30cd651b6878/LICENSE",
+          "bytes": 177,
+          "sha256": "3ae091fc24e63ef94bb61353457021afc6f8a6b4573e09e538ce2e023708078f"
+        },
+        {
+          "path": "COPYING",
+          "url": "https://raw.githubusercontent.com/rapid7/recog/d3d20938da9f5f1e442c2419fe6c30cd651b6878/COPYING",
+          "bytes": 1294,
+          "sha256": "01fdfefde10cc10049c2924f6d9d4746d398d770af5c133ebced1fc41eaad38a"
+        },
+        {
+          "path": "README.md",
+          "url": "https://raw.githubusercontent.com/rapid7/recog/d3d20938da9f5f1e442c2419fe6c30cd651b6878/README.md",
+          "bytes": 15883,
+          "sha256": "3419842e27ff2ca8a1306086768d0d3ddb2dfb1093ba6a9ac0a5ba8b3f33113a"
+        },
+        {
+          "path": "xml/ssh_banners.xml",
+          "url": "https://raw.githubusercontent.com/rapid7/recog/d3d20938da9f5f1e442c2419fe6c30cd651b6878/xml/ssh_banners.xml",
+          "bytes": 127513,
+          "sha256": "a3e608cd8a46a177b6407875d7e31a34157c858cc9e3393920a99405e1f4f4b6"
+        },
+        {
+          "path": "xml/http_servers.xml",
+          "url": "https://raw.githubusercontent.com/rapid7/recog/d3d20938da9f5f1e442c2419fe6c30cd651b6878/xml/http_servers.xml",
+          "bytes": 294766,
+          "sha256": "010af0e05688945f669fd804520acf65b0160f89fc7702cc7faf12989a213302"
+        }
+      ],
+      "source_license": "BSD-2-Clause"
+    },
+    "nmap": {
+      "revision": "08312c289b74551e49d5fd51e54d9d3f18f53ac9",
+      "sources": [
+        {
+          "path": "LICENSE",
+          "url": "https://raw.githubusercontent.com/nmap/nmap/08312c289b74551e49d5fd51e54d9d3f18f53ac9/LICENSE",
+          "bytes": 29575,
+          "sha256": "9d9a9a763c0e6145172cfe7d8483e23b38ce60b6c79a82e4894242917bdae6d3"
+        },
+        {
+          "path": "nmap-mac-prefixes",
+          "url": "https://raw.githubusercontent.com/nmap/nmap/08312c289b74551e49d5fd51e54d9d3f18f53ac9/nmap-mac-prefixes",
+          "bytes": 1375622,
+          "sha256": "ae8b132bb3471ea94055e111137f76e041f4a8f5df9799ac184cc1fbf23d508d"
+        },
+        {
+          "path": "nmap-service-probes",
+          "url": "https://raw.githubusercontent.com/nmap/nmap/08312c289b74551e49d5fd51e54d9d3f18f53ac9/nmap-service-probes",
+          "bytes": 2580545,
+          "sha256": "a80199da0e0417dff7008fca8f765d567ca2d8da21b18b32fa6daf707cdec703"
+        }
+      ],
+      "source_license": "NPSL-0.95"
+    }
+  },
+  "lantern_index": {
+    "path": "pkg/vendors/data/ieee.tsv.gz",
+    "sha256": "163b1cbc9e5a2df8ad207e43ace0021090d56c07167c0886ea0c828585e95470"
+  },
+  "decision": {
+    "nmap": "Do not import these NPSL data files into the current MIT core. The extra MAC entries describe virtual NICs; investigate their primary implementations separately if useful. No Nmap data or code is embedded.",
+    "recog": "Prioritize an explicitly source-linked banner catalog integration. All 608 patterns compile and their own examples/capture assertions pass Go checks, but this is not full Recog output equivalence. Preserve specificity/order, field scopes, certainty, and provenance; implement and verify parameter/template processing before importing."
+  },
+  "comparison": {
+    "nmap": {
+      "prefixes": 52085,
+      "by_prefix_bits": {
+        "24": 38930,
+        "28": 6262,
+        "36": 6893
+      },
+      "lantern_ieee_prefixes": 58421,
+      "shared_prefixes": 52081,
+      "nmap_only_prefixes": 4,
+      "nmap_only_local": 2,
+      "nmap_only_multicast": 0,
+      "nmap_only_global_unicast": 2,
+      "lantern_only_prefixes": 6340,
+      "probes_by_transport": {
+        "TCP": 104,
+        "UDP": 84
+      },
+      "match_lines": 11970,
+      "softmatch_lines": 203
+    },
+    "recog": {
+      "xml/ssh_banners.xml": {
+        "sha256": "a3e608cd8a46a177b6407875d7e31a34157c858cc9e3393920a99405e1f4f4b6",
+        "patterns": 152,
+        "examples": 227,
+        "capture_assertions": 368,
+        "other_assertions_not_evaluated": 0,
+        "examples_matching_multiple_patterns": 95,
+        "examples_matching_an_earlier_pattern": 0,
+        "issues": []
+      },
+      "xml/http_servers.xml": {
+        "sha256": "010af0e05688945f669fd804520acf65b0160f89fc7702cc7faf12989a213302",
+        "patterns": 456,
+        "examples": 752,
+        "capture_assertions": 846,
+        "other_assertions_not_evaluated": 20,
+        "examples_matching_multiple_patterns": 28,
+        "examples_matching_an_earlier_pattern": 0,
+        "issues": []
+      }
+    }
+  }
+}
