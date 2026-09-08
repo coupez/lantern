@@ -56,7 +56,24 @@ func (d *keyDecoder) feed(s string) (out []string) {
 					d.paste = true
 					continue
 				}
-				key := map[string]string{"\x1b[A": "up", "\x1b[B": "down", "\x1bOA": "up", "\x1bOB": "down", "\x1b[5~": "pageup", "\x1b[6~": "pagedown", "\x1b[H": "home", "\x1b[F": "end"}[seq]
+				var key string
+				switch seq {
+				case "\x1b[A", "\x1bOA":
+					key = "up"
+				case "\x1b[B", "\x1bOB":
+					key = "down"
+				case "\x1b[5~":
+					key = "pageup"
+				case "\x1b[6~":
+					key = "pagedown"
+				// Normal/application cursor keys and screen/Linux/rxvt variants.
+				case "\x1b[H", "\x1bOH", "\x1b[1~", "\x1b[7~":
+					key = "home"
+				case "\x1b[F", "\x1bOF", "\x1b[4~", "\x1b[8~":
+					key = "end"
+				case "\x1bOM":
+					key = "enter"
+				}
 				if key != "" {
 					out = append(out, key)
 				}

@@ -92,6 +92,55 @@ def run(args, check, **kwargs):
         s.close()
 
 
+def navigation(s):
+    s.until(b'WATCHING')
+    s.send(b' ')
+    s.until(b'PAUSED')
+
+    def frame():
+        # Check the current screen, not a matching line from an earlier draw.
+        return re.sub(rb'\x1b\[[0-9;]*[A-Za-z]', b'',
+                      s.output.rsplit(b'\x1b[H\x1b[2K', 1)[-1])
+
+    def selected(address):
+        marker = '›● '.encode() + address
+        assert marker in frame(), (marker, frame())
+
+    # Default CSI, xterm application keys, screen/Linux, and rxvt variants.
+    for home, end in ((b'\x1b[H', b'\x1b[F'), (b'\x1bOH', b'\x1bOF'),
+                      (b'\x1b[1~', b'\x1b[4~'), (b'\x1b[7~', b'\x1b[8~')):
+        s.send(end)
+        selected(b'192.168.1.40')
+        s.send(home)
+        selected(b'192.168.1.1')
+
+        # A short viewport forces the real inspector to scroll.
+        s.resize(60, 12)
+        s.send(b'\x1bOM')
+        assert b'Device details' in frame(), frame()
+        top = frame().split(b'\r\n')[5:9]
+        s.send(end)
+        bottom = frame().split(b'\r\n')[5:9]
+        assert bottom != top, ('End did not scroll details', frame())
+        s.send(home)
+        assert frame().split(b'\r\n')[5:9] == top, ('Home did not restore details', frame())
+        s.send(b'\x1bOM')
+        assert b'Device details' not in frame(), frame()
+        s.resize(100, 24)
+        s.read(.15)
+
+    # Keys inside a bracketed paste must remain inert.
+    s.send(b'\x1b[200~\x1bOF\x1b[4~\x1b[8~\x1bOM\x1b[201~')
+    selected(b'192.168.1.1')
+    assert b'Device details' not in frame(), frame()
+    s.send(b'q')
+    s.finish()
+
+
+run(['demo', '--watch', '--no-color'], navigation)
+print('PASS terminal navigation: Home/End variants select and scroll; keypad Enter; paste isolation')
+
+
 def interaction(s):
     s.until(b'WATCHING')
     s.send(b' ')

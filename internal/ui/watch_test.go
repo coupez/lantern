@@ -125,6 +125,54 @@ func TestKeyDecoderFragmentationAndPaste(t *testing.T) {
 		t.Fatal("unknown escape interpreted as commands")
 	}
 }
+
+func TestTerminalNavigationKeys(t *testing.T) {
+	// Unmodified keys from xterm, screen/Linux console, and rxvt terminfo.
+	for _, pair := range [][2]string{
+		{"\x1b[H", "\x1b[F"}, {"\x1bOH", "\x1bOF"},
+		{"\x1b[1~", "\x1b[4~"}, {"\x1b[7~", "\x1b[8~"},
+	} {
+		t.Run(pair[0], func(t *testing.T) {
+			for _, input := range []struct{ wire, key string }{{pair[0], "home"}, {pair[1], "end"}} {
+				// Every possible two-chunk split must produce exactly one key.
+				for split := 0; split <= len(input.wire); split++ {
+					d := keyDecoder{}
+					keys := append(d.feed(input.wire[:split]), d.feed(input.wire[split:])...)
+					if len(keys) != 1 || keys[0] != input.key {
+						t.Fatalf("%q split %d: %q", input.wire, split, keys)
+					}
+				}
+			}
+			m := fixtureWatch()
+			ds := m.devices()
+			d := keyDecoder{}
+			for _, key := range d.feed(pair[1]) {
+				m.key(key)
+			}
+			if m.selected != ds[len(ds)-1].IP.String() {
+				t.Fatal("End did not select the last device", m.selected)
+			}
+			for _, key := range d.feed(pair[0]) {
+				m.key(key)
+			}
+			if m.selected != ds[0].IP.String() {
+				t.Fatal("Home did not select the first device", m.selected)
+			}
+		})
+	}
+	for split := 0; split <= 3; split++ {
+		d := keyDecoder{}
+		wire := "\x1bOM"
+		keys := append(d.feed(wire[:split]), d.feed(wire[split:])...)
+		if len(keys) != 1 || keys[0] != "enter" {
+			t.Fatalf("keypad Enter split %d: %q", split, keys)
+		}
+	}
+	d := keyDecoder{}
+	if keys := d.feed("\x1b[200~\x1bOH\x1bOF\x1bOM\x1b[1~\x1b[4~\x1b[7~\x1b[8~\x1b[201~"); len(keys) != 0 {
+		t.Fatal("pasted navigation keys became commands", keys)
+	}
+}
 func TestWatchPartialReportDoesNotClaimMissing(t *testing.T) {
 	for _, report := range []scanner.Report{{Cancelled: true}, {Error: "TCP probes failed"}} {
 		m := fixtureWatch()
