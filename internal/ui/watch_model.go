@@ -92,6 +92,9 @@ func deviceServices(d scanner.Device) string {
 		ports.WriteString(strconv.Itoa(int(p.Number)))
 		ports.WriteByte('/')
 		ports.WriteString(p.Service)
+		if p.Fingerprint != nil {
+			ports.WriteString(" [catalog: " + p.Fingerprint.Summary() + "]")
+		}
 	}
 	if ports.Len() == 0 {
 		return "—"
@@ -116,6 +119,9 @@ func deviceServicesPreview(d scanner.Device, width int) string {
 			cells++
 		}
 		token := strconv.Itoa(int(p.Number)) + "/" + scanner.CleanText(p.Service)
+		if p.Fingerprint != nil {
+			token += " [catalog: " + scanner.CleanText(p.Fingerprint.Summary()) + "]"
+		}
 		text.WriteString(token)
 		cells += uniseg.StringWidth(token)
 		if cells > width {
@@ -136,6 +142,21 @@ func (m *watchModel) devices() []scanner.Device {
 				if role := d.Vendor.AddressRole; role != nil {
 					haystack += " " + role.Name + " id " + strconv.Itoa(int(role.Identifier)) + " " + role.Prefix
 				}
+				var bannerText strings.Builder
+				for _, port := range d.Ports {
+					if match := port.Fingerprint; match != nil {
+						bannerText.WriteString(" " + match.Name + " " + match.Input)
+						keys := make([]string, 0, len(match.Fields))
+						for key := range match.Fields {
+							keys = append(keys, key)
+						}
+						sort.Strings(keys)
+						for _, key := range keys {
+							bannerText.WriteString(" " + key + " " + match.Fields[key])
+						}
+					}
+				}
+				haystack += bannerText.String()
 				if d.Identity != nil {
 					haystack += " " + d.Identity.Manufacturer + " " + d.Identity.Model + " " + d.Identity.Firmware + " " + d.Identity.FirmwareVersion + " " + strings.Join(d.Identity.ModelNames, " ")
 					if len(d.Identity.Claims) > 0 {

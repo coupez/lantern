@@ -3,6 +3,7 @@ package scanner
 import (
 	"bufio"
 	"context"
+	"github.com/coupez/lantern/pkg/fingerprints"
 	"io"
 	"net"
 	"net/netip"
@@ -28,10 +29,23 @@ func bannerService(service string) bool {
 	return service == "ssh" || service == "ftp" || service == "smtp" || service == "http"
 }
 
+type bannerObservation struct {
+	Text  string
+	Field string
+	Value string
+}
+
+// Retained for callers that only collect diagnostic text.
+func enrichBanners(ctx context.Context, d *Device, timeout time.Duration, slots chan struct{}, read func(context.Context, netip.Addr, Port, time.Duration) string) {
+	enrichBannerObservations(ctx, d, timeout, slots, func(ctx context.Context, ip netip.Addr, p Port, timeout time.Duration) bannerObservation {
+		return bannerObservation{Text: read(ctx, ip, p, timeout)}
+	})
+}
+
 // Four workers per device avoid serial timeout accumulation. All devices share
 // slots, so banner connections cannot exceed the scan's limit (at most 32).
 // A queued port receives its full exchange timeout once a slot becomes available.
-func enrichBanners(ctx context.Context, d *Device, timeout time.Duration, slots chan struct{}, read func(context.Context, netip.Addr, Port, time.Duration) string) {
+func enrichBannerObservations(ctx context.Context, d *Device, timeout time.Duration, slots chan struct{}, read func(context.Context, netip.Addr, Port, time.Duration) bannerObservation) {
 	var indices []int
 	for i, p := range d.Ports {
 		if bannerService(p.Service) {
@@ -50,7 +64,9 @@ func enrichBanners(ctx context.Context, d *Device, timeout time.Duration, slots 
 				case slots <- struct{}{}:
 				}
 				if ctx.Err() == nil {
-					d.Ports[i].Banner = read(ctx, d.IP, d.Ports[i], timeout)
+					observation := read(ctx, d.IP, d.Ports[i], timeout)
+					d.Ports[i].Banner = observation.Text
+					d.Ports[i].Fingerprint = fingerprints.Lookup(observation.Field, observation.Value)
 				}
 				<-slots
 			}
@@ -73,37 +89,47 @@ func readBanner(ctx context.Context, ip netip.Addr, p Port, timeout time.Duratio
 }
 
 func readBannerWithDialer(ctx context.Context, ip netip.Addr, p Port, timeout time.Duration, dial func(context.Context, string, string) (net.Conn, error)) string {
+	return readBannerObservationWithDialer(ctx, ip, p, timeout, dial).Text
+}
+func readBannerObservation(ctx context.Context, ip netip.Addr, p Port, timeout time.Duration) bannerObservation {
+	return readBannerObservationWithDialer(ctx, ip, p, timeout, (&net.Dialer{}).DialContext)
+}
+func readBannerObservationWithDialer(ctx context.Context, ip netip.Addr, p Port, timeout time.Duration, dial func(context.Context, string, string) (net.Conn, error)) bannerObservation {
 	if !bannerService(p.Service) || ctx.Err() != nil {
-		return ""
+		return bannerObservation{}
 	}
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 	c, err := dial(ctx, "tcp", net.JoinHostPort(ip.String(), strconv.Itoa(int(p.Number))))
 	if err != nil {
-		return ""
+		return bannerObservation{}
 	}
 	defer c.Close()
 	stop := context.AfterFunc(ctx, func() { c.Close() })
 	defer stop()
 	deadline, _ := ctx.Deadline()
 	if err := c.SetDeadline(deadline); err != nil || ctx.Err() != nil {
-		return ""
+		return bannerObservation{}
 	}
 	if p.Service == "http" {
 		_, err = io.WriteString(c, "HEAD / HTTP/1.0\r\nHost: "+net.JoinHostPort(ip.WithZone("").String(), strconv.Itoa(int(p.Number)))+"\r\nConnection: close\r\n\r\n")
 		if err != nil {
-			return ""
+			return bannerObservation{}
 		}
 	}
-	return bannerResponse(c, p.Service)
+	return observeBannerResponse(c, p.Service)
 }
 
 // TCP reads need not align with lines. Read complete greetings/headers while
 // bounding bytes, line length and header count, and never parse an HTTP body as headers.
 func bannerResponse(src io.Reader, service string) string {
+	return observeBannerResponse(src, service).Text
+}
+func observeBannerResponse(src io.Reader, service string) bannerObservation {
 	limited := &io.LimitedReader{R: src, N: 8192}
 	r := bufio.NewReaderSize(limited, 2048)
-	first := ""
+	first := bannerObservation{}
+	validHTTP := false
 	for i := 0; i < 64; i++ {
 		line, err := r.ReadSlice('\n')
 		if err != nil && (err != io.EOF || limited.N == 0) {
@@ -111,7 +137,8 @@ func bannerResponse(src io.Reader, service string) string {
 		}
 		text := strings.TrimSpace(string(line))
 		if i == 0 {
-			first = CleanText(text)
+			first.Text = CleanText(text)
+			validHTTP = validHTTPStatus(strings.TrimSuffix(strings.TrimSuffix(string(line), "\n"), "\r"))
 			if service != "http" && service != "ssh" {
 				return first
 			}
@@ -121,7 +148,15 @@ func bannerResponse(src io.Reader, service string) string {
 			// Prefer its literal wire prefix; retain the first diagnostic if
 			// no identification arrives within the existing exchange limits.
 			if strings.HasPrefix(string(line), "SSH-") {
-				return CleanText(text)
+				observation := bannerObservation{Text: CleanText(text)}
+				if err == nil && len(line) <= 255 {
+					raw := strings.TrimSuffix(strings.TrimSuffix(string(line), "\n"), "\r")
+					version, software, ok := strings.Cut(raw[4:], "-")
+					if ok && (version == "2.0" || version == "1.99" || version == "1.5") {
+						observation.Field, observation.Value = fingerprints.SSHBanner, software
+					}
+				}
+				return observation
 			}
 		} else if i > 0 {
 			if text == "" {
@@ -129,7 +164,14 @@ func bannerResponse(src io.Reader, service string) string {
 			}
 			name, value, ok := strings.Cut(text, ":")
 			if ok && strings.EqualFold(name, "server") {
-				return CleanText(strings.TrimSpace(value))
+				observation := bannerObservation{Text: CleanText(strings.TrimSpace(value))}
+				raw := strings.TrimSuffix(strings.TrimSuffix(string(line), "\n"), "\r")
+				rawName, rawValue, _ := strings.Cut(raw, ":")
+				// Header names are ASCII; EqualFold alone accepts Unicode lookalikes.
+				if err == nil && validHTTP && len(rawName) == len("server") && strings.EqualFold(rawName, "server") {
+					observation.Field, observation.Value = fingerprints.HTTPServer, strings.Trim(rawValue, " \t")
+				}
+				return observation
 			}
 		}
 		if err != nil {
@@ -137,4 +179,16 @@ func bannerResponse(src io.Reader, service string) string {
 		}
 	}
 	return first
+}
+
+func validHTTPStatus(line string) bool {
+	if len(line) < 12 || (line[:9] != "HTTP/1.0 " && line[:9] != "HTTP/1.1 ") {
+		return false
+	}
+	for _, c := range line[9:12] {
+		if c < '0' || c > '9' {
+			return false
+		}
+	}
+	return len(line) == 12 || line[12] == ' '
 }

@@ -52,6 +52,6 @@ Local research artifacts are under `research/downloads/` and `research/extracted
 | SSH / HTTP / FTP / SMTP responses | Device-reported software banners | Bounded explicit/deep inspection |
 | Wireshark manufacturer / well-known-address sources | IEEE-derived prefixes and protocol address roles | Pinned comparison found no additional global-unicast manufacturer prefixes; [review and provenance](manufacturer-source-review.md). No data imported |
 | Nmap MAC / service-probe catalogs | MAC prefixes and probe-dependent service matches | Pinned NPSL review; four extra MAC prefixes are virtual-NIC labels. No import; [review](banner-catalog-review.md#nmap) |
-| Rapid7 Recog SSH / HTTP catalogs | 608 patterns over collected banner fields | BSD-2-Clause; 979 examples and 1,214 positional capture assertions pass Go compatibility checks. Full output integration remains pending; [review](banner-catalog-review.md#recog) |
+| Rapid7 Recog SSH / HTTP catalogs | 608 patterns over collected banner fields | BSD-2-Clause; all 608 patterns integrated as scoped port claims, with 979 examples and 1,234 expected fields verified; [recognition](recognition.md#banner-fingerprints) and [initial review](banner-catalog-review.md#recog) |
 
 MAC assignment alone cannot identify every device model or undo a randomized MAC. Lantern keeps protocol evidence distinct from inferred device types.

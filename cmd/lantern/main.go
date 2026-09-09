@@ -8,6 +8,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/coupez/lantern/internal/ui"
+	"github.com/coupez/lantern/pkg/fingerprints"
 	"github.com/coupez/lantern/pkg/models"
 	"github.com/coupez/lantern/pkg/scanner"
 	"github.com/coupez/lantern/pkg/vendors"
@@ -56,6 +57,23 @@ func run(args []string) error {
 			fmt.Printf("%-12s %-39s %s\n", v.Interface, v.CIDR, v.MAC)
 		}
 		return nil
+	case "fingerprint":
+		if len(args) == 0 {
+			fmt.Printf("%d offline SSH/HTTP banner patterns · Rapid7 Recog catalog claims\n", fingerprints.Count())
+			return nil
+		}
+		if len(args) == 1 && args[0] == "sources" {
+			fmt.Print(fingerprints.Sources)
+			return nil
+		}
+		if len(args) != 2 || (args[0] != "ssh" && args[0] != "http") {
+			return errors.New("usage: lantern fingerprint [ssh SOFTWARE_AND_COMMENTS | http SERVER_HEADER | sources]")
+		}
+		field := fingerprints.HTTPServer
+		if args[0] == "ssh" {
+			field = fingerprints.SSHBanner
+		}
+		return json.NewEncoder(os.Stdout).Encode(fingerprints.Lookup(field, args[1]))
 	case "models":
 		if len(args) == 0 {
 			fmt.Printf("%d offline AppleDB/Shelly hardware identifiers · exact matches with all candidates\n", models.Count())
@@ -123,6 +141,7 @@ func help() {
   lantern watch [CIDR]            Live dashboard and network changes
   lantern interfaces              List available IPv4/IPv6 networks
   lantern lookup MAC              Identify a MAC vendor offline
+  lantern fingerprint [ssh|http VALUE]  Interpret an observed banner field offline
   lantern models [IDENTIFIER]     Look up hardware model candidates offline
   lantern vendors [sources]       Database size and provenance
   lantern diff before.json after.json
@@ -407,7 +426,7 @@ func scan(args []string, watch bool) error {
 }
 func writeCSV(w io.Writer, r scanner.Report) error {
 	c := csv.NewWriter(w)
-	if err := c.Write([]string{"ip", "mac", "vendor", "names", "ports", "evidence", "reported_name", "manufacturer", "model", "model_candidates", "firmware", "firmware_version", "mac_address_role", "mac_address_role_id"}); err != nil {
+	if err := c.Write([]string{"ip", "mac", "vendor", "names", "ports", "evidence", "reported_name", "manufacturer", "model", "model_candidates", "firmware", "firmware_version", "mac_address_role", "mac_address_role_id", "service_fingerprints"}); err != nil {
 		return err
 	}
 	for _, d := range r.Devices {
@@ -426,6 +445,13 @@ func writeCSV(w io.Writer, r scanner.Report) error {
 		} else {
 			row = append(row, "", "")
 		}
+		var matches []string
+		for _, port := range d.Ports {
+			if port.Fingerprint != nil {
+				matches = append(matches, fmt.Sprintf("%d/%s: %s", port.Number, port.Service, port.Fingerprint.Summary()))
+			}
+		}
+		row = append(row, strings.Join(matches, ";"))
 		for i, s := range row {
 			if len(s) > 0 && strings.ContainsAny(s[:1], "=+-@\t\r") {
 				row[i] = "'" + s

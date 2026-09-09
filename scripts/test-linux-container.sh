@@ -26,6 +26,7 @@ python3 /usr/local/bin/test-full-ports.py /tmp/lantern
 python3 /usr/local/bin/test-doctor.py /tmp/lantern --expect-arp available
 python3 /usr/local/bin/test-watch-pty.py /tmp/lantern
 python3 /usr/local/bin/test-snapshot-cli.py /tmp/lantern
+python3 /usr/local/bin/test-banner-fingerprints.py /tmp/lantern
 python3 /usr/local/bin/test-ethernet-fixture.py /tmp/lantern
 sh /usr/local/bin/test-netbios-samba.sh /tmp/lantern
 /tmp/lantern version

@@ -15,6 +15,9 @@ func (d Device) Clone() Device {
 	}
 	d.Names = slices.Clone(d.Names)
 	d.Ports = slices.Clone(d.Ports)
+	for i := range d.Ports {
+		d.Ports[i].Fingerprint = d.Ports[i].Fingerprint.Clone()
+	}
 	d.Evidence = slices.Clone(d.Evidence)
 	d.Advertisements = slices.Clone(d.Advertisements)
 	for i := range d.Advertisements {

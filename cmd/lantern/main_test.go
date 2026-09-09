@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/csv"
+	"github.com/coupez/lantern/pkg/fingerprints"
 	"github.com/coupez/lantern/pkg/scanner"
 	"github.com/coupez/lantern/pkg/vendors"
 	"net/netip"
@@ -54,7 +55,7 @@ func TestCSVCatalogCandidates(t *testing.T) {
 		t.Fatal(err)
 	}
 	rows, err := csv.NewReader(&b).ReadAll()
-	if err != nil || len(rows) != 2 || len(rows[1]) != 14 || rows[0][9] != "model_candidates" || rows[1][8] != "AppleTV14,1" || rows[1][9] != "Wi-Fi;Wi-Fi + Ethernet" {
+	if err != nil || len(rows) != 2 || len(rows[1]) != 15 || rows[0][9] != "model_candidates" || rows[1][8] != "AppleTV14,1" || rows[1][9] != "Wi-Fi;Wi-Fi + Ethernet" {
 		t.Fatal(rows, err)
 	}
 }
@@ -66,7 +67,7 @@ func TestCSVFirmwareFieldsAndFormulaProtection(t *testing.T) {
 		t.Fatal(err)
 	}
 	rows, err := csv.NewReader(&b).ReadAll()
-	if err != nil || len(rows) != 3 || len(rows[0]) != 14 || rows[0][10] != "firmware" || rows[0][11] != "firmware_version" || rows[1][10] != "ESPHome" || rows[1][11] != "'=untrusted" || rows[2][10] != "" || rows[2][11] != "" {
+	if err != nil || len(rows) != 3 || len(rows[0]) != 15 || rows[0][10] != "firmware" || rows[0][11] != "firmware_version" || rows[1][10] != "ESPHome" || rows[1][11] != "'=untrusted" || rows[2][10] != "" || rows[2][11] != "" {
 		t.Fatal(rows, err)
 	}
 }
@@ -82,10 +83,23 @@ func TestCSVAddressRole(t *testing.T) {
 		t.Fatal(err)
 	}
 	rows, err := csv.NewReader(&b).ReadAll()
-	if err != nil || len(rows[0]) != 14 || rows[0][12] != "mac_address_role" || rows[0][13] != "mac_address_role_id" || rows[1][12] != v.AddressRole.Name || rows[1][13] != "0" || rows[2][12] != "" || rows[2][13] != "" {
+	if err != nil || len(rows[0]) != 15 || rows[0][12] != "mac_address_role" || rows[0][13] != "mac_address_role_id" || rows[1][12] != v.AddressRole.Name || rows[1][13] != "0" || rows[2][12] != "" || rows[2][13] != "" {
 		t.Fatal(rows, err)
 	}
 	if rows[1][2] != v.Name || rows[1][7] != "" || rows[1][8] != "" {
 		t.Fatal("address role changed registrant/manufacturer/model columns", rows)
+	}
+}
+
+func TestCSVServiceFingerprints(t *testing.T) {
+	match := fingerprints.Lookup(fingerprints.HTTPServer, "Apache/2.4.65")
+	var b bytes.Buffer
+	r := scanner.Report{Devices: []scanner.Device{{IP: netip.MustParseAddr("192.0.2.1"), Ports: []scanner.Port{{Number: 80, Service: "http", Fingerprint: match}}}, {IP: netip.MustParseAddr("192.0.2.2")}}}
+	if err := writeCSV(&b, r); err != nil {
+		t.Fatal(err)
+	}
+	rows, err := csv.NewReader(&b).ReadAll()
+	if err != nil || len(rows) != 3 || len(rows[0]) != 15 || rows[0][14] != "service_fingerprints" || rows[1][14] != "80/http: Apache HTTPD 2.4.65" || rows[2][14] != "" || rows[1][7] != "" || rows[1][8] != "" {
+		t.Fatal(rows, err)
 	}
 }

@@ -58,7 +58,7 @@ func TestEnrichedEventsNetworkIntegration(t *testing.T) {
 		}
 		close(started)
 		<-release
-		fmt.Fprint(c, "HTTP/1.0 200 OK\r\nServer: Slow fixture\r\n\r\n")
+		fmt.Fprint(c, "HTTP/1.0 200 OK\r\nServer: Apache/2.4.65\r\n\r\n")
 	}()
 	o := Defaults()
 	o.Target = netip.MustParsePrefix("127.0.0.0/30")
@@ -76,6 +76,13 @@ func TestEnrichedEventsNetworkIntegration(t *testing.T) {
 	done := make(chan result, 1)
 	go func() {
 		r, err := (Engine{Dialer: eventFixtureDialer{port}, NeighborSource: noNeighbors}).Scan(ctx, o, func(e Event) {
+			if e.Type == "device_update" && len(e.Device.Ports) > 0 {
+				if e.Device.Ports[0].Fingerprint == nil {
+					t.Error("missing fingerprint in final event")
+				} else {
+					e.Device.Ports[0].Fingerprint.Fields["service.product"] = "consumer mutation"
+				}
+			}
 			if e.Type == "device_update" && e.Device.IP == netip.MustParseAddr("127.0.0.2") {
 				updated <- e
 			}
@@ -103,8 +110,11 @@ func TestEnrichedEventsNetworkIntegration(t *testing.T) {
 	unblock()
 	select {
 	case result := <-done:
-		if result.err != nil || len(result.report.Devices) != 2 || len(result.report.Devices[0].Ports) != 1 || result.report.Devices[0].Ports[0].Banner != "Slow fixture" {
+		if result.err != nil || len(result.report.Devices) != 2 || len(result.report.Devices[0].Ports) != 1 || result.report.Devices[0].Ports[0].Banner != "Apache/2.4.65" {
 			t.Fatal(result)
+		}
+		if match := result.report.Devices[0].Ports[0].Fingerprint; match == nil || match.Fields["service.product"] != "HTTPD" {
+			t.Fatal("event mutation escaped into returned report", match)
 		}
 	case <-time.After(2 * time.Second):
 		t.Fatal("scan did not finish after banner release")

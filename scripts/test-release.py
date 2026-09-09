@@ -42,7 +42,7 @@ required = {'lantern','LICENSE','NOTICE','THIRD_PARTY_LICENSES','README.md','doc
             'pkg/models/data/sources.json','pkg/vendors/data/sources.json','pkg/scanner/data/sources.json',
             'pkg/scanner/data/cast-models.json','pkg/models/data/shelly-models.json',
             'pkg/models/data/shelly-sources.json','pkg/scanner/data/matter-types.json',
-            'pkg/models/data/matter-sources.json','research/fing-static-analysis.json'}
+            'pkg/models/data/matter-sources.json','pkg/fingerprints/data/sources.json','research/fing-static-analysis.json'}
 for system,arch in targets:
     filename = f'lantern-{version}-{system}-{arch}.tar.gz'
     path = dist/filename
@@ -61,6 +61,9 @@ for system,arch in targets:
             assert entry.name in required or re.fullmatch(r'docs/[^/]+\.md|pkg/[^/]+/data/[^/]+\.json',entry.name)
             content[entry.name] = archive.extractfile(entry).read()
         assert b'github.com/rivo/uniseg' in content['THIRD_PARTY_LICENSES']
+        assert b'Rapid7 Recog' in content['NOTICE'] and b'Copyright (c) 2014-2015, Rapid7' in content['THIRD_PARTY_LICENSES']
+        recog = json.loads(content['pkg/fingerprints/data/sources.json'])
+        assert recog['license'] == 'BSD-2-Clause' and sum(recog['patterns'].values()) == 608
         assert b'AppleDB' in content['NOTICE']
         assert b'aioshelly' in content['NOTICE'] and b'Apache License' in content['THIRD_PARTY_LICENSES']
         shelly_source = json.loads(content['pkg/models/data/shelly-sources.json'])
@@ -108,7 +111,7 @@ for system,arch in targets:
                 assert diagnostics['os'] == system and diagnostics['arch'] == arch, diagnostics
                 assert diagnostics['version'] == version, diagnostics
                 if args.macos_amd64 and system == 'darwin':
-                    for fixture in ['test-event-stream.py', 'test-watch-pty.py', 'test-snapshot-cli.py']:
+                    for fixture in ['test-event-stream.py', 'test-watch-pty.py', 'test-snapshot-cli.py', 'test-banner-fingerprints.py']:
                         subprocess.run(['python3', str(root/'scripts'/fixture), str(exe)], check=True, timeout=90)
                 print(f'PASS packaged runtime: {system}/{arch}',flush=True)
     if system == 'linux' and args.linux_containers:
@@ -137,7 +140,7 @@ with tempfile.TemporaryDirectory(prefix='lantern-archive-') as tmp:
     report = json.loads(run('doctor', '--json'))
     assert report['os'] == 'linux' and report['arch'] == os.environ['LANTERN_EXPECT_GOARCH'], report
     assert report['version'] == os.environ['LANTERN_EXPECT_VERSION'], report
-    for fixture in ['test-event-stream.py', 'test-watch-pty.py', 'test-snapshot-cli.py']:
+    for fixture in ['test-event-stream.py', 'test-watch-pty.py', 'test-snapshot-cli.py', 'test-banner-fingerprints.py']:
         subprocess.run(['python3', '/usr/local/bin/' + fixture, str(exe)], check=True, timeout=90)
 """
         result = subprocess.run(['docker', 'run', '--rm', '-i', '--platform', f'linux/{arch}',

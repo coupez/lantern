@@ -86,6 +86,7 @@ import (
  "github.com/coupez/lantern/pkg/scanner"
  "github.com/coupez/lantern/pkg/vendors"
  "github.com/coupez/lantern/pkg/models"
+ "github.com/coupez/lantern/pkg/fingerprints"
 )
 func main() {
  ctx,cancel:=context.WithCancel(context.Background());cancel()
@@ -95,6 +96,10 @@ func main() {
  report,err:=engine.Scan(ctx,options,nil)
  if err!=nil || !report.Cancelled || report.Probed!=0 { panic("cancellation contract") }
  if vendors.Count()<58000 || len(models.Lookup("Mac16,9"))==0 { panic("embedded data missing") }
+ match:=fingerprints.Lookup(fingerprints.HTTPServer,"Apache/2.4.65")
+ if fingerprints.Count()!=608 || match==nil || match.Fields["service.product"]!="HTTPD" { panic("banner catalog missing") }
+ copy:=match.Clone();copy.Fields["service.product"]="changed"
+ if match.Fields["service.product"]!="HTTPD" { panic("banner match ownership") }
  fmt.Println("core import OK")
 }
 ''')

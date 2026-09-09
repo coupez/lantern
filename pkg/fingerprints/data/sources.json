@@ -1,0 +1,38 @@
+{
+  "source": "Rapid7 Recog",
+  "revision": "d3d20938da9f5f1e442c2419fe6c30cd651b6878",
+  "license": "BSD-2-Clause",
+  "sources": [
+    {
+      "path": "LICENSE",
+      "url": "https://raw.githubusercontent.com/rapid7/recog/d3d20938da9f5f1e442c2419fe6c30cd651b6878/LICENSE",
+      "bytes": 177,
+      "sha256": "3ae091fc24e63ef94bb61353457021afc6f8a6b4573e09e538ce2e023708078f"
+    },
+    {
+      "path": "COPYING",
+      "url": "https://raw.githubusercontent.com/rapid7/recog/d3d20938da9f5f1e442c2419fe6c30cd651b6878/COPYING",
+      "bytes": 1294,
+      "sha256": "01fdfefde10cc10049c2924f6d9d4746d398d770af5c133ebced1fc41eaad38a"
+    },
+    {
+      "path": "xml/ssh_banners.xml",
+      "url": "https://raw.githubusercontent.com/rapid7/recog/d3d20938da9f5f1e442c2419fe6c30cd651b6878/xml/ssh_banners.xml",
+      "bytes": 127513,
+      "sha256": "a3e608cd8a46a177b6407875d7e31a34157c858cc9e3393920a99405e1f4f4b6"
+    },
+    {
+      "path": "xml/http_servers.xml",
+      "url": "https://raw.githubusercontent.com/rapid7/recog/d3d20938da9f5f1e442c2419fe6c30cd651b6878/xml/http_servers.xml",
+      "bytes": 294766,
+      "sha256": "010af0e05688945f669fd804520acf65b0160f89fc7702cc7faf12989a213302"
+    }
+  ],
+  "index_sha256": "976c66b982adfbdf4c0271f5ee086e6d78170bdec47413dbee03497c346e213a",
+  "testdata_sha256": "bdcdf5093d9555887f9582c259a6085a1322bc229e8fe4c60bdd68bb88095cbe",
+  "patterns": {
+    "ssh.banner": 152,
+    "http_header.server": 456
+  },
+  "selection": "All pinned SSH and HTTP Server patterns, in upstream order. Parameters, certainty, preference, and source lines retained. Examples are test data only."
+}

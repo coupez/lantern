@@ -93,3 +93,16 @@ These are in-memory core comparisons without network traffic, terminal output, o
 ```sh
 go test ./pkg/scanner -run '^$' -bench BenchmarkDiffPortObservations -benchtime=3x -count=3 -benchmem
 ```
+
+
+## Offline banner fingerprint matching
+
+On Apple M4 Max / macOS ARM64 / Go 1.26.8, medians of three warm `BenchmarkLookup` samples measured:
+
+| Input | Median | Bytes / allocations per operation |
+| --- | ---: | ---: |
+| SSH `OpenSSH_9.9p1 Ubuntu-3ubuntu1` | 3.662 µs | 2,054 / 40 |
+| HTTP Server `Apache/2.4.65` | 1.381 µs | 831 / 18 |
+| Unmatched HTTP Server, 2,048 `x` bytes | 135.711 µs | 0 / 0 |
+
+The matcher preserves source order and returns independently owned scoped fields with expanded catalog templates. Input length is bounded to 2,048 bytes. These warm measurements exclude initial lazy decompression/JSON parsing/compilation and all network/terminal work; they do not measure overall scan time or accuracy. Unmatched long inputs require more regex work than early matching rules. Reproduce with `go test ./pkg/fingerprints -run '^$' -bench BenchmarkLookup -benchmem -count=3`. Log: `research/results/banner-fingerprints-benchmark.log` (ignored).

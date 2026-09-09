@@ -170,6 +170,11 @@ func (u *UI) Report(r scanner.Report) {
 			label := strings.TrimSpace(d.Identity.Firmware + " " + d.Identity.FirmwareVersion)
 			fmt.Fprintf(u.Out, "    %s\n", u.style("38;5;245", fit("Firmware · "+label, max(12, u.Width-6))))
 		}
+		for _, port := range d.Ports {
+			if port.Fingerprint != nil {
+				fmt.Fprintf(u.Out, "    %s\n", u.style("38;5;245", fit(fmt.Sprintf("Catalog · TCP %d · %s", port.Number, port.Fingerprint.Summary()), max(12, u.Width-6))))
+			}
+		}
 		if role := d.Vendor.AddressRole; role != nil {
 			fmt.Fprintf(u.Out, "    %s\n", u.style("38;5;245", fit(fmt.Sprintf("MAC range · %s · ID %d", role.Name, role.Identifier), max(12, u.Width-6))))
 		}
@@ -263,6 +268,21 @@ func (u *UI) Details(r scanner.Report) {
 		field("Evidence", strings.Join(d.Evidence, ", "))
 		for _, p := range d.Ports {
 			field("TCP open", fmt.Sprintf("%d · %s  %s", p.Number, p.Service, p.Banner))
+			if match := p.Fingerprint; match != nil {
+				field("Catalog", match.Name)
+				field("Match field", match.Field)
+				field("Catalog src", match.Reference)
+				field("Certainty", match.Certainty)
+				field("Preference", match.Preference)
+				keys := make([]string, 0, len(match.Fields))
+				for key := range match.Fields {
+					keys = append(keys, key)
+				}
+				sort.Strings(keys)
+				for _, key := range keys {
+					field("Catalog claim", key+" = "+match.Fields[key])
+				}
+			}
 		}
 		for _, a := range d.Advertisements {
 			field(strings.ToUpper(a.Protocol), a.Instance+" "+a.Service)

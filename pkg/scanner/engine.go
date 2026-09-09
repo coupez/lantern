@@ -475,7 +475,7 @@ func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, 
 					}
 				}
 				if o.Banners && ctx.Err() == nil {
-					enrichBanners(ctx, d, o.Timeout, bannerSlots, readBanner)
+					enrichBannerObservations(ctx, d, o.Timeout, bannerSlots, readBannerObservation)
 				}
 				if o.Descriptions && ctx.Err() == nil {
 					enrichDescriptions(ctx, d, o.Timeout)

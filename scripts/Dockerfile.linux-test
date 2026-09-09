@@ -15,6 +15,7 @@ COPY scripts/test-full-ports.py /usr/local/bin/test-full-ports.py
 COPY scripts/test-event-stream.py /usr/local/bin/test-event-stream.py
 COPY scripts/test-doctor.py /usr/local/bin/test-doctor.py
 COPY scripts/test-snapshot-cli.py /usr/local/bin/test-snapshot-cli.py
+COPY scripts/test-banner-fingerprints.py /usr/local/bin/test-banner-fingerprints.py
 COPY scripts/test-ethernet-darwin.py scripts/test-ethernet-fixture.py /usr/local/bin/
 COPY scripts/test-watch-pty.py /usr/local/bin/test-watch-pty.py
 COPY scripts/test-netbios-samba.sh /usr/local/bin/test-netbios-samba.sh

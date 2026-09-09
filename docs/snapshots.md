@@ -12,6 +12,8 @@ Host enumeration skips unspecified addresses in zero-containing ranges. For exam
 
 An IP address is the comparison key; scoped IPv6 addresses remain distinct. `added` means an address appears in the later observation set, and `missing` means it does not. Neither proves that a physical device joined or left the network. A MAC change can reflect a different device, randomized addressing, proxying, or a changed cache observation.
 
+Optional `ports[].fingerprint` objects preserve source-linked banner catalog interpretations and independently scoped service/OS/hardware fields. Loading does not recompute them. They are excluded from port-change comparisons, like raw banner text; adding metadata to a legacy snapshot does not fabricate a new observation.
+
 The optional `vendor.address_role` object preserves a virtual MAC range's label, prefix, encoded identifier, and source references. Older snapshots without it still load. This derived metadata is not compared independently: adding a label to the same MAC does not fabricate a device change; changing the MAC retains the existing MAC-change semantics. Loading a snapshot does not recompute its saved range metadata.
 
 `changed` records identify a `field` and carry string-set `before`/`after` values, in addition to a readable `detail`. An omitted value array represents an empty set. Compared fields are observed MAC, registered vendor, verified-open TCP port observations, names, workgroups, selected identity name/manufacturer/model/firmware/version, catalog model candidates, type hint, and response evidence. These fields remain separate from their underlying raw advertisements and provenance claims in the report.

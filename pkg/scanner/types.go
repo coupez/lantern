@@ -3,15 +3,17 @@ package scanner
 
 import (
 	"context"
+	"github.com/coupez/lantern/pkg/fingerprints"
 	"github.com/coupez/lantern/pkg/vendors"
 	"net/netip"
 	"time"
 )
 
 type Port struct {
-	Number  uint16 `json:"port"`
-	Service string `json:"service"`
-	Banner  string `json:"banner,omitempty"`
+	Fingerprint *fingerprints.Match `json:"fingerprint,omitempty"`
+	Number      uint16              `json:"port"`
+	Service     string              `json:"service"`
+	Banner      string              `json:"banner,omitempty"`
 }
 type Device struct {
 	Identity       *Identity       `json:"identity,omitempty"`

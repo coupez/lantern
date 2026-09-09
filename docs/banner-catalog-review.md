@@ -1,10 +1,10 @@
 # Banner catalog source review
 
-Recog is the next candidate for extending Lantern's offline recognition. Its pinned SSH and HTTP catalogs supply 608 patterns over data Lantern already collects. This review checks source provenance and matching feasibility; these patterns are not yet embedded in the scanner.
+Recog's pinned SSH and HTTP catalogs supply 608 patterns over data Lantern already collects. This initial review established provenance and matching feasibility; the subsequent [runtime integration](recognition.md#banner-fingerprints) now embeds all of these patterns and checks every example's expected fields.
 
 ## Recog
 
-Reviewed revision: [`d3d20938da9f5f1e442c2419fe6c30cd651b6878`](https://github.com/rapid7/recog/tree/d3d20938da9f5f1e442c2419fe6c30cd651b6878), retrieved 2026-09-09. The repository's [LICENSE](https://github.com/rapid7/recog/blob/d3d20938da9f5f1e442c2419fe6c30cd651b6878/LICENSE) assigns BSD-2-Clause to its files; [COPYING](https://github.com/rapid7/recog/blob/d3d20938da9f5f1e442c2419fe6c30cd651b6878/COPYING) supplies the redistribution conditions and disclaimer. Both were downloaded and hashed. A future import must retain the notice in source and packaged releases.
+Reviewed revision: [`d3d20938da9f5f1e442c2419fe6c30cd651b6878`](https://github.com/rapid7/recog/tree/d3d20938da9f5f1e442c2419fe6c30cd651b6878), retrieved 2026-09-09. The repository's [LICENSE](https://github.com/rapid7/recog/blob/d3d20938da9f5f1e442c2419fe6c30cd651b6878/LICENSE) assigns BSD-2-Clause to its files; [COPYING](https://github.com/rapid7/recog/blob/d3d20938da9f5f1e442c2419fe6c30cd651b6878/COPYING) supplies the redistribution conditions and disclaimer. Both were downloaded and hashed. The integration retains the notice in source and packaged releases.
 
 | Input | Patterns | Examples checked | Capture assertions checked | Examples matching multiple patterns |
 | --- | ---: | ---: | ---: | ---: |
@@ -13,9 +13,9 @@ Reviewed revision: [`d3d20938da9f5f1e442c2419fe6c30cd651b6878`](https://github.c
 
 All 608 expressions compile unchanged with Go 1.26.8's `regexp`. Every example matches its own expression, and all 1,214 directly asserted capture values agree. Twenty other HTTP example assertions, covering values outside these plain positional captures, are deliberately not evaluated. No example matches an earlier expression in its file, although 123 match additional later expressions. That supports preserving the catalog's specificity/order rather than merging all matching patterns as independent evidence.
 
-This is a finite compatibility experiment, not proof of complete Recog equivalence or real-device accuracy. The experiment does not implement parameter defaults, compound versions, value templates, CPE processing, certainty interpretation, or full upstream output construction. It does not execute upstream Ruby or Python. Unicode/regex edge semantics beyond supplied examples remain untested.
+This is a finite compatibility experiment, not proof of complete Recog equivalence or real-device accuracy. The initial experiment did not implement parameter defaults, compound versions, value templates, CPE processing, certainty interpretation, or full upstream output construction. The integration adds bounded template processing, preserves scoped keys/qualifiers, and passes the twenty previously unevaluated expected fields. It does not execute upstream Ruby or Python. Unicode/regex edge semantics beyond supplied examples remain untested.
 
-A runtime integration should retain separate service, operating-system, and hardware catalog claims with exact source provenance and qualifiers. An OpenSSH service vendor must not become the physical device manufacturer. HTTP fingerprinting must receive an actual Server field, not the banner reader's fallback HTTP status line. SSH patterns expect the portion after `SSH-<protocol-version>-`, including optional comments, not the entire identification line. Raw observations must stay available, and banner interpretation must not issue additional probes or authenticate a hardware identity.
+The runtime integration retains separate service, operating-system, and hardware catalog claims with exact source provenance and qualifiers. An OpenSSH service vendor must not become the physical device manufacturer. HTTP fingerprinting must receive an actual Server field, not the banner reader's fallback HTTP status line. SSH patterns expect the portion after `SSH-<protocol-version>-`, including optional comments, not the entire identification line. Raw observations must stay available, and banner interpretation must not issue additional probes or authenticate a hardware identity.
 
 The SSH input review exposed an existing collector gap: RFC-compliant preamble lines hid the later identification string. The collector now prefers a literal `SSH-` line within its existing byte, line, and deadline bounds; see [discovery behavior](discovery.md#tcp-probes-and-service-banners). This fix does not itself import or apply Recog fingerprints.
 
@@ -35,4 +35,4 @@ The [MAC table](https://github.com/nmap/nmap/blob/08312c289b74551e49d5fd51e54d9d
 python3 scripts/review-banner-catalogs.py
 ```
 
-The Python reviewer checks every input hash before invoking the Go compatibility experiment. Go reports the hashes it actually read as an additional consistency check. Only aggregate results are emitted. The recorded comparison reproduced exactly; modifying a temporary SSH input was rejected before pattern evaluation. Downloaded catalogs and result logs remain ignored research artifacts and are not bundled in releases.
+The Python reviewer checks every input hash before invoking the Go compatibility experiment. Go reports the hashes it actually read as an additional consistency check. Only aggregate results are emitted. The recorded comparison reproduced exactly; modifying a temporary SSH input was rejected before pattern evaluation. Downloaded source files and result logs remain ignored research artifacts. The runtime integration embeds its derived Recog index and bundles its provenance/license notices; Nmap data remains excluded.
