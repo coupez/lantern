@@ -53,7 +53,7 @@ func identify(ads []Advertisement) *Identity {
 func identifyWithLocalModel(ads []Advertisement, localModel string) *Identity {
 	claims := localModelClaims(localModel)
 	addValue := func(field, key, value string, a Advertisement) {
-		if a.Protocol == "roku" || a.Protocol == "ipp" || (a.Protocol == "mdns" && strings.EqualFold(a.Service, "_companion-link._tcp")) {
+		if a.Protocol == "roku" || a.Protocol == "ipp" || a.Protocol == "onvif" || (a.Protocol == "mdns" && strings.EqualFold(a.Service, "_companion-link._tcp")) {
 			value = identityText(value)
 		}
 		value = strings.TrimSpace(CleanText(value))
@@ -64,7 +64,7 @@ func identifyWithLocalModel(ads []Advertisement, localModel string) *Identity {
 			value = string([]rune(value)[:256])
 		}
 		source := a.Protocol + ":" + a.Instance
-		if a.Protocol == "upnp" || a.Protocol == "shelly" || a.Protocol == "roku" || a.Protocol == "ipp" {
+		if a.Protocol == "upnp" || a.Protocol == "shelly" || a.Protocol == "roku" || a.Protocol == "ipp" || a.Protocol == "onvif" {
 			source = a.Protocol + ":" + a.Properties["location"] + "#" + a.Instance
 		}
 		reference := ""
@@ -79,6 +79,9 @@ func identifyWithLocalModel(ads []Advertisement, localModel string) *Identity {
 		}
 		if a.Protocol == "roku" {
 			reference = rokuInfoReference
+		}
+		if a.Protocol == "onvif" {
+			reference = onvifInfoReference
 		}
 		if a.Protocol == "ipp" {
 			reference = ippIdentityReference
@@ -101,6 +104,20 @@ func identifyWithLocalModel(ads []Advertisement, localModel string) *Identity {
 	}
 	for _, a := range ads {
 		switch a.Protocol {
+		case "onvif":
+			if a.Service != "device-information" {
+				continue
+			}
+			add("model", "Model", a)
+			add("manufacturer", "Manufacturer", a)
+			add("firmware_version", "FirmwareVersion", a)
+			source := "onvif:" + a.Properties["location"] + "#" + a.Instance
+			if a.Properties["transport"] == "tls-unverified" {
+				claims = append(claims, IdentityClaim{Field: "transport", Value: "TLS certificate not verified", Source: source, Key: "transport", Basis: "transport", Reference: onvifInfoReference})
+			}
+			if a.Properties["authentication"] == "none" {
+				claims = append(claims, IdentityClaim{Field: "authentication", Value: "No credentials supplied", Source: source, Key: "authentication", Basis: "transport", Reference: onvifInfoReference})
+			}
 		case "ipp":
 			if a.Service != "printer-attributes" {
 				continue
@@ -238,7 +255,7 @@ func identifyWithLocalModel(ads []Advertisement, localModel string) *Identity {
 			return 4
 		}
 		switch c.Key {
-		case "device-id-model", "device-id-manufacturer", "printer-make-and-model":
+		case "Model", "Manufacturer", "device-id-model", "device-id-manufacturer", "printer-make-and-model":
 			return 0
 		case "manufacturer", "friendlyName", "friendly_name", "name", "modelName", "usb_mfg", "usb_mdl", "vendor-name", "model-name", "user-device-name":
 			return 0
@@ -310,13 +327,15 @@ func identifyWithLocalModel(ads []Advertisement, localModel string) *Identity {
 		if c.Field == "name" && result.Name == "" && rokuLinked {
 			result.Name = c.Value
 		}
-		if c.Field == "firmware_version" && c.Source == selectedFirmware.Source && result.FirmwareVersion == "" {
+		onvifVersion := result.Firmware == "" && strings.HasPrefix(selectedModel.Source, "onvif:") && c.Source == selectedModel.Source
+		if c.Field == "firmware_version" && (c.Source == selectedFirmware.Source || onvifVersion) && result.FirmwareVersion == "" {
 			result.FirmwareVersion = c.Value
 		}
 		linked := c.Source == selectedModel.Source && c.Key == selectedModel.Key && strings.EqualFold(c.Identifier, result.Model)
 		localLinked := selectedModel.Basis != "local-system" || c.Source == selectedModel.Source
 		ippLinked := (!strings.HasPrefix(c.Source, "ipp:") && !strings.HasPrefix(selectedModel.Source, "ipp:")) || c.Source == selectedModel.Source
-		if c.Field == "manufacturer" && result.Manufacturer == "" && ippLinked && localLinked && rokuLinked && (c.Basis != "catalog" || linked) {
+		onvifLinked := (!strings.HasPrefix(c.Source, "onvif:") && !strings.HasPrefix(selectedModel.Source, "onvif:")) || c.Source == selectedModel.Source
+		if c.Field == "manufacturer" && result.Manufacturer == "" && onvifLinked && ippLinked && localLinked && rokuLinked && (c.Basis != "catalog" || linked) {
 			result.Manufacturer = c.Value
 		}
 		if c.Field == "model_name" && c.Basis == "catalog" && c.Source == selectedModel.Source && c.Key == selectedModel.Key && strings.EqualFold(c.Identifier, modelIdentifier) && !contains(result.ModelNames, c.Value) {

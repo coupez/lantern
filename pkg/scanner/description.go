@@ -191,6 +191,21 @@ func enrichDescriptions(ctx context.Context, d *Device, timeout time.Duration) {
 	cache := map[string]cached{}
 	original := append([]Advertisement{}, d.Advertisements...)
 	for _, ad := range original {
+		if locations := onvifDescriptionURLs(d.IP, ad); len(locations) > 0 {
+			for _, location := range locations {
+				key := "onvif:" + location
+				if _, ok := cache[key]; ok || len(cache) >= 4 || ctx.Err() != nil {
+					continue
+				}
+				fields, err := fetchONVIFDescription(ctx, d.IP, location)
+				cache[key] = cached{err: err}
+				if err == nil {
+					fields["location"] = location
+					d.Advertisements = append(d.Advertisements, Advertisement{Protocol: "onvif", Service: "device-information", Instance: ad.Instance, Properties: fields})
+				}
+			}
+			continue
+		}
 		if location := ippDescriptionURL(d.IP, ad); location != "" {
 			key := "ipp:" + location
 			if _, ok := cache[key]; ok || len(cache) >= 4 || ctx.Err() != nil {

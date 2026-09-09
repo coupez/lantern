@@ -97,9 +97,9 @@ Computer names, workgroups, registration flags, and reported unit IDs remain in 
 
 Use on networks you own or are authorized to inspect. Lantern makes ordinary discovery requests and connections; it does not log in to devices or execute remote commands.
 
-WS-Discovery adds correlated UDP discovery for compatible endpoints, with ONVIF names and hardware-description claims. Advertised endpoint URLs are retained as metadata; they are not fetched or treated as verified open ports.
+WS-Discovery adds correlated UDP discovery for compatible endpoints, with ONVIF names and hardware-description claims. Advertised endpoint URLs remain metadata, with bounded device-information reads for qualifying same-peer ONVIF services. They do not become verified open ports.
 
-UPnP, Shelly, Roku and IPP identity reads are enabled in standard/deep mode. `--no-descriptions` disables them. Reads stay on the discovered device’s literal IP, never use a proxy or follow redirects, and share one per-device deadline across at most four request targets. UPnP XML is capped at 256 KiB and bounded in depth; Shelly JSON is capped at 16 KiB. mDNS follows missing PTR/SRV/TXT/A/AAAA records and enumerates additional service types within the original discovery deadline and a 128-query budget.
+UPnP, Shelly, Roku, IPP and ONVIF identity reads are enabled in standard/deep mode. `--no-descriptions` disables them. Reads stay on the discovered device’s literal IP, never use a proxy or follow redirects, and share one per-device deadline across at most four request targets. UPnP XML is capped at 256 KiB and bounded in depth; Shelly JSON is capped at 16 KiB. mDNS follows missing PTR/SRV/TXT/A/AAAA records and enumerates additional service types within the original discovery deadline and a 128-query budget.
 
 [Recognition sources and rules](docs/recognition.md) describe the supported mappings and limitations.
 
@@ -169,3 +169,5 @@ On macOS, Lantern also identifies its own selected interface addresses from the 
 Discovered IPP/IPPS printer endpoints can now supply manufacturer/model details through Get-Printer-Attributes. Queue names stay separate from host identity, and TLS without certificate verification is labeled in the evidence. See [IPP printer attributes](docs/recognition.md#ipp-printer-attributes).
 
 [Identification evaluation](docs/identification-evaluation.md) scores saved scans against independent device labels, separating reported model, retail model, family, type, ambiguity and misses. Explicit address mappings prevent dual-stack records from inflating coverage; synthetic examples are included.
+
+Qualifying ONVIF services can supply manufacturer, model and firmware version through one unauthenticated GetDeviceInformation request per endpoint. Protected endpoints retain their discovery evidence. Serial and hardware-ID response fields are discarded. See [ONVIF device information](docs/recognition.md#onvif-device-information).

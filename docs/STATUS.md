@@ -55,6 +55,8 @@ The expanded [device-identification roadmap](device-identification-roadmap.md) r
 
 - Offline identification evaluation scores independently labeled cases, preserves ambiguous/conflicting predictions, and separates observed/responsive discovery, model/type precision and recall. Synthetic arithmetic fixtures do not establish physical-device accuracy.
 
+- ONVIF GetDeviceInformation adds endpoint-scoped manufacturer/model/firmware for eligible same-peer WS-Discovery services. Bounded unauthenticated SOAP reads preserve discovery on failure; serial/hardware-ID fields are discarded. Physical compatibility and credentialed inventory remain pending.
+
 ## Still required before calling the broad goal finished
 
 1. Expand identification: broader device/model catalogs, additional protocol fingerprints, and real-device coverage of the implemented mDNS/UPnP model paths. No claim of mapping everything.
