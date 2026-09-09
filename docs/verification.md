@@ -96,6 +96,17 @@ These checks establish functional behavior and one-network performance, not exha
 - The Linux test image includes Samba only as a test dependency; no Samba source/library is linked or bundled with Lantern. `scripts/test-netbios-samba.sh` runs `nmbd` inside the disposable container without starting an SMB file server or publishing ports. Samba 4.17.12-Debian supplied `LANTERN-SAMBA` and `LANTERN-LAB`; completed node-status-only scans took 4–5 ms. The test verifies name provenance, preserved group registration, no manufactured TCP ports, deep/inspect defaults, and the explicit disable override. Startup readiness is bounded and the daemon is stopped by the script's cleanup trap.
 - These results establish protocol interoperability with a real Samba implementation, not Windows hardware coverage or a universal latency claim. Modern hosts with NetBIOS disabled will not answer. Broad real-network identification/coverage comparisons remain pending.
 
+The send-pressure follow-up continues past timeout/queue and peer-route errors,
+retries pressure-failed addresses once under a shared 100 ms maximum, and bounds
+the first pass independently of the per-write deadline. Synthetic tests verify
+recovery without an incomplete warning, later-peer replies after route failure,
+one retry per address, deterministic cancellation with retained replies, and a
+bounded warning for 1,022 failed targets. Native macOS full vet/race checks and
+focused Linux scanner vet/race checks pass. The independent Samba fixture also
+passes on the updated Linux binary. These results establish scheduling and
+error-reporting behavior; they do not establish model precision or delivery
+under persistent network/host pressure. The rc.7 archives remain unchanged.
+
 
 ## Snapshot and watch comparisons (2026-09-08)
 

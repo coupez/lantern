@@ -14,6 +14,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 )
 
@@ -167,7 +168,14 @@ func exchangeNetBIOS(ctx context.Context, c echoConn, hosts []netip.Addr, timeou
 		}
 	}()
 	var sendErr error
+	sendFailures := make(map[netip.Addr]error, len(hosts))
 	attempted := make(map[netip.Addr]bool, len(hosts))
+	var retry []netip.Addr
+	unique := len(probes)
+	budgetExhausted := false
+	// Allow the existing 32-address pacing plus two seconds for pressured
+	// writes; do not multiply a full write deadline by every /16 address.
+	firstPassUntil := time.Now().Add(2*time.Second + time.Duration((unique+31)/32)*10*time.Millisecond)
 send:
 	for _, ip := range hosts {
 		select {
@@ -192,7 +200,11 @@ send:
 			case <-timer.C:
 			}
 		}
-		if err := c.SetWriteDeadline(time.Now().Add(2 * time.Millisecond)); err != nil {
+		if time.Until(firstPassUntil) <= 0 {
+			budgetExhausted = true
+			break
+		}
+		if err := c.SetWriteDeadline(minTime(time.Now().Add(2*time.Millisecond), firstPassUntil)); err != nil {
 			sendErr = err
 			break
 		}
@@ -205,6 +217,15 @@ send:
 		p.sent = err == nil && n == len(packet)
 		mu.Unlock()
 		if err != nil {
+			if retryableEchoSend(err) {
+				retry = append(retry, ip)
+				sendFailures[ip] = err
+				continue
+			}
+			if netbiosPeerSendError(err) {
+				sendFailures[ip] = err
+				continue
+			}
 			sendErr = err
 			break
 		}
@@ -213,9 +234,60 @@ send:
 			break
 		}
 	}
+	// Retry pressure failures once, sharing at most 100 ms (or the response
+	// timeout). This prevents a transient ARP/socket-queue stall from starving
+	// every later target while keeping large sweeps bounded.
+	retryUntil := time.Now().Add(min(timeout, 100*time.Millisecond))
+	if sendErr == nil {
+	retryPass:
+		for _, ip := range retry {
+			select {
+			case <-done:
+				break retryPass
+			default:
+			}
+			if ctx.Err() != nil || time.Until(retryUntil) <= 2*time.Millisecond {
+				break
+			}
+			timer := time.NewTimer(2 * time.Millisecond)
+			select {
+			case <-timer.C:
+			case <-ctx.Done():
+				timer.Stop()
+			case <-done:
+				timer.Stop()
+				break retryPass
+			}
+			if ctx.Err() != nil || time.Until(retryUntil) <= 0 {
+				break
+			}
+			if err := c.SetWriteDeadline(minTime(time.Now().Add(2*time.Millisecond), retryUntil)); err != nil {
+				sendErr = err
+				break
+			}
+			mu.Lock()
+			p := probes[ip]
+			packet := netbiosQuery(p.id)
+			n, err := c.WriteTo(packet, net.UDPAddrFromAddrPort(netip.AddrPortFrom(ip, port)))
+			p.sent = err == nil && n == len(packet)
+			mu.Unlock()
+			if err == nil && n == len(packet) {
+				delete(sendFailures, ip)
+				continue
+			}
+			if err == nil {
+				err = fmt.Errorf("short UDP write")
+			}
+			if !retryableEchoSend(err) && !netbiosPeerSendError(err) {
+				sendErr = err
+				break
+			}
+			sendFailures[ip] = err
+		}
+	}
 	// Keep one response window after the final send; fully answered sweeps exit
-	// immediately. A send error stops further writes rather than multiplying the
-	// per-write deadline by every remaining address.
+	// immediately. The first-pass budget above prevents a per-write deadline
+	// from multiplying across a large target set.
 	if err := c.SetReadDeadline(time.Now().Add(timeout)); err != nil {
 		sendErr = errors.Join(sendErr, err)
 		c.Close()
@@ -228,11 +300,27 @@ send:
 	if sendErr != nil {
 		errs = append(errs, fmt.Errorf("NetBIOS send stopped after %d/%d targets: %w", len(result.Probed), len(probes), sendErr))
 	}
+	if sendErr == nil && (len(sendFailures) > 0 || budgetExhausted) {
+		// Keep one deterministic representative cause. A /16 under pressure
+		// must not turn the warning into tens of thousands of peer errors.
+		var cause error = errors.New("first-pass send budget exhausted")
+		for _, ip := range hosts {
+			if failure := sendFailures[ip]; failure != nil {
+				cause = failure
+				break
+			}
+		}
+		errs = append(errs, fmt.Errorf("NetBIOS send incomplete: %d failed, %d not attempted (%d/%d targets attempted): %w", len(sendFailures), unique-len(result.Probed), len(result.Probed), unique, cause))
+	}
 	if readErr != nil && !errors.Is(readErr, os.ErrDeadlineExceeded) {
 		errs = append(errs, fmt.Errorf("NetBIOS receive: %w", readErr))
 	}
 	sort.Slice(result.Replies, func(i, j int) bool { return result.Replies[i].IP.Less(result.Replies[j].IP) })
 	return result, errors.Join(errs...)
+}
+
+func netbiosPeerSendError(err error) bool {
+	return errors.Is(err, syscall.EHOSTUNREACH) || errors.Is(err, syscall.ENETUNREACH) || errors.Is(err, syscall.ECONNREFUSED)
 }
 
 func netbiosText(raw []byte) string {

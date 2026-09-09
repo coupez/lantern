@@ -7,6 +7,7 @@ import (
 	"errors"
 	"net"
 	"net/netip"
+	"os"
 	"strings"
 	"syscall"
 	"testing"
@@ -139,8 +140,40 @@ func TestNetBIOSBoundedErrorsAndCancellation(t *testing.T) {
 		defer f.Close()
 		f.write = func([]byte, net.Addr) (int, error) { return 0, syscall.ENOBUFS }
 		r, e := exchangeNetBIOS(context.Background(), f, ips, 5*time.Millisecond, 137)
-		if e == nil || len(r.Probed) != 1 || !errors.Is(e, syscall.ENOBUFS) {
+		if e == nil || len(r.Probed) != 2 || !errors.Is(e, syscall.ENOBUFS) {
 			t.Fatal(r, e)
+		}
+	})
+	t.Run("pressure-recovery-continues", func(t *testing.T) {
+		f := newFakeEcho()
+		defer f.Close()
+		var calls int
+		f.write = func(b []byte, peer net.Addr) (int, error) {
+			calls++
+			if calls == 1 {
+				return 0, os.ErrDeadlineExceeded
+			}
+			f.reads <- echoPacket{data: nbFixture(binary.BigEndian.Uint16(b), nbName("HOST", 0, 0x0400)), peer: peer}
+			return len(b), nil
+		}
+		r, e := exchangeNetBIOS(context.Background(), f, ips, 100*time.Millisecond, 137)
+		if e != nil || calls != 3 || len(r.Probed) != 2 || len(r.Replies) != 2 {
+			t.Fatalf("result=%v err=%v calls=%d", r, e, calls)
+		}
+	})
+	t.Run("route-error-does-not-starve-later-target", func(t *testing.T) {
+		f := newFakeEcho()
+		defer f.Close()
+		f.write = func(b []byte, peer net.Addr) (int, error) {
+			if peer.(*net.UDPAddr).IP.Equal(net.ParseIP(ips[0].String())) {
+				return 0, syscall.ENETUNREACH
+			}
+			f.reads <- echoPacket{data: nbFixture(binary.BigEndian.Uint16(b), nbName("HOST", 0, 0x0400)), peer: peer}
+			return len(b), nil
+		}
+		r, e := exchangeNetBIOS(context.Background(), f, ips, 30*time.Millisecond, 137)
+		if e == nil || !errors.Is(e, syscall.ENETUNREACH) || len(r.Probed) != 2 || len(r.Replies) != 1 {
+			t.Fatalf("result=%v err=%v", r, e)
 		}
 	})
 	t.Run("deadline-error", func(t *testing.T) {
@@ -268,6 +301,82 @@ func TestNetBIOSPacingAndReadError(t *testing.T) {
 			t.Fatal(err)
 		}
 	})
+}
+
+func TestNetBIOSPressureWarningAndRetryBudgetAreBounded(t *testing.T) {
+	f := newFakeEcho()
+	defer f.Close()
+	var hosts []netip.Addr
+	for i := 1; i <= 1022; i++ {
+		hosts = append(hosts, netip.AddrFrom4([4]byte{198, 18, byte(i >> 8), byte(i)}))
+	}
+	calls := map[string]int{}
+	f.write = func(_ []byte, peer net.Addr) (int, error) {
+		calls[peer.String()]++
+		return 0, syscall.ENOBUFS
+	}
+	start := time.Now()
+	r, err := exchangeNetBIOS(context.Background(), f, hosts, 100*time.Millisecond, 137)
+	if err == nil || !errors.Is(err, syscall.ENOBUFS) || len(r.Probed) != len(hosts) || len(err.Error()) > 300 {
+		t.Fatalf("probed=%d error=%v", len(r.Probed), err)
+	}
+	retries := 0
+	for _, ip := range hosts {
+		n := calls[netip.AddrPortFrom(ip, 137).String()]
+		if n < 1 || n > 2 {
+			t.Fatalf("writes per target = %d", n)
+		}
+		retries += n - 1
+	}
+	if retries == 0 || retries > 50 || time.Since(start) > 3*time.Second {
+		t.Fatalf("retries=%d duration=%v", retries, time.Since(start))
+	}
+}
+
+func TestNetBIOSRetryCancellationKeepsLaterReply(t *testing.T) {
+	f := newFakeEcho()
+	defer f.Close()
+	observed := &netbiosReadNotification{fakeEcho: f, returned: make(chan struct{})}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	first, second := netip.MustParseAddr("192.0.2.1"), netip.MustParseAddr("192.0.2.2")
+	calls := 0
+	f.write = func(b []byte, peer net.Addr) (int, error) {
+		calls++
+		if calls == 1 {
+			return 0, syscall.ENOBUFS
+		}
+		if calls == 2 {
+			f.reads <- echoPacket{data: nbFixture(binary.BigEndian.Uint16(b), nbName("LATER", 0, 0x0400)), peer: peer}
+			return len(b), nil
+		}
+		// Ensure the receiver owns the successful frame before cancellation;
+		// do not rely on scheduler timing during the retry pacing delay.
+		select {
+		case <-observed.returned:
+		case <-time.After(time.Second):
+			t.Error("receiver did not obtain successful reply")
+		}
+		cancel()
+		return 0, syscall.ENOBUFS
+	}
+	r, err := exchangeNetBIOS(ctx, observed, []netip.Addr{first, second}, time.Second, 137)
+	if err != nil || calls != 3 || len(r.Probed) != 2 || len(r.Replies) != 1 || r.Replies[0].IP != second {
+		t.Fatalf("calls=%d result=%+v err=%v", calls, r, err)
+	}
+}
+
+type netbiosReadNotification struct {
+	*fakeEcho
+	returned chan struct{}
+}
+
+func (n *netbiosReadNotification) ReadFrom(b []byte) (int, net.Addr, error) {
+	count, peer, err := n.fakeEcho.ReadFrom(b)
+	if count > 0 {
+		close(n.returned)
+	}
+	return count, peer, err
 }
 
 func TestNetBIOSNameAndKindPrecedence(t *testing.T) {
