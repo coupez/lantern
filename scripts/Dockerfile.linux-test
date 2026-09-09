@@ -1,6 +1,6 @@
 # Isolated runtime verification. No host networking, mounts, or published ports.
 FROM golang:1.26.8-bookworm@sha256:9fdc884aacc3bec89b20ffc69f4bb369c78210e3e4f600387b5128b12c199f81
-RUN apt-get update && apt-get install -y --no-install-recommends iproute2 python3 samba wsdd snmpd && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends iproute2 python3 samba wsdd snmpd adb && rm -rf /var/lib/apt/lists/*
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
@@ -16,6 +16,7 @@ COPY scripts/test-full-ports.py /usr/local/bin/test-full-ports.py
 COPY scripts/test-event-stream.py /usr/local/bin/test-event-stream.py
 COPY scripts/test-doctor.py /usr/local/bin/test-doctor.py
 COPY scripts/test-snmp-interop.py /usr/local/bin/test-snmp-interop.py
+COPY scripts/test-android-adb-interop.py /usr/local/bin/test-android-adb-interop.py
 COPY scripts/test-snapshot-cli.py /usr/local/bin/test-snapshot-cli.py
 COPY scripts/test-banner-fingerprints.py /usr/local/bin/test-banner-fingerprints.py
 COPY scripts/test-mail-fingerprints.py /usr/local/bin/test-mail-fingerprints.py
