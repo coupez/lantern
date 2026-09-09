@@ -62,4 +62,4 @@ report, err := snmp.Read(ctx, netip.MustParseAddrPort("192.0.2.1:161"), credenti
 // Preserve report even when err != nil; earlier query evidence may be available.
 ```
 
-This report has a separate schema from network scan snapshots. Automatic merging into scan/watch and an evaluation adapter are future work. Physical-device accuracy and broader vendor compatibility remain unmeasured; synthetic and independent-server interoperability tests establish protocol behavior only. The published rc.7 archives predate this command.
+This report has a separate schema from network scan snapshots. An [explicit offline manifest](inventory-snapshots.md) can attach saved reports to existing scan addresses and supply an opt-in inventory evaluation adapter. Automatic collection/merging in scan/watch remains future work. Physical-device accuracy and broader vendor compatibility remain unmeasured; synthetic and independent-server interoperability tests establish protocol behavior only. The published rc.7 archives predate this command.

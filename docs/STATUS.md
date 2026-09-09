@@ -6,6 +6,8 @@ The expanded [device-identification roadmap](device-identification-roadmap.md) r
 
 ## Implemented
 
+- Explicit offline Android/SNMP inventory-to-snapshot attachment with address bindings, source/manifest hashes, independent claims, preserved conflicts and network-only liveness. Separate opt-in inventory-assisted evaluation; [usage](inventory-snapshots.md).
+
 - Go CLI with styled adaptive-width output, live discoveries/progress, inspect view, quick/standard/deep profiles, automatic default-route selection, and explicit target/interface selection.
 - IPv4 automatic target selection retains its interface through local discovery and reports; IPv4/IPv6 neighbor tables and local-address evidence honor explicit scope, including duplicate IPs on different links.
 - Multicast source recovery retries kernel-rejected bind addresses on the same selected interface under one deadline, shared by mDNS, SSDP, WS-Discovery, and doctor; actual Linux failed-DAD recovery is verified.
@@ -59,7 +61,7 @@ The expanded [device-identification roadmap](device-identification-roadmap.md) r
 
 - Explicit SNMPv2c inventory reads one configured peer, with bounded system/ENTITY-MIB requests, chassis model source OIDs, ambiguity preservation and credential-free reports. Scan/watch integration, SNMPv3 and physical device coverage remain future work. See [inventory semantics](snmp-inventory.md).
 
-- Owner-authorized Android inventory reads four allowlisted properties through one selected transport on an existing local ADB server, with bounded shell-v2 framing and field-level provenance. It does not infer a LAN address, retail catalog match or device class; shared inventory-to-snapshot integration and physical-device comparisons remain future work.
+- Owner-authorized Android inventory reads four allowlisted properties through one selected transport on an existing local ADB server, with bounded shell-v2 framing and field-level provenance. It does not infer a LAN address, retail catalog match or device class; saved inventory-to-snapshot attachment is implemented, while physical-device comparisons remain future work.
 
 ## Still required before calling the broad goal finished
 

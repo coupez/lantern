@@ -48,6 +48,8 @@ func run(args []string) error {
 	case "version":
 		fmt.Println("lantern", buildVersion())
 		return nil
+	case "enrich":
+		return enrichCommand(args, os.Stdout)
 	case "evaluate":
 		return evaluateCommand(args, os.Stdout)
 	case "android":
@@ -162,6 +164,7 @@ func help() {
   lantern inspect IP              Detailed device and service inspection
   lantern watch [CIDR]            Live dashboard and network changes
   lantern observe --read FILE    Import DHCP evidence from PCAP/PCAPNG offline
+  lantern enrich --scan FILE --inventory FILE  Attach explicitly bound inventory
   lantern evaluate --truth FILE  Score saved observations against device labels
   lantern snmp IP --community-env NAME  Read configured SNMP device inventory
   lantern android --transport-id ID    Read owner-authorized Android inventory

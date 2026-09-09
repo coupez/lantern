@@ -56,6 +56,8 @@ report, err := android.Read(ctx,
     42, 5*time.Second)
 ```
 
-The Go core has no ADB executable dependency. It communicates only with an existing local server. Ordinary scan/watch profiles do not query ADB, and this report is separate from a network snapshot. Associating it with a scanned device requires an explicit owner-supplied address binding; transport names and handles must not be used to infer that association. A shared inventory-to-snapshot adapter remains the next integration step for Android and SNMP.
+The Go core has no ADB executable dependency. It communicates only with an existing local server. Ordinary scan/watch profiles do not query ADB, and this report is separate from a network snapshot. Associating it with a scanned device requires an explicit owner-supplied address binding; transport names and handles must not be used to infer that association. The shared offline inventory-to-snapshot adapter implements those explicit bindings for Android and SNMP.
 
 Protocol and synthetic socket tests establish bounded collection behavior. A separate isolated Linux fixture also passes through an unmodified real ADB host server connected to a synthetic adbd, verifying transport selection and stream forwarding. It does not execute Android OS `getprop` or validate pairing. See [verification details](verification.md#owner-authorized-android-inventory). Physical phone/TV model coverage and comparison with Fing remain unmeasured. Owner-authorized inventory results must be evaluated separately from unauthenticated network discovery. The rc.7 release archives predate this command.
+
+Saved JSON can be attached to existing scan addresses through an [explicit inventory manifest](inventory-snapshots.md). This preserves network observations and uses a separate opt-in evaluation mode.

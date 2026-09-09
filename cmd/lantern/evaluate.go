@@ -36,11 +36,12 @@ func evaluateCommand(args []string, out io.Writer) error {
 	scanPath := f.String("scan", "", "saved Lantern schema-1 report")
 	bindingsPath := f.String("bindings", "", "explicit scan-address to case-ID mapping")
 	asJSON := f.Bool("json", false, "write scores, case outcomes and input hashes as JSON")
+	includeInventory := f.Bool("include-inventory", false, "include explicitly attached inventory model claims (scan only)")
 	if err := f.Parse(args); err != nil {
 		return err
 	}
-	if f.NArg() != 0 || *truthPath == "" || ((*runPath == "") == (*scanPath == "")) || (*scanPath != "" && *bindingsPath == "") || (*runPath != "" && *bindingsPath != "") {
-		return errors.New("usage: lantern evaluate --truth FILE (--run FILE | --scan FILE --bindings FILE) [--json]")
+	if (*includeInventory && *scanPath == "") || f.NArg() != 0 || *truthPath == "" || ((*runPath == "") == (*scanPath == "")) || (*scanPath != "" && *bindingsPath == "") || (*runPath != "" && *bindingsPath != "") {
+		return errors.New("usage: lantern evaluate --truth FILE (--run FILE | --scan FILE --bindings FILE) [--include-inventory] [--json]")
 	}
 	var truth evaluation.Truth
 	var run evaluation.Run
@@ -84,7 +85,11 @@ func evaluateCommand(args []string, out io.Writer) error {
 			}
 		}
 		var err error
-		run, err = evaluation.FromLantern(report, bindings)
+		if *includeInventory {
+			run, err = evaluation.FromLanternWithInventory(report, bindings)
+		} else {
+			run, err = evaluation.FromLantern(report, bindings)
+		}
 		if err != nil {
 			return err
 		}
@@ -127,6 +132,10 @@ func scorePercent(v *float64) string {
 // Read bounded regular files; reject duplicate keys before typed decoding can
 // silently replace earlier labels, observations or mappings.
 func readEvaluationJSON(path string, target any, strict bool) (string, error) {
+	return readBoundedJSON(path, target, strict, maxEvaluationJSON)
+}
+
+func readBoundedJSON(path string, target any, strict bool, maxBytes int64) (string, error) {
 	f, err := os.OpenFile(path, os.O_RDONLY|syscall.O_NONBLOCK, 0)
 	if err != nil {
 		return "", err
@@ -139,15 +148,15 @@ func readEvaluationJSON(path string, target any, strict bool) (string, error) {
 	if !info.Mode().IsRegular() {
 		return "", errors.New("input must be a regular JSON file")
 	}
-	if info.Size() > maxEvaluationJSON {
-		return "", errors.New("JSON exceeds 16 MiB")
+	if info.Size() > maxBytes {
+		return "", fmt.Errorf("JSON exceeds %d bytes", maxBytes)
 	}
-	b, err := io.ReadAll(io.LimitReader(f, maxEvaluationJSON+1))
+	b, err := io.ReadAll(io.LimitReader(f, maxBytes+1))
 	if err != nil {
 		return "", err
 	}
-	if len(b) > maxEvaluationJSON {
-		return "", errors.New("JSON exceeds 16 MiB")
+	if int64(len(b)) > maxBytes {
+		return "", fmt.Errorf("JSON exceeds %d bytes", maxBytes)
 	}
 	if !utf8.Valid(b) {
 		return "", errors.New("JSON must be valid UTF-8")

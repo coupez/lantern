@@ -137,6 +137,9 @@ func (u *UI) Report(r scanner.Report) {
 			}
 		}
 		if name == "" {
+			name = inventoryModelLabel(d)
+		}
+		if name == "" {
 			if d.Vendor.Private {
 				name = "Private / randomized MAC"
 			} else {
@@ -194,6 +197,9 @@ func (u *UI) Report(r scanner.Report) {
 			}
 			fmt.Fprintf(u.Out, "    %s\n", u.style("38;5;245", fit(label, max(12, u.Width-6))))
 		}
+		if label := inventoryModelLabel(d); label != "" {
+			fmt.Fprintf(u.Out, "    %s\n", u.style("38;5;245", fit(label, max(12, u.Width-6))))
+		}
 	}
 	fmt.Fprintln(u.Out)
 	for _, line := range wrapCells(fmt.Sprintf("● %d responsive   ○ %d cached neighbors", responsive, len(r.Devices)-responsive), max(1, u.Width-2)) {
@@ -214,6 +220,21 @@ func (u *UI) Report(r scanner.Report) {
 	fmt.Fprintln(u.Out)
 }
 func live(d scanner.Device) bool { return d.Responsive() }
+
+// inventoryModelLabel is deliberately a display-only fallback. Attached owner
+// inventory remains separate from discovery identity and does not affect
+// liveness, type hints, or selected network identity fields.
+func inventoryModelLabel(d scanner.Device) string {
+	models := d.InventoryModels()
+	switch len(models) {
+	case 0:
+		return ""
+	case 1:
+		return "Inventory · " + models[0]
+	default:
+		return fmt.Sprintf("Inventory · %d reported models", len(models))
+	}
+}
 
 func (u *UI) Details(r scanner.Report) {
 	for _, d := range r.Devices {
@@ -259,6 +280,22 @@ func (u *UI) Details(r scanner.Report) {
 					detail += " · " + c.Reference
 				}
 				field("Source", detail)
+			}
+		}
+		for _, observation := range d.Inventory {
+			field("Inv. kind", observation.Kind)
+			field("Inv. ID", observation.ID)
+			field("Observed at", observation.ObservedAt)
+			field("Time basis", observation.TimeBasis)
+			field("Inv. status", observation.Status)
+			field("Inv. source", observation.Source)
+			field("Source hash", observation.SourceSHA256)
+			field("Binding hash", observation.BindingSHA256)
+			field("Bind address", observation.BindingAddress)
+			for _, claim := range observation.Claims {
+				field("Inv. claim", claim.Field+" = "+claim.Value)
+				field("Inv. key", claim.Key)
+				field("Inv. ref", claim.Reference)
 			}
 		}
 		field("Type hint", d.Kind)

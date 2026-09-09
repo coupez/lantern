@@ -37,7 +37,7 @@ host = (platform.system().lower(), {'aarch64':'arm64','x86_64':'amd64'}.get(plat
 if args.macos_amd64 and host[0] != 'darwin':
     raise SystemExit('--macos-amd64 requires macOS')
 required = {'examples/identification/truth.json','examples/identification/bindings.json',
-            'examples/identification/scan.json','examples/identification/normalized-run.json','docs/identification-evaluation.md','lantern','LICENSE','NOTICE','THIRD_PARTY_LICENSES','README.md','docs/install.md',
+            'examples/identification/scan.json','examples/identification/normalized-run.json','examples/identification/android.json','examples/identification/snmp.json','examples/identification/inventory.json','docs/identification-evaluation.md','lantern','LICENSE','NOTICE','THIRD_PARTY_LICENSES','README.md','docs/install.md',
             'docs/dhcp-observations.md','research/results/dhcp-catalog-review.md','research/results/dhcp-observation-verification.json',
             'docs/snapshots.md','docs/discovery.md','docs/recognition.md','docs/verification.md',
             'docs/STATUS.md','docs/fing-research.md','research/fing-inventory.json',
@@ -129,6 +129,14 @@ for system,arch in targets:
                 assert json.loads(run('models','SNSW-001X16EU'))[0]['name'] == 'Shelly Plus 1'
                 assert len(json.loads(run('models','sources'))) == 3
                 assert json.loads(run('models','matter:4447:8194'))[0]['name'] == 'Aqara Door and Window Sensor P2'
+                fixtures = Path(directory)/'examples'/'identification'
+                fixtures.mkdir(parents=True)
+                for fixture in ['scan.json', 'inventory.json', 'android.json', 'snmp.json']:
+                    (fixtures/fixture).write_bytes(content['examples/identification/'+fixture])
+                enriched = json.loads(run('enrich', '--scan', fixtures/'scan.json', '--inventory', fixtures/'inventory.json', '--json'))
+                attached = [observation for device in enriched['devices'] for observation in device.get('inventory', [])]
+                assert {observation['id'] for observation in attached} == {'synthetic-phone', 'synthetic-router'}
+                assert {observation['binding_address'] for observation in attached} == {'192.0.2.2', '192.0.2.4'}
                 diagnostics = json.loads(run('doctor', '--json'))
                 assert diagnostics['os'] == system and diagnostics['arch'] == arch, diagnostics
                 assert diagnostics['version'] == version, diagnostics

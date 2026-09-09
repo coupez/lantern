@@ -78,6 +78,9 @@ func deviceName(d scanner.Device) string {
 	if d.Identity != nil && d.Identity.Firmware != "" {
 		return d.Identity.Firmware
 	}
+	if label := inventoryModelLabel(d); label != "" {
+		return label
+	}
 	if d.Vendor.Private {
 		return "Private / randomized MAC"
 	}
@@ -173,6 +176,51 @@ func (m *watchModel) devices() []scanner.Device {
 						}
 						haystack = text.String()
 					}
+				}
+				if len(d.Inventory) > 0 {
+					var text strings.Builder
+					text.Grow(len(haystack))
+					text.WriteString(haystack)
+					for _, observation := range d.Inventory {
+						text.WriteByte(' ')
+						text.WriteString("inventory kind ")
+						text.WriteString(observation.Kind)
+						text.WriteByte(' ')
+						text.WriteString("id ")
+						text.WriteString(observation.ID)
+						text.WriteByte(' ')
+						text.WriteString("observed_at ")
+						text.WriteString(observation.ObservedAt)
+						text.WriteByte(' ')
+						text.WriteString("time_basis ")
+						text.WriteString(observation.TimeBasis)
+						text.WriteByte(' ')
+						text.WriteString("status ")
+						text.WriteString(observation.Status)
+						text.WriteByte(' ')
+						text.WriteString("source ")
+						text.WriteString(observation.Source)
+						text.WriteByte(' ')
+						text.WriteString("source_sha256 ")
+						text.WriteString(observation.SourceSHA256)
+						text.WriteByte(' ')
+						text.WriteString("binding_sha256 ")
+						text.WriteString(observation.BindingSHA256)
+						text.WriteByte(' ')
+						text.WriteString("binding_address ")
+						text.WriteString(observation.BindingAddress)
+						for _, claim := range observation.Claims {
+							text.WriteByte(' ')
+							text.WriteString(claim.Field)
+							text.WriteByte(' ')
+							text.WriteString(claim.Value)
+							text.WriteByte(' ')
+							text.WriteString(claim.Key)
+							text.WriteByte(' ')
+							text.WriteString(claim.Reference)
+						}
+					}
+					haystack = text.String()
 				}
 				m.searchText[i] = strings.ToLower(scanner.CleanText(haystack))
 			}

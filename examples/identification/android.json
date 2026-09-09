@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "source": "adb",
+  "server": "127.0.0.1:5037",
+  "transport_id": 1,
+  "collected_at": "2026-09-09T00:00:00Z",
+  "complete": true,
+  "properties": {
+    "manufacturer": "Example",
+    "model": "Phone8",
+    "device": "example_phone",
+    "build_fingerprint": "example/phone/device:14/TEST/1:user/release-keys"
+  }
+}
