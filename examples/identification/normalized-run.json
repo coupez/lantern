@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "id": "synthetic-neutral-example",
+  "dataset": "synthetic-identification-v1",
+  "system": "example-scanner",
+  "version": "fixture",
+  "context": "Synthetic example of normalized scanner results; not a Fing result",
+  "source": "Hand-authored independent neutral fixture",
+  "duration_ms": 1300,
+  "incomplete": false,
+  "observations": [
+    {
+      "id": "row-1",
+      "case_id": "printer-a",
+      "seen": true,
+      "responsive": true,
+      "predictions": {
+        "reported_model": [
+          "Laser42"
+        ],
+        "retail_model": [
+          "Example Laser 42"
+        ],
+        "kind": [
+          "printer"
+        ]
+      }
+    }
+  ]
+}

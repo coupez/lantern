@@ -10,3 +10,7 @@
 !THIRD_PARTY_LICENSES
 !README.md
 !Makefile
+
+!examples/
+!examples/identification/
+!examples/identification/*.json

@@ -38,6 +38,8 @@ Catalog leads remain research inputs: [Fingerbank](https://www.fingerbank.org/),
 
 ## How to establish an improvement
 
+The offline `lantern evaluate` command and reusable `pkg/evaluation` core now provide scoring and an explicit Lantern snapshot adapter. See [schema, synthetic examples and denominators](identification-evaluation.md). Physical labels and comparable Fing runs remain required.
+
 Create a labeled device matrix with independently known manufacturer, hardware code, retail-model variants and OS. Include Macs, iPhones, Android phones, printers, routers, cameras, media players and IoT devices, and vary awake/asleep state, advertised services, private MAC settings and network visibility.
 
 Measure separately:

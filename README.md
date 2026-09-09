@@ -31,6 +31,7 @@ lantern scan --jsonl               # streaming discovery events + final report
 lantern scan --csv > network.csv
 lantern observe --read capture.pcap --jsonl # offline DHCPv4/v6 fingerprint evidence
 lantern diff before.json after.json
+lantern evaluate --truth truth.json --scan network.json --bindings bindings.json --json
 lantern lookup 00:00:0c:12:34:56
 lantern fingerprint http 'Apache/2.4.65'
 lantern fingerprint ssh 'OpenSSH_9.9'
@@ -166,3 +167,5 @@ The network integration test uses controlled IPv4/IPv6 localhost servers to veri
 On macOS, Lantern also identifies its own selected interface addresses from the kernel's hardware model, resolving the code through AppleDB. The exact local source and any conflicting network claims remain visible in `--details` and JSON. See [local Mac inventory](docs/recognition.md#local-mac-hardware-inventory).
 
 Discovered IPP/IPPS printer endpoints can now supply manufacturer/model details through Get-Printer-Attributes. Queue names stay separate from host identity, and TLS without certificate verification is labeled in the evidence. See [IPP printer attributes](docs/recognition.md#ipp-printer-attributes).
+
+[Identification evaluation](docs/identification-evaluation.md) scores saved scans against independent device labels, separating reported model, retail model, family, type, ambiguity and misses. Explicit address mappings prevent dual-stack records from inflating coverage; synthetic examples are included.

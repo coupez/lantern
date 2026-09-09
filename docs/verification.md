@@ -491,3 +491,15 @@ An independent integration review checked conflict retention, manufacturer/model
 Final `go vet ./...` and `go test -race ./...` pass on macOS ARM64 with Go 1.26.8. The combined Companion/Roku/IPP IPv4/IPv6 socket fixtures pass under the race detector and are included in both CI platform jobs.
 
 An independent CUPS v2.3.4 `ippeveprinter` interoperability check also passed: a temporary synthetic printer (`-M Example -m "Laser 42"`) accepted the codec request with ID 17 at `/ipp/print`, and its 211-byte response decoded to the expected make/model, queue name and IEEE-1284 device ID. The emulator was terminated after the check. This verifies one actual CUPS implementation, not physical hardware. Both new strict-framing regressions were also checked against individually removed guards: each failed with its guard removed and passed after restoration.
+
+## Offline identification evaluation
+
+The new `evaluate` command and reusable `pkg/evaluation` core score independently supplied truth and explicit observations without network traffic or catalog lookups. A neutral run schema permits comparisons with manually normalized outputs from other scanners. A Lantern adapter reads selected model/type output, keeps all retail candidates, and uses explicit address-to-case bindings. Physical dataset labels and synthetic fixtures remain visibly separate.
+
+Hand-scored compiled-CLI fixtures cover five cases, four observed devices, three responsive devices, one cached-only device, a miss, unassessed labels, incorrect predictions, a dual-stack conflict and an unmapped address. Expected reported-model precision is 1/2 and recall 1/4; the printer's conflicting retail names are ambiguous. The script verifies these exact counts, independent class/state slices, neutral-run scoring, input hashes, human output, and an invalid binding on an address absent from the scan. These are arithmetic checks, not physical accuracy results.
+
+Core and CLI regressions cover set-union aggregation, denominator-zero behavior, byte-exact matching, ownership, missing labels, partial-run metadata, scoped native addresses, forbidden/unsupported labels, invalid bindings, duplicate JSON keys, document framing, regular-file limits and failed output writers. Review found a validation-test fixture that shared a mutable slice across cases; the fixtures now start from fresh inputs so each failure tests its intended condition.
+
+A family-only normalized prediction has its own field: the regression requires a correct family result while reported/retail model remain unknown and exact-model precision has no denominator. The Lantern snapshot adapter does not invent a family claim from its model strings.
+
+Final macOS ARM64 `go vet ./...` and full `go test -race ./...` pass, as do all four compiled-CLI evaluation tests. All four macOS/Linux ARM64/x86-64 development archives pass checksum, architecture, licensing/provenance and offline-link checks; the native macOS ARM64 packaged runtime also passes. This packaging run does not establish execution on the other three architectures. The evaluation fixture script is included in both CI platform jobs.
