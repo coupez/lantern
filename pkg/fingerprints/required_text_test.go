@@ -20,10 +20,13 @@ import (
 // Preserve the previous exhaustive path as an oracle for rule selection,
 // captured fields, input eligibility, and source/qualifier metadata.
 func unfilteredLookup(field, input string) *Match {
-	if field != SSHBanner && field != HTTPServer && field != FTPBanner && field != SMTPBanner || input == "" || len(input) > MaxInputBytes || !utf8.ValidString(input) {
+	if field != SSHBanner && field != HTTPServer && field != FTPBanner && field != SMTPBanner && field != IMAPBanner && field != POP3Banner || input == "" || len(input) > MaxInputBytes || !utf8.ValidString(input) {
 		return nil
 	}
 	eligible := input
+	if field == IMAPBanner {
+		eligible = strings.ReplaceAll(eligible, "\t", "")
+	}
 	if field == FTPBanner || field == SMTPBanner {
 		eligible = strings.ReplaceAll(input, "\r\n", "")
 	}

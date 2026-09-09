@@ -111,7 +111,7 @@ type Dialer interface {
 	Probe(context.Context, netip.Addr, uint16, time.Duration) (bool, bool, time.Duration, error)
 }
 
-var Services = map[uint16]string{21: "ftp", 22: "ssh", 23: "telnet", 25: "smtp", 53: "dns", 80: "http", 110: "pop3", 139: "netbios", 143: "imap", 443: "https", 445: "smb", 554: "rtsp", 631: "ipp", 1883: "mqtt", 3000: "http", 3306: "mysql", 3389: "rdp", 5000: "http", 5353: "mdns", 5432: "postgres", 5900: "vnc", 6379: "redis", 7000: "airplay", 8008: "http", 8009: "cast", 8080: "http", 8443: "https", 9000: "http", 9100: "printer"}
+var Services = map[uint16]string{21: "ftp", 22: "ssh", 23: "telnet", 25: "smtp", 53: "dns", 80: "http", 110: "pop3", 139: "netbios", 143: "imap", 443: "https", 445: "smb", 554: "rtsp", 631: "ipp", 993: "imaps", 995: "pop3s", 1883: "mqtt", 3000: "http", 3306: "mysql", 3389: "rdp", 5000: "http", 5353: "mdns", 5432: "postgres", 5900: "vnc", 6379: "redis", 7000: "airplay", 8008: "http", 8009: "cast", 8080: "http", 8443: "https", 9000: "http", 9100: "printer"}
 
 // Responsive reports active discovery evidence or a local-interface observation
 // in this record. It does not guarantee that every service is reachable.

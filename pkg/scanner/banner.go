@@ -27,7 +27,7 @@ func CleanText(s string) string {
 	}, s)
 }
 func bannerService(service string) bool {
-	return service == "ssh" || service == "ftp" || service == "smtp" || service == "http" || service == "https"
+	return service == "ssh" || service == "ftp" || service == "smtp" || service == "http" || service == "https" || service == "imap" || service == "imaps" || service == "pop3" || service == "pop3s"
 }
 
 type bannerObservation struct {
@@ -114,22 +114,33 @@ func readBannerObservationWithDialer(ctx context.Context, ip netip.Addr, p Port,
 	}
 	var exchange io.ReadWriter = c
 	service := p.Service
-	if service == "https" {
+	if service == "https" || service == "imaps" || service == "pop3s" {
 		// Inventory observations intentionally accept self-signed, expired, and
 		// name-mismatched certificates. Neither certificates nor banners establish
 		// authenticated identity. Dial only the selected IP, with no guessed SNI.
 		// Bound total inbound TLS bytes, including certificates and record overhead;
-		// the normal 8 KiB parser limit still applies to decrypted response data.
+		// per-protocol parser limits still apply to decrypted response data.
 		transport := &bannerTLSConn{Conn: c, reader: io.LimitReader(c, 256*1024)}
-		secure := tls.Client(transport, &tls.Config{
+		config := &tls.Config{
 			InsecureSkipVerify: true, // Unauthenticated service observation, never credentials.
 			MinVersion:         tls.VersionTLS12,
-			NextProtos:         []string{"http/1.1"},
-		})
+		}
+		if service == "https" {
+			config.NextProtos = []string{"http/1.1"}
+		}
+		secure := tls.Client(transport, config)
 		if err := secure.HandshakeContext(ctx); err != nil {
 			return bannerObservation{}
 		}
-		exchange, service = secure, "http"
+		exchange = secure
+		switch service {
+		case "https":
+			service = "http"
+		case "imaps":
+			service = "imap"
+		case "pop3s":
+			service = "pop3"
+		}
 	}
 	if service == "http" {
 		_, err = io.WriteString(exchange, "HEAD / HTTP/1.0\r\nHost: "+net.JoinHostPort(ip.WithZone("").String(), strconv.Itoa(int(p.Number)))+"\r\nConnection: close\r\n\r\n")
@@ -153,6 +164,9 @@ func bannerResponse(src io.Reader, service string) string {
 	return observeBannerResponse(src, service).Text
 }
 func observeBannerResponse(src io.Reader, service string) bannerObservation {
+	if service == "imap" || service == "pop3" {
+		return observeMailGreeting(src, service)
+	}
 	if service == "ftp" || service == "smtp" {
 		return observeGreetingResponse(src, service)
 	}

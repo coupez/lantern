@@ -37,6 +37,14 @@ class ImportTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             module.extract(xml('<fingerprint pattern="x" flags="unknown"><description>x</description></fingerprint>').replace(b'ssh.banner',b'ftp.banner'))
 
+    def test_mail_fields_preserve_text(self):
+        for field in ['imap4.banner', 'pop3.banner']:
+            data = xml('<fingerprint pattern="^Example(.*)$"><description>x</description><example>Example&#x9;value</example></fingerprint>').replace(b'ssh.banner',field.encode())
+            catalog, examples = module.extract(data)
+            self.assertEqual(catalog['field'],field)
+            self.assertEqual(catalog['rules'][0]['pattern'],'(?m)^Example(.*)$')
+            self.assertEqual(examples[0]['input'],'Example\tvalue')
+
     def test_unsupported_or_ambiguous_input(self):
         for body in [
             '<fingerprint pattern="x" flags="i"><description>x</description></fingerprint>',

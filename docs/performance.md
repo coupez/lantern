@@ -208,3 +208,21 @@ python3 scripts/benchmark-banner-startup.py /path/to/before /path/to/after
 ```
 
 Ignored local evidence: `research/results/fingerprint-init-alloc-profile.txt`, `fingerprint-lazy-baseline.log`, `fingerprint-lazy-final-benchmarks.log`, `fingerprint-lazy-final-summary.json`, and `fingerprint-lazy-cli-benchmarks.json`.
+
+
+## IMAP and POP3 matching
+
+The 946-pattern index occupies 48,295 compressed bytes, up from 46,182 for 898 rules. On Apple M4 Max / macOS ARM64 / Go 1.26.8, medians of three 300 ms samples measured:
+
+| Input | Cold lookup | Warm lookup | Warm allocations |
+| --- | ---: | ---: | ---: |
+| IMAP `example.com Cyrus IMAP4 v2.3.7 server ready` | 5.688 ms | 2.948 µs | 19 |
+| POP3 `Dovecot ready.` | 5.199 ms | 0.786 µs | 18 |
+
+Cold measurements reset the entire index before each lookup and include syntax/precheck preparation plus compilation of candidate rules. Repeated preparation alone measured 4.921 ms and 3,796,457 allocated bytes. Warm measurements reuse candidate expressions. These exclude process startup, sockets, TLS, greeting parsing, and terminal output; they do not establish scan throughput or recognition accuracy. Deferred compilation cost still depends on the particular candidate rules.
+
+```sh
+go test ./pkg/fingerprints -run '^$' -bench 'BenchmarkInitialization|BenchmarkColdLookup/(imap|pop3)$|BenchmarkRequiredTextWorkloads/(imap|pop3)$' -benchmem -benchtime=300ms -count=3
+```
+
+Log: `research/results/mail-access-benchmarks.log` (ignored development evidence).

@@ -59,15 +59,15 @@ func run(args []string) error {
 		return nil
 	case "fingerprint":
 		if len(args) == 0 {
-			fmt.Printf("%d offline SSH/HTTP/FTP/SMTP banner patterns · Rapid7 Recog catalog claims\n", fingerprints.Count())
+			fmt.Printf("%d offline SSH/HTTP/FTP/SMTP/IMAP/POP3 banner patterns · Rapid7 Recog catalog claims\n", fingerprints.Count())
 			return nil
 		}
 		if len(args) == 1 && args[0] == "sources" {
 			fmt.Print(fingerprints.Sources)
 			return nil
 		}
-		if len(args) != 2 || (args[0] != "ssh" && args[0] != "http" && args[0] != "ftp" && args[0] != "smtp") {
-			return errors.New("usage: lantern fingerprint [ssh SOFTWARE_AND_COMMENTS | http SERVER_HEADER | ftp GREETING_TEXT | smtp GREETING_TEXT | sources]")
+		if len(args) != 2 || (args[0] != "ssh" && args[0] != "http" && args[0] != "ftp" && args[0] != "smtp" && args[0] != "imap" && args[0] != "pop3") {
+			return errors.New("usage: lantern fingerprint [ssh SOFTWARE_AND_COMMENTS | http SERVER_HEADER | ftp GREETING_TEXT | smtp GREETING_TEXT | imap GREETING_TEXT | pop3 GREETING_TEXT | sources]")
 		}
 		field := fingerprints.HTTPServer
 		if args[0] == "ssh" {
@@ -76,6 +76,10 @@ func run(args []string) error {
 			field = fingerprints.FTPBanner
 		} else if args[0] == "smtp" {
 			field = fingerprints.SMTPBanner
+		} else if args[0] == "imap" {
+			field = fingerprints.IMAPBanner
+		} else if args[0] == "pop3" {
+			field = fingerprints.POP3Banner
 		}
 		return json.NewEncoder(os.Stdout).Encode(fingerprints.Lookup(field, args[1]))
 	case "models":
@@ -145,7 +149,8 @@ func help() {
   lantern watch [CIDR]            Live dashboard and network changes
   lantern interfaces              List available IPv4/IPv6 networks
   lantern lookup MAC              Identify a MAC vendor offline
-  lantern fingerprint [ssh|http|ftp|smtp VALUE]  Interpret an observed banner field offline
+  lantern fingerprint [TYPE TEXT] Offline service recognition
+                                  TYPE: ssh, http, ftp, smtp, imap, pop3; or sources
   lantern models [IDENTIFIER]     Look up hardware model candidates offline
   lantern vendors [sources]       Database size and provenance
   lantern diff before.json after.json

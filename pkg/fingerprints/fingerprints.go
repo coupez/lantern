@@ -22,6 +22,8 @@ const SSHBanner = "ssh.banner"
 const HTTPServer = "http_header.server"
 const FTPBanner = "ftp.banner"
 const SMTPBanner = "smtp.banner"
+const IMAPBanner = "imap4.banner"
+const POP3Banner = "pop3.banner"
 const MaxInputBytes = 2048
 
 //go:embed data/recog.json.gz
@@ -158,16 +160,21 @@ func Count() int {
 
 // Lookup matches one extracted field, preserving catalog order. SSH input is
 // software/comment text after SSH-<version>-, and HTTP input is a Server value.
+// IMAP/POP3 input is the single-line greeting after its positive status prefix.
+// IMAP alone also accepts horizontal tabs in greeting text.
 // FTP/SMTP input is complete greeting text with numeric reply prefixes removed;
 // CRLF-separated lines are allowed only for those two fields.
 // Unsupported fields, empty/oversized inputs, invalid UTF-8, and other controls fail
 // closed. No network requests or upstream executable code are used.
 func Lookup(field, input string) *Match {
-	if field != SSHBanner && field != HTTPServer && field != FTPBanner && field != SMTPBanner || input == "" || len(input) > MaxInputBytes || !utf8.ValidString(input) {
+	if field != SSHBanner && field != HTTPServer && field != FTPBanner && field != SMTPBanner && field != IMAPBanner && field != POP3Banner || input == "" || len(input) > MaxInputBytes || !utf8.ValidString(input) {
 		return nil
 	}
 	for i, r := range input {
 		if r >= ' ' && r <= '~' {
+			continue
+		}
+		if field == IMAPBanner && r == '\t' {
 			continue
 		}
 		if field == FTPBanner || field == SMTPBanner {

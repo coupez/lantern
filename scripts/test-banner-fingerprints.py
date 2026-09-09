@@ -25,7 +25,7 @@ def run(*args):
         assert not result.stderr, result.stderr
     return result.stdout
 
-assert '898' in run('fingerprint')
+assert '946' in run('fingerprint')
 assert json.loads(run('fingerprint', 'ssh', 'OpenSSH_9.9'))['fields']['service.product'] == 'OpenSSH'
 assert json.loads(run('fingerprint', 'http', 'Eltex TAU-72'))['fields']['os.product'] == 'TAU-72 Firmware'
 assert json.loads(run('fingerprint', 'http', 'LanternUnknownServer_2026')) is None

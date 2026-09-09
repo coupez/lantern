@@ -16,6 +16,8 @@ func BenchmarkColdLookup(b *testing.B) {
 		{"ftp", FTPBanner, "SYNOLOGY FTP server ready."},
 		{"smtp", SMTPBanner, "foo.bar ESMTP Postfix (3.1.4)"},
 		{"unknown-http", HTTPServer, "LanternUnknown/2026"},
+		{"imap", IMAPBanner, "example.com Cyrus IMAP4 v2.3.7 server ready"},
+		{"pop3", POP3Banner, "Dovecot ready."},
 	} {
 		b.Run(tc.name, func(b *testing.B) {
 			b.ReportAllocs()
@@ -44,6 +46,8 @@ func TestConcurrentColdLookups(t *testing.T) {
 		{SSHBanner, "OpenSSH_9.9p1 Ubuntu-3ubuntu1", "OpenSSH"},
 		{FTPBanner, "SYNOLOGY FTP server ready.", "SmbFTPD"},
 		{SMTPBanner, "foo.bar ESMTP Postfix (3.1.4)", "Postfix"},
+		{IMAPBanner, "example.com Cyrus IMAP4 v2.3.7 server ready", "Cyrus IMAP"},
+		{POP3Banner, "Dovecot ready.", "Dovecot"},
 	}
 	start := make(chan struct{})
 	var workers sync.WaitGroup
@@ -51,7 +55,7 @@ func TestConcurrentColdLookups(t *testing.T) {
 		workers.Go(func() {
 			<-start
 			for j := 0; j < 16; j++ {
-				if (i+j)%5 == 0 && Count() != 898 {
+				if (i+j)%5 == 0 && Count() != 946 {
 					t.Error("wrong catalog count")
 				}
 				tc := cases[(i+j)%len(cases)]

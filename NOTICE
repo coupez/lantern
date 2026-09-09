@@ -55,8 +55,8 @@ in pkg/models/data/matter-sources.json. The upstream license is reproduced in
 THIRD_PARTY_LICENSES. Labels are catalog candidates, not authenticated model,
 manufacturer, certification, or SmartThings compatibility claims.
 
-SSH, HTTP Server, FTP and SMTP greeting fingerprints are adapted from Rapid7 Recog under
-BSD-2-Clause. All 898 pinned patterns retain ordering, parameters, source lines,
+SSH, HTTP Server, FTP, SMTP, IMAP and POP3 greeting fingerprints are adapted from Rapid7 Recog under
+BSD-2-Clause. All 946 pinned patterns retain ordering, parameters, source lines,
 and qualifiers. Source/license/index hashes are in pkg/fingerprints/data/sources.json;
 the copyright and license are reproduced in THIRD_PARTY_LICENSES. Matches are
 source-linked catalog interpretations, not authenticated hardware/software identity.
