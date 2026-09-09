@@ -132,3 +132,28 @@ go test ./pkg/fingerprints -run '^$' -bench 'Benchmark(RequiredTextWorkloads|Ini
 ```
 
 Raw measurements and calculated medians: `research/results/fingerprint-required-{baseline.log,final-benchmark.log,summary.json}` (ignored). The separate CPU profile and per-rule timing experiment are diagnostic evidence only and are not used for the ratios above.
+
+
+## FTP and SMTP catalog expansion
+
+Adding 151 FTP and 139 SMTP patterns increases the catalog from 608 to 898 rules. The compressed runtime index grows from 29,739 to 46,182 bytes. On Apple M4 Max / macOS ARM64 / Go 1.26.8, medians of three 300 ms samples measured:
+
+| Warm lookup input | Median | Allocations per operation |
+| --- | ---: | ---: |
+| FTP `SYNOLOGY FTP server ready.` | 3.208 µs | 25 |
+| FTP, that line between `Notice` and `Ready`, joined by CRLF | 5.745 µs | 33 |
+| SMTP `foo.bar ESMTP Postfix (3.1.4)` | 4.707 µs | 20 |
+| Unknown HTTP `LanternUnknown/2026` | 2.140 µs | 0 |
+| Unknown HTTP, 2,048 `x` bytes | 10.566 µs | 0 |
+| Nonmatch, 2,000 `x` bytes followed by `-EmWeb/` | 60.074 µs | 0 |
+| HTTP `Apache/2.4.65` | 1.140 µs | 18 |
+| SSH `OpenSSH_9.9p1 Ubuntu-3ubuntu1` | 2.894 µs | 40 |
+| Late HTTP match `Example KNX-IP Interface` | 3.428 µs | 13 |
+
+Repeated complete catalog initialization measured **15.592 ms**, **56,008,237 allocated bytes**, and **368,859 allocations** per initialization. These are transient allocation totals, not retained heap size. This is a material increase from the earlier 608-pattern measurement of 5.823 ms and 9,597,417 allocated bytes; every catalog is initialized together on first use. The expanded expressions include multiline greeting patterns. Warm lookups visit only the requested field's catalog. Multiline greeting matching also constructs logical LF text and a byte-offset map to preserve original CRLF captures.
+
+These measurements exclude process startup, sockets, parsing replies, terminal output, and first-use initialization for the warm rows. They do not measure scan throughput or recognition accuracy. Earlier measurements use separate runs and are contextual, not a controlled before/after comparison for this expansion. The raw final log is `research/results/greeting-matcher-final-benchmarks.log` (ignored development evidence).
+
+```sh
+go test ./pkg/fingerprints -run '^$' -bench 'BenchmarkInitialization|BenchmarkRequiredTextWorkloads' -benchmem -benchtime=300ms -count=3
+```

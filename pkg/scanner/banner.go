@@ -153,6 +153,9 @@ func bannerResponse(src io.Reader, service string) string {
 	return observeBannerResponse(src, service).Text
 }
 func observeBannerResponse(src io.Reader, service string) bannerObservation {
+	if service == "ftp" || service == "smtp" {
+		return observeGreetingResponse(src, service)
+	}
 	limited := &io.LimitedReader{R: src, N: 8192}
 	r := bufio.NewReaderSize(limited, 2048)
 	first := bannerObservation{}

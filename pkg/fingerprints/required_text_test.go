@@ -20,13 +20,21 @@ import (
 // Preserve the previous exhaustive path as an oracle for rule selection,
 // captured fields, input eligibility, and source/qualifier metadata.
 func unfilteredLookup(field, input string) *Match {
-	if field != SSHBanner && field != HTTPServer || input == "" || len(input) > MaxInputBytes || !utf8.ValidString(input) {
+	if field != SSHBanner && field != HTTPServer && field != FTPBanner && field != SMTPBanner || input == "" || len(input) > MaxInputBytes || !utf8.ValidString(input) {
 		return nil
 	}
-	for _, r := range input {
+	eligible := input
+	if field == FTPBanner || field == SMTPBanner {
+		eligible = strings.ReplaceAll(input, "\r\n", "")
+	}
+	for _, r := range eligible {
 		if unicode.IsControl(r) || unicode.In(r, unicode.Cf) {
 			return nil
 		}
+	}
+	logical := input
+	if field == FTPBanner || field == SMTPBanner {
+		logical = strings.ReplaceAll(input, "\r\n", "\n")
 	}
 	once.Do(initialize)
 	for _, c := range catalogs {
@@ -34,9 +42,16 @@ func unfilteredLookup(field, input string) *Match {
 			continue
 		}
 		for _, r := range c.Rules {
-			captures := r.re.FindStringSubmatchIndex(input)
+			captures := r.re.FindStringSubmatchIndex(logical)
 			if captures == nil {
 				continue
+			}
+			if logical != input {
+				for i, index := range captures {
+					if index >= 0 {
+						captures[i] += strings.Count(logical[:index], "\n")
+					}
+				}
 			}
 			return &Match{Name: r.Name, Field: field, Input: input, Catalog: "Rapid7 Recog", Reference: fmt.Sprintf("%s#L%d", c.Source, r.Line), Certainty: r.Certainty, Preference: c.Preference, Fields: evaluate(r, captures, input, c.Protocol)}
 		}

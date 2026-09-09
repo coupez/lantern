@@ -97,7 +97,10 @@ func main() {
  if err!=nil || !report.Cancelled || report.Probed!=0 { panic("cancellation contract") }
  if vendors.Count()<58000 || len(models.Lookup("Mac16,9"))==0 { panic("embedded data missing") }
  match:=fingerprints.Lookup(fingerprints.HTTPServer,"Apache/2.4.65")
- if fingerprints.Count()!=608 || match==nil || match.Fields["service.product"]!="HTTPD" { panic("banner catalog missing") }
+ if fingerprints.Count()!=898 || match==nil || match.Fields["service.product"]!="HTTPD" { panic("banner catalog missing") }
+ ftp:=fingerprints.Lookup(fingerprints.FTPBanner,"ET000400CEA560 Lexmark T640 FTP Server NS.NP.N219 ready.")
+ smtp:=fingerprints.Lookup(fingerprints.SMTPBanner,"foo.bar ESMTP Postfix (3.1.4)")
+ if ftp==nil || ftp.Fields["host.mac"]!="000400CEA560" || smtp==nil || smtp.Fields["service.product"]!="Postfix" { panic("greeting catalog missing") }
  copy:=match.Clone();copy.Fields["service.product"]="changed"
  if match.Fields["service.product"]!="HTTPD" { panic("banner match ownership") }
  fmt.Println("core import OK")

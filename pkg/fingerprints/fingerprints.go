@@ -20,6 +20,8 @@ import (
 
 const SSHBanner = "ssh.banner"
 const HTTPServer = "http_header.server"
+const FTPBanner = "ftp.banner"
+const SMTPBanner = "smtp.banner"
 const MaxInputBytes = 2048
 
 //go:embed data/recog.json.gz
@@ -139,19 +141,42 @@ func Count() int {
 
 // Lookup matches one extracted field, preserving catalog order. SSH input is
 // software/comment text after SSH-<version>-, and HTTP input is a Server value.
-// Unsupported fields, empty/oversized inputs, invalid UTF-8, and controls fail
+// FTP/SMTP input is complete greeting text with numeric reply prefixes removed;
+// CRLF-separated lines are allowed only for those two fields.
+// Unsupported fields, empty/oversized inputs, invalid UTF-8, and other controls fail
 // closed. No network requests or upstream executable code are used.
 func Lookup(field, input string) *Match {
-	if field != SSHBanner && field != HTTPServer || input == "" || len(input) > MaxInputBytes || !utf8.ValidString(input) {
+	if field != SSHBanner && field != HTTPServer && field != FTPBanner && field != SMTPBanner || input == "" || len(input) > MaxInputBytes || !utf8.ValidString(input) {
 		return nil
 	}
-	for _, r := range input {
+	for i, r := range input {
 		if r >= ' ' && r <= '~' {
 			continue
+		}
+		if field == FTPBanner || field == SMTPBanner {
+			if r == '\r' && i+1 < len(input) && input[i+1] == '\n' || r == '\n' && i > 0 && input[i-1] == '\r' {
+				continue
+			}
 		}
 		if unicode.IsControl(r) || unicode.In(r, unicode.Cf) {
 			return nil
 		}
+	}
+	matchedInput, offsets := input, []int(nil)
+	if (field == FTPBanner || field == SMTPBanner) && strings.Contains(input, "\r\n") {
+		// Match logical line boundaries while retaining original CRLF bytes in
+		// Match.Input and captured fields. Offsets map normalized byte boundaries
+		// back to the observed text; only validated CRLF pairs are transformed.
+		var normalized strings.Builder
+		offsets = append(offsets, 0)
+		for i := 0; i < len(input); i++ {
+			if input[i] == '\r' {
+				i++
+			}
+			normalized.WriteByte(input[i])
+			offsets = append(offsets, i+1)
+		}
+		matchedInput = normalized.String()
 	}
 	once.Do(initialize)
 	for _, c := range catalogs {
@@ -160,12 +185,19 @@ func Lookup(field, input string) *Match {
 		}
 		for i := range c.Rules {
 			r := &c.Rules[i]
-			if r.required != "" && !strings.Contains(input, r.required) {
+			if r.required != "" && !strings.Contains(matchedInput, r.required) {
 				continue
 			}
-			captures := r.re.FindStringSubmatchIndex(input)
+			captures := r.re.FindStringSubmatchIndex(matchedInput)
 			if captures == nil {
 				continue
+			}
+			if offsets != nil {
+				for i, index := range captures {
+					if index >= 0 {
+						captures[i] = offsets[index]
+					}
+				}
 			}
 			return &Match{Name: r.Name, Field: field, Input: input, Catalog: "Rapid7 Recog",
 				Reference: fmt.Sprintf("%s#L%d", c.Source, r.Line), Certainty: r.Certainty,

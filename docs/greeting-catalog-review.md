@@ -1,6 +1,6 @@
 # FTP and SMTP greeting catalog review
 
-The existing collector reads FTP and SMTP greetings, but the runtime fingerprint package currently interprets only SSH and HTTP Server fields. This review identifies **290 additional candidate rules** in the same pinned BSD-2-Clause Recog content revision, [`d3d20938`](https://github.com/rapid7/recog/tree/d3d20938da9f5f1e442c2419fe6c30cd651b6878). It imports no runtime data and leaves rc.5 unchanged.
+Before this review, the collector read FTP and SMTP greetings while the runtime fingerprint package interpreted only SSH and HTTP Server fields. This initial review identified **290 additional candidate rules** in the same pinned BSD-2-Clause Recog content revision, [`d3d20938`](https://github.com/rapid7/recog/tree/d3d20938da9f5f1e442c2419fe6c30cd651b6878). The subsequent [runtime integration](recognition.md#banner-fingerprints) now embeds all of them and checks the four formerly unevaluated fields. Prepared rc.5 remains unchanged and predates that integration.
 
 | Input | Rules | Examples | Positional field assertions | Other assertions not evaluated | Examples matching multiple rules |
 | --- | ---: | ---: | ---: | ---: | ---: |
@@ -19,7 +19,7 @@ This resolves the eighteen supplied-example failures. It does not establish equi
 
 ## Integration requirements
 
-The FTP catalog expects greeting text after the numeric response prefix. Five source examples contain CRLF-separated text; two recognize a later line. Lantern currently returns the first FTP/SMTP diagnostic line, and its fingerprint API rejects all control characters. Runtime integration therefore needs deliberate, bounded handling of complete multiline greetings and field-specific line-ending validation. Removing control bytes or guessing arbitrary text to manufacture matches would lose the original observation semantics.
+The FTP catalog expects greeting text after the numeric response prefix. Five source examples contain CRLF-separated text; two recognize a later line. At the time of review, Lantern returned only the first FTP/SMTP diagnostic line and its fingerprint API rejected all control characters. Runtime integration therefore needs deliberate, bounded handling of complete multiline greetings and field-specific line-ending validation. Removing control bytes or guessing arbitrary text to manufacture matches would lose the original observation semantics.
 
 Greeting collection can remain read-only within the existing connection, byte, line, and timeout limits. FTP authentication/transfer commands, SMTP mail commands, and the separate SMTP EHLO/HELP/other-command catalogs are outside this reviewed input scope. Refusal, truncated, or malformed greetings should remain diagnostic observations without a fabricated recognized field.
 

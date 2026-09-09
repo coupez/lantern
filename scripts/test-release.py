@@ -63,7 +63,7 @@ for system,arch in targets:
         assert b'github.com/rivo/uniseg' in content['THIRD_PARTY_LICENSES']
         assert b'Rapid7 Recog' in content['NOTICE'] and b'Copyright (c) 2014-2015, Rapid7' in content['THIRD_PARTY_LICENSES']
         recog = json.loads(content['pkg/fingerprints/data/sources.json'])
-        assert recog['license'] == 'BSD-2-Clause' and sum(recog['patterns'].values()) == 608
+        assert recog['license'] == 'BSD-2-Clause' and sum(recog['patterns'].values()) == 898
         assert b'AppleDB' in content['NOTICE']
         assert b'aioshelly' in content['NOTICE'] and b'Apache License' in content['THIRD_PARTY_LICENSES']
         shelly_source = json.loads(content['pkg/models/data/shelly-sources.json'])
@@ -164,11 +164,11 @@ with tempfile.TemporaryDirectory(prefix='lantern-archive-') as tmp:
     report = json.loads(run('doctor', '--json'))
     assert report['os'] == 'linux' and report['arch'] == os.environ['LANTERN_EXPECT_GOARCH'], report
     assert report['version'] == os.environ['LANTERN_EXPECT_VERSION'], report
-    for fixture in ['test-event-stream.py', 'test-watch-pty.py', 'test-snapshot-cli.py', 'test-banner-fingerprints.py']:
+    for fixture in ['test-event-stream.py', 'test-watch-pty.py', 'test-snapshot-cli.py', 'test-banner-fingerprints.py', 'test-greeting-fingerprints.py']:
         subprocess.run(['python3', '/usr/local/bin/' + fixture, str(exe)], check=True, timeout=90)
 """
         result = subprocess.run(['docker', 'run', '--rm', '-i', '--platform', f'linux/{arch}',
-                                 '--network', 'none', '--cap-drop', 'ALL',
+                                 '--network', 'none', '--cap-drop', 'ALL', '--sysctl', 'net.ipv4.ip_unprivileged_port_start=0',
                                  '-e', f'LANTERN_EXPECT_VERSION={version}', '-e', f'LANTERN_EXPECT_GOARCH={arch}',
                                  image, 'python3', '-c', verify], input=binary, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=180)
         sys.stdout.buffer.write(result.stdout)

@@ -13,7 +13,7 @@ import (
 )
 
 func TestAllCatalogExamplesAndProvenance(t *testing.T) {
-	if Count() != 608 {
+	if Count() != 898 {
 		t.Fatal(Count())
 	}
 	var manifest struct {
@@ -71,7 +71,7 @@ func TestAllCatalogExamplesAndProvenance(t *testing.T) {
 			}
 		}
 	}
-	if examples != 979 || assertions != 1234 {
+	if examples != 1529 || assertions != 2333 {
 		t.Fatal(examples, assertions)
 	}
 }
@@ -147,6 +147,9 @@ func BenchmarkRequiredTextWorkloads(b *testing.B) {
 		{"apache", HTTPServer, "Apache/2.4.65"},
 		{"openssh", SSHBanner, "OpenSSH_9.9p1 Ubuntu-3ubuntu1"},
 		{"late-http-match", HTTPServer, "Example KNX-IP Interface"},
+		{"ftp", FTPBanner, "SYNOLOGY FTP server ready."},
+		{"ftp-multiline", FTPBanner, "Notice\r\nSYNOLOGY FTP server ready.\r\nReady"},
+		{"smtp", SMTPBanner, "foo.bar ESMTP Postfix (3.1.4)"},
 	}
 	for _, tc := range cases {
 		b.Run(tc.name, func(b *testing.B) {

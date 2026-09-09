@@ -29,6 +29,14 @@ class ImportTests(unittest.TestCase):
         self.assertEqual(catalog['rules'][0]['params'][1], {'name':'service.version','pos':1})
         self.assertEqual(examples, [{'rule':0,'input':'Example_1.2','fields':{'service.version':'1.2'}}])
 
+    def test_greeting_flag_mapping(self):
+        for flags, prefix in [('REG_ICASE','(?mi)'), ('REG_MULTILINE','(?ms)'), ('REG_ICASE,REG_MULTILINE','(?mis)'), ('','(?m)')]:
+            data = xml(f'<fingerprint pattern="^Example$" flags="{flags}"><description>x</description></fingerprint>').replace(b'ssh.banner',b'ftp.banner').replace(b'protocol="ssh"',b'protocol="ftp"')
+            catalog, _ = module.extract(data)
+            self.assertEqual(catalog['rules'][0]['pattern'],prefix+'^Example$')
+        with self.assertRaises(ValueError):
+            module.extract(xml('<fingerprint pattern="x" flags="unknown"><description>x</description></fingerprint>').replace(b'ssh.banner',b'ftp.banner'))
+
     def test_unsupported_or_ambiguous_input(self):
         for body in [
             '<fingerprint pattern="x" flags="i"><description>x</description></fingerprint>',
