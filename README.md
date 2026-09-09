@@ -94,6 +94,8 @@ Computer names, workgroups, registration flags, and reported unit IDs remain in 
 
 `lantern enrich --scan scan.json --inventory inventory.json --save enriched.json --details` attaches saved Android/SNMP evidence to explicitly bound existing addresses. It preserves network observations, source hashes and conflicting claims. See the [manifest and runnable example](docs/inventory-snapshots.md). The evaluator includes inventory only with `--include-inventory`.
 
+`lantern scan --ubiquiti --details` adds opt-in IPv4 Ubiquiti UDP discovery alongside the other passes. Dedicated model fields remain separate from platform and firmware-build observations; see [wire behavior and bounds](docs/ubiquiti-discovery.md).
+
 ## Check local capabilities
 
 `lantern doctor` checks actual ICMP, multicast, ARP/NDP, neighbor-table, and automatic target-selection access without sending discovery packets. Use `--interface en0` to select a network or `--json` for scripts. Optional failures include a reason and next step; socket access alone does not prove device reachability. See [diagnostics](docs/diagnostics.md).

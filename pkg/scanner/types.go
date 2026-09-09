@@ -32,6 +32,7 @@ type Device struct {
 // ScanCoverage records requested probes/enrichment, not successful responses.
 // A nil Report.Coverage denotes a legacy snapshot with unknown configuration.
 type ScanCoverage struct {
+	Ubiquiti     bool     `json:"ubiquiti"`
 	TCPPorts     []uint16 `json:"tcp_ports"`
 	ICMP         bool     `json:"icmp"`
 	ARP          bool     `json:"arp"`
@@ -61,6 +62,7 @@ type Report struct {
 	Cancelled   bool      `json:"cancelled,omitempty"`
 	// IncompleteMethods names discovery passes with reported errors or exhausted
 	// budgets: tcp, icmp, arp, ndp, multicast, netbios, neighbors, candidates.
+	// Ubiquiti discovery failures use the method name ubiquiti.
 	// Sorted and unique. Absence is not proof of exhaustive discovery; silent
 	// hosts and unsuccessful optional enrichment can still leave fields empty.
 	IncompleteMethods []string `json:"incomplete_methods,omitempty"`
@@ -81,6 +83,7 @@ type Event struct {
 	Message   string  `json:"message,omitempty"`
 }
 type Options struct {
+	Ubiquiti bool
 	// Interface selects local discovery and neighbor/local-address evidence,
 	// and scopes link-local IPv6 probes. TCP connects use normal OS routing.
 	Interface   string
@@ -119,7 +122,7 @@ var Services = map[uint16]string{21: "ftp", 22: "ssh", 23: "telnet", 25: "smtp",
 func (d Device) Responsive() bool {
 	for _, e := range d.Evidence {
 		switch e {
-		case "arp", "ndp", "icmp", "tcp-open", "tcp-refused", "mdns", "ssdp", "ws-discovery", "netbios", "local-interface":
+		case "ubiquiti", "arp", "ndp", "icmp", "tcp-open", "tcp-refused", "mdns", "ssdp", "ws-discovery", "netbios", "local-interface":
 			return true
 		}
 	}

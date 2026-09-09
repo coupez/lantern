@@ -17,6 +17,7 @@ COPY scripts/test-event-stream.py /usr/local/bin/test-event-stream.py
 COPY scripts/test-doctor.py /usr/local/bin/test-doctor.py
 COPY scripts/test-snmp-interop.py /usr/local/bin/test-snmp-interop.py
 COPY scripts/test-android-adb-interop.py /usr/local/bin/test-android-adb-interop.py
+COPY scripts/test-ubiquiti-discovery.py /usr/local/bin/test-ubiquiti-discovery.py
 COPY scripts/test-inventory-enrichment.py /usr/local/bin/test-inventory-enrichment.py
 COPY scripts/test-dhcp-capture.py /usr/local/bin/test-dhcp-capture.py
 COPY scripts/test-snapshot-cli.py /usr/local/bin/test-snapshot-cli.py

@@ -68,6 +68,10 @@ For managed Apple devices, Apple exposes a model identifier through device-manag
 
 Physical validation of existing Apple discovery remains a parallel priority: compare awake/asleep Macs, iPhones, iPads and Apple TVs with independently known model labels, advertised-service states and private-MAC settings. Additional catalog entries cannot resolve a missing distinguishing observation. These priorities are engineering judgments from the cited interfaces and current collector coverage; they are not claims of measured improvement over Fing.
 
-## Next integration priority
+## Inventory integration and vendor discovery
 
-Android and SNMP now supply separate inventory reports. The next step is a shared explicit inventory-to-snapshot adapter: bind each saved observation to owner-selected canonical scoped IP addresses, preserve competing network claims, retain source/timestamp provenance, and avoid marking an address responsive solely because an inventory file describes it. Inventory-assisted evaluation must remain distinct from unauthenticated discovery. Do not infer bindings from names, a transport handle, or an agent namespace.
+The shared explicit inventory-to-snapshot adapter is implemented: owner-selected canonical scoped IP bindings preserve competing network claims and source/timestamp provenance without changing network responsiveness. Inventory-assisted evaluation remains separate; see [usage](inventory-snapshots.md).
+
+The next protocol comparison considered Ubiquiti UDP discovery and TP-Link Kasa/Tapo. Ubiquiti is implemented as an opt-in finite-target IPv4 pass with dedicated model TLVs and bounded v1/v2 requests. Platform and firmware-build strings remain separate from models. Kasa's legacy UDP/9999 interface is useful, but modern support also requires evaluating UDP/20002 and newer discovery variants rather than assuming that the legacy path covers all Kasa/Tapo devices. [Pinned python-kasa discovery implementation](https://github.com/python-kasa/python-kasa/blob/a29d0610bacd084a2197a7025cf083d4d2a51b02/kasa/discover.py), [Ubiquiti behavior](ubiquiti-discovery.md).
+
+Android catalog review still found Google-derived data in AndroidDeviceNames and public model-list mirrors without establishing independent redistribution terms. Keep those rows out of the bundled catalog until reuse terms are established; an explicit owner-supplied catalog adapter remains useful future work. This is an unresolved source-provenance question, not evidence that model aliases cannot improve authorized inventory matching.

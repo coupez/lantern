@@ -34,6 +34,9 @@ jobs:
       - run: python3 scripts/test-dhcp-capture.py
       - run: python3 scripts/test-identification-evaluation.py
       - run: python3 scripts/test-inventory-enrichment.py
+      - run: python3 scripts/test-ubiquiti-discovery.py
+      - name: Ubiquiti UDP protocol fixtures
+        run: LANTERN_NETWORK_TESTS=1 go test -race ./pkg/scanner -run Ubiquiti -count=1 -timeout=60s
       - name: Independent Net-SNMP interoperability
         if: runner.os == 'macOS'
         run: python3 scripts/test-snmp-interop.py --snmpd /usr/sbin/snmpd

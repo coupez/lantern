@@ -6,6 +6,8 @@ The expanded [device-identification roadmap](device-identification-roadmap.md) r
 
 ## Implemented
 
+- Opt-in Ubiquiti v1/v2 UDP discovery on finite IPv4 targets, with dedicated model fields, retained conflicts and source attribution, independent platform/build fields, and separate coverage/failure semantics. [Usage and bounds](ubiquiti-discovery.md).
+
 - Explicit offline Android/SNMP inventory-to-snapshot attachment with address bindings, source/manifest hashes, independent claims, preserved conflicts and network-only liveness. Separate opt-in inventory-assisted evaluation; [usage](inventory-snapshots.md).
 
 - Go CLI with styled adaptive-width output, live discoveries/progress, inspect view, quick/standard/deep profiles, automatic default-route selection, and explicit target/interface selection.

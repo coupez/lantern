@@ -573,3 +573,11 @@ and preserved provenance on failure. These are synthetic behavioral tests, not
 a live Fingerbank account test or measured device-model precision. No user
 capture was submitted, catalog rows added or rc.7 archives replaced. See
 [request semantics and provider references](fingerbank-lookup.md).
+
+## Ubiquiti IPv4 discovery
+
+The opt-in `--ubiquiti` scan pass uses a new reusable wire codec and finite-target UDP collector. Parser tests cover exact version/command/header/body framing, unknown-field discard, six retained text tags, duplicate selected tags, conflicting model fields, unsafe text and message/TLV limits. The final 15-second two-worker fuzz run passed with **3,066,126 executions**. This measures generated parser inputs, not device coverage.
+
+Scanner tests cover peer/port filtering, partial results after send/receive failures, short writes, duplicate replies, four-observation per-IP limits, pre-cancelled zero-write behavior, event ownership, out-of-target exclusion, selected-interface forwarding, unknown models, platform/model separation and source-linked manufacturer selection. Gated real IPv4 loopback fixtures validate exact v1/v2 queries and deterministic in-flight cancellation after a datagram is delivered. Source/protocol fields never create payload-derived addresses or MACs; the UDP advertisement does not create a TCP port. Changed coverage and failed passes suppress dependent identity/presence comparisons while retaining unrelated TCP comparisons.
+
+Native macOS vet/race suites and the focused real-socket tests pass. Isolated Linux ARM64 vet/race checks and compiled CLI fixtures also pass with `--network none --cap-drop ALL`. The compiled fixture verifies both requests, hostname and competing model claims, source references, discarded credential/interface fields and saved JSON equivalence. Local-system identity, when present, keeps its existing priority. The fixture is a synthetic protocol peer, not a Ubiquiti appliance or independent vendor implementation. Vendor/firmware compatibility, physical model precision/recall and Fing comparison remain unverified. No catalog entries or rc.7 release archives are changed.

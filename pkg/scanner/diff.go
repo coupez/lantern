@@ -30,7 +30,7 @@ func coverageFor(o Options) *ScanCoverage {
 	if ports == nil {
 		ports = []uint16{}
 	}
-	return &ScanCoverage{TCPPorts: ports, ICMP: o.ICMP, ARP: o.ARP, NDP: o.NDP, Multicast: o.Multicast, NetBIOS: o.NetBIOS, ReverseDNS: o.Resolve, Descriptions: o.Descriptions, Banners: o.Banners, AllHosts: o.AllHosts}
+	return &ScanCoverage{TCPPorts: ports, ICMP: o.ICMP, ARP: o.ARP, NDP: o.NDP, Multicast: o.Multicast, Ubiquiti: o.Ubiquiti, NetBIOS: o.NetBIOS, ReverseDNS: o.Resolve, Descriptions: o.Descriptions, Banners: o.Banners, AllHosts: o.AllHosts}
 }
 func coverageKey(c *ScanCoverage) []string {
 	if c == nil {
@@ -40,19 +40,19 @@ func coverageKey(c *ScanCoverage) []string {
 	for _, flag := range []struct {
 		name    string
 		enabled bool
-	}{{"icmp", c.ICMP}, {"arp", c.ARP}, {"ndp", c.NDP}, {"multicast", c.Multicast}, {"netbios", c.NetBIOS}, {"reverse-dns", c.ReverseDNS}, {"descriptions", c.Descriptions}, {"banners", c.Banners}, {"all-hosts", c.AllHosts}} {
+	}{{"icmp", c.ICMP}, {"arp", c.ARP}, {"ndp", c.NDP}, {"multicast", c.Multicast}, {"ubiquiti", c.Ubiquiti}, {"netbios", c.NetBIOS}, {"reverse-dns", c.ReverseDNS}, {"descriptions", c.Descriptions}, {"banners", c.Banners}, {"all-hosts", c.AllHosts}} {
 		out = append(out, flag.name+"="+strconv.FormatBool(flag.enabled))
 	}
 	return out
 }
 func sameDiscovery(a, b *ScanCoverage) bool {
-	return a == nil || b == nil || (a.ICMP == b.ICMP && a.ARP == b.ARP && a.NDP == b.NDP && a.Multicast == b.Multicast && a.NetBIOS == b.NetBIOS && a.AllHosts == b.AllHosts && (len(a.TCPPorts) > 0) == (len(b.TCPPorts) > 0))
+	return a == nil || b == nil || (a.ICMP == b.ICMP && a.ARP == b.ARP && a.NDP == b.NDP && a.Multicast == b.Multicast && a.Ubiquiti == b.Ubiquiti && a.NetBIOS == b.NetBIOS && a.AllHosts == b.AllHosts && (len(a.TCPPorts) > 0) == (len(b.TCPPorts) > 0))
 }
 func sameNames(a, b *ScanCoverage) bool {
-	return a == nil || b == nil || (a.Multicast == b.Multicast && a.NetBIOS == b.NetBIOS && a.ReverseDNS == b.ReverseDNS)
+	return a == nil || b == nil || (a.Multicast == b.Multicast && a.Ubiquiti == b.Ubiquiti && a.NetBIOS == b.NetBIOS && a.ReverseDNS == b.ReverseDNS)
 }
 func sameIdentity(a, b *ScanCoverage) bool {
-	return a == nil || b == nil || (a.Multicast == b.Multicast && a.NetBIOS == b.NetBIOS && a.Descriptions == b.Descriptions)
+	return a == nil || b == nil || (a.Multicast == b.Multicast && a.Ubiquiti == b.Ubiquiti && a.NetBIOS == b.NetBIOS && a.Descriptions == b.Descriptions)
 }
 
 // Diff compares sets of observed values in stable numeric address order. Known
@@ -220,7 +220,7 @@ func comparisonsAfter(methods []string) fieldComparisons {
 			c.ports = false
 		case "arp", "ndp", "neighbors":
 			c.mac = false
-		case "multicast":
+		case "multicast", "ubiquiti":
 			c.names, c.identity = false, false
 		case "netbios":
 			c.names, c.identity, c.workgroups = false, false, false
@@ -299,8 +299,8 @@ func commonPorts(a, b *ScanCoverage) (*portSet, bool) {
 	}
 	return &first, same
 }
-func coverageFlags(c *ScanCoverage) [9]bool {
-	return [9]bool{c.ICMP, c.ARP, c.NDP, c.Multicast, c.NetBIOS, c.ReverseDNS, c.Descriptions, c.Banners, c.AllHosts}
+func coverageFlags(c *ScanCoverage) [10]bool {
+	return [10]bool{c.ICMP, c.ARP, c.NDP, c.Multicast, c.Ubiquiti, c.NetBIOS, c.ReverseDNS, c.Descriptions, c.Banners, c.AllHosts}
 }
 func comparablePorts(old, now *Device, common *portSet) ([]string, []string) {
 	// Completed scans normally retain the same ordered port observations. Avoid
