@@ -55,6 +55,15 @@ func mdnsInstanceName(instance, service string) string {
 // identity claims. Exact protocol/service matching prevents lookalike names from
 // accidentally acquiring another service's type.
 func inferKind(d Device) string {
+	// A local machine can advertise a shared printer or media receiver; those
+	// services must not override its directly observed hardware category.
+	if d.Identity != nil {
+		for _, c := range d.Identity.Claims {
+			if c.Field == "kind" && c.Source == localModelSource && c.Basis == "catalog" && c.Identifier == d.Identity.Model {
+				return c.Value
+			}
+		}
+	}
 	kinds := map[string]bool{}
 	netbiosComputer, homeKit := false, false
 	homeKitKinds := map[string]bool{}

@@ -21,6 +21,9 @@ type Engine struct {
 	ARPSource func(context.Context, Options, []netip.Addr) (ARPResult, error)
 	// NDPSource optionally replaces native IPv6 neighbor solicitation.
 	NDPSource func(context.Context, Options, []netip.Addr) (NDPResult, error)
+	// LocalModelSource optionally replaces the local kernel hardware-model read.
+	// It is called at most once, only if a selected target is a local interface.
+	LocalModelSource func() (string, error)
 }
 
 func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, error) {
@@ -433,6 +436,21 @@ func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, 
 	if o.Target.Addr().Is6() {
 		networks, _ = Networks6()
 	}
+	localModels := localTargetModels(networks, targeted, o.Interface, func() string {
+		if ctx.Err() != nil {
+			return ""
+		}
+		read := e.LocalModelSource
+		if read == nil {
+			read = localHardwareModel
+		}
+		model, err := read()
+		if err != nil {
+			warn("local-model", fmt.Errorf("local hardware model: %w", err))
+			return ""
+		}
+		return model
+	})
 	for _, network := range networks {
 		ip, err := netip.ParseAddr(network.Address)
 		if err != nil || !targeted[ip] || (o.Interface != "" && network.Interface != o.Interface) {
@@ -497,7 +515,7 @@ func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, 
 					enrichDescriptions(ctx, d, o.Timeout)
 				}
 				normalizeAdvertisements(d)
-				d.Identity = identify(d.Advertisements)
+				d.Identity = identifyWithLocalModel(d.Advertisements, localModels[d.IP])
 				sort.Strings(d.Names)
 				d.Kind = inferKind(*d)
 				sort.Slice(d.Ports, func(i, j int) bool { return d.Ports[i].Number < d.Ports[j].Number })

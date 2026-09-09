@@ -208,6 +208,12 @@ func comparisonsAfter(methods []string) fieldComparisons {
 		if method == "" {
 			continue
 		}
+		if method == "local-model" {
+			// Kernel inventory failure cannot make network presence, names or
+			// service observations incomplete. Avoid spurious model/type loss.
+			c.identity = false
+			continue
+		}
 		c.presence = false
 		switch method {
 		case "tcp":

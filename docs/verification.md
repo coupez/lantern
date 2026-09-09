@@ -473,3 +473,8 @@ The `observe` source addition reads bounded PCAP/PCAPNG captures into timestampe
 Four 15-second fuzz targets completed 17,383,539 executions in passing runs. An initial concurrent decapsulation run ended with a harness context-deadline error and no reported crashing input; an isolated rerun passed with the saved coverage corpus. This bounded fuzzing is not exhaustive proof. Regression tests cover lengths, option overload and relay depth, padding, timestamp metadata, callback/cancellation behavior and FIFO input rejection. Details are in [verification metadata](../research/results/dhcp-observation-verification.json).
 
 Fixtures are synthetic protocol exchanges, not a labeled physical-device benchmark. There is no bundled DHCP classifier and no new measured exact-model accuracy claim. The importer preserves raw evidence and visibility limits; see [DHCP observations](dhcp-observations.md). The rc.7 release archives predate this source addition.
+
+
+## Direct local Mac model evidence
+
+Tests cover exact local-target/interface/IPv6-zone binding, one kernel read, no read for remote-only targets, precedence over shared-printer advertisements, retained conflicts, invalid/unknown model identifiers, event/snapshot preservation and failure behavior. A kernel-read failure suppresses identity/type-loss comparisons while leaving unrelated network changes comparable. The full vet and race suites pass on macOS arm64 with Go 1.26.8. An independent code review found no remaining material issue in the local inventory path. No new catalog rows or network requests were introduced.
