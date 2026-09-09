@@ -36,7 +36,8 @@ assert set(checksums) == expected, checksums
 host = (platform.system().lower(), {'aarch64':'arm64','x86_64':'amd64'}.get(platform.machine().lower(),platform.machine().lower()))
 if args.macos_amd64 and host[0] != 'darwin':
     raise SystemExit('--macos-amd64 requires macOS')
-required = {'lantern','LICENSE','NOTICE','THIRD_PARTY_LICENSES','README.md','docs/install.md',
+required = {'examples/identification/truth.json','examples/identification/bindings.json',
+            'examples/identification/scan.json','examples/identification/normalized-run.json','docs/identification-evaluation.md','lantern','LICENSE','NOTICE','THIRD_PARTY_LICENSES','README.md','docs/install.md',
             'docs/dhcp-observations.md','research/results/dhcp-catalog-review.md','research/results/dhcp-observation-verification.json',
             'docs/snapshots.md','docs/discovery.md','docs/recognition.md','docs/verification.md',
             'docs/STATUS.md','docs/fing-research.md','research/fing-inventory.json',

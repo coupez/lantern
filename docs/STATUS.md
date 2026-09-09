@@ -53,6 +53,8 @@ The expanded [device-identification roadmap](device-identification-roadmap.md) r
 - Direct local Mac kernel-model collection is implemented for selected local-interface addresses, with linked AppleDB candidates and preserved network conflicts. It does not identify other machines through their kernel.
 - IPP/IPPS Get-Printer-Attributes collection is implemented for discovered Bonjour endpoints, using bounded response parsing and endpoint-scoped model claims. Only synthetic fixtures establish its current validation; physical printer/queue coverage is not measured.
 
+- Offline identification evaluation scores independently labeled cases, preserves ambiguous/conflicting predictions, and separates observed/responsive discovery, model/type precision and recall. Synthetic arithmetic fixtures do not establish physical-device accuracy.
+
 ## Still required before calling the broad goal finished
 
 1. Expand identification: broader device/model catalogs, additional protocol fingerprints, and real-device coverage of the implemented mDNS/UPnP model paths. No claim of mapping everything.

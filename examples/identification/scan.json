@@ -1,0 +1,73 @@
+{
+  "schema": 1,
+  "target": "192.0.2.0/24 and 2001:db8::1 (synthetic)",
+  "started": "2026-09-09T00:00:00Z",
+  "duration_ms": 1200,
+  "targets": 6,
+  "probed": 6,
+  "devices": [
+    {
+      "ip": "192.0.2.1",
+      "kind": "printer",
+      "evidence": [
+        "mdns"
+      ],
+      "identity": {
+        "model": "Laser42",
+        "model_names": [
+          "Example Laser 42"
+        ]
+      }
+    },
+    {
+      "ip": "2001:db8::1",
+      "kind": "printer",
+      "evidence": [
+        "mdns"
+      ],
+      "identity": {
+        "model": "Laser42",
+        "model_names": [
+          "Other Printer"
+        ]
+      }
+    },
+    {
+      "ip": "192.0.2.2",
+      "kind": "device",
+      "evidence": [
+        "neighbor"
+      ]
+    },
+    {
+      "ip": "192.0.2.4",
+      "kind": "router",
+      "evidence": [
+        "icmp"
+      ],
+      "identity": {
+        "model": "WrongRouter",
+        "model_names": [
+          "Wrong Router"
+        ]
+      }
+    },
+    {
+      "ip": "192.0.2.5",
+      "kind": "computer",
+      "evidence": [
+        "local-interface"
+      ],
+      "identity": {
+        "model": "UnlabeledCode"
+      }
+    },
+    {
+      "ip": "192.0.2.99",
+      "kind": "device",
+      "evidence": [
+        "tcp-refused"
+      ]
+    }
+  ]
+}

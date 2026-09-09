@@ -1,0 +1,129 @@
+{
+  "schema": 1,
+  "id": "synthetic-identification-v1",
+  "kind": "synthetic",
+  "cases": [
+    {
+      "id": "printer-a",
+      "class": "printer",
+      "states": [
+        "awake"
+      ],
+      "truth": {
+        "reported_model": {
+          "accepted": [
+            "Laser42"
+          ],
+          "source_kind": "synthetic",
+          "source": "Hand-authored fixture, not a physical measurement"
+        },
+        "retail_model": {
+          "accepted": [
+            "Example Laser 42"
+          ],
+          "source_kind": "synthetic",
+          "source": "Hand-authored fixture, not a physical measurement"
+        },
+        "kind": {
+          "accepted": [
+            "printer"
+          ],
+          "source_kind": "synthetic",
+          "source": "Hand-authored fixture, not a physical measurement"
+        }
+      }
+    },
+    {
+      "id": "phone-b",
+      "class": "phone",
+      "states": [
+        "asleep",
+        "private-mac"
+      ],
+      "truth": {
+        "reported_model": {
+          "accepted": [
+            "Phone8"
+          ],
+          "source_kind": "synthetic",
+          "source": "Hand-authored fixture, not a physical measurement"
+        },
+        "retail_model": {
+          "accepted": [
+            "Example Phone 8"
+          ],
+          "source_kind": "synthetic",
+          "source": "Hand-authored fixture, not a physical measurement"
+        },
+        "kind": {
+          "accepted": [
+            "phone"
+          ],
+          "source_kind": "synthetic",
+          "source": "Hand-authored fixture, not a physical measurement"
+        }
+      }
+    },
+    {
+      "id": "camera-c",
+      "class": "camera",
+      "states": [
+        "asleep"
+      ],
+      "truth": {
+        "reported_model": {
+          "accepted": [
+            "Cam7"
+          ],
+          "source_kind": "synthetic",
+          "source": "Hand-authored fixture, not a physical measurement"
+        },
+        "kind": {
+          "accepted": [
+            "camera"
+          ],
+          "source_kind": "synthetic",
+          "source": "Hand-authored fixture, not a physical measurement"
+        }
+      }
+    },
+    {
+      "id": "router-d",
+      "class": "router",
+      "states": [
+        "awake"
+      ],
+      "truth": {
+        "reported_model": {
+          "accepted": [
+            "Router6"
+          ],
+          "source_kind": "synthetic",
+          "source": "Hand-authored fixture, not a physical measurement"
+        },
+        "retail_model": {
+          "accepted": [
+            "Example Router 6"
+          ],
+          "source_kind": "synthetic",
+          "source": "Hand-authored fixture, not a physical measurement"
+        },
+        "kind": {
+          "accepted": [
+            "router"
+          ],
+          "source_kind": "synthetic",
+          "source": "Hand-authored fixture, not a physical measurement"
+        }
+      }
+    },
+    {
+      "id": "computer-e",
+      "class": "computer",
+      "states": [
+        "awake"
+      ],
+      "truth": {}
+    }
+  ]
+}

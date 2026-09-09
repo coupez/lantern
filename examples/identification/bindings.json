@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "dataset": "synthetic-identification-v1",
+  "run_id": "synthetic-lantern-example",
+  "version": "fixture",
+  "context": "Synthetic awake/asleep mixed cohort; no actual scan",
+  "source": "Hand-authored example scan.json, with explicit address bindings",
+  "addresses": {
+    "192.0.2.1": "printer-a",
+    "2001:db8::1": "printer-a",
+    "192.0.2.2": "phone-b",
+    "192.0.2.3": "camera-c",
+    "192.0.2.4": "router-d",
+    "192.0.2.5": "computer-e"
+  }
+}
