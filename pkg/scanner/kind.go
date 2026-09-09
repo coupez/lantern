@@ -70,6 +70,10 @@ func inferKind(d Device) string {
 	matter, matterKinds := false, map[string]bool{}
 	for _, a := range d.Advertisements {
 		switch a.Protocol {
+		case "ipp":
+			if a.Service == "printer-attributes" {
+				kinds["printer"] = true
+			}
 		case "roku":
 			if a.Service == "device-info" {
 				if a.Properties["is-tv"] == "true" {

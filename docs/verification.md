@@ -478,3 +478,16 @@ Fixtures are synthetic protocol exchanges, not a labeled physical-device benchma
 ## Direct local Mac model evidence
 
 Tests cover exact local-target/interface/IPv6-zone binding, one kernel read, no read for remote-only targets, precedence over shared-printer advertisements, retained conflicts, invalid/unknown model identifiers, event/snapshot preservation and failure behavior. A kernel-read failure suppresses identity/type-loss comparisons while leaving unrelated network changes comparable. The full vet and race suites pass on macOS arm64 with Go 1.26.8. An independent code review found no remaining material issue in the local inventory path. No new catalog rows or network requests were introduced.
+
+
+## IPP printer identity
+
+The reusable `pkg/ipp` codec implements a bounded Get-Printer-Attributes request and response parser. Its tests cover operation/version/request-ID checks, required operation attributes, selected-field syntax and charset, duplicates, collections, extensions, framing and size/count/depth limits. A 15-second parser fuzz run with two workers completed 2,843,409 executions without a failure. This is a bounded robustness check, not exhaustive protocol validation.
+
+Independent synthetic HTTP fixtures exercise IPv4/IPv6 requests, escaped Bonjour resource paths, endpoint deduplication, manufacturer/model selection, queue-name isolation, and exclusion of unrequested IEEE-1284 serial fields from retained observations. IPPS fixtures exercise self-signed TLS and explicit unverified-transport provenance. Refused, redirected, oversized, wrong-content-type, slow and mismatched-request-ID replies are rejected. Off-peer URLs send no request; multiple endpoints share the existing four-request/deadline budget.
+
+An independent integration review checked conflict retention, manufacturer/model source linkage and local Mac precedence, and corrected the TLS reference and observation wording. An initial slow-response test hung during fixture shutdown; consuming its request body and explicitly ending its handler fixed the harness. The collector deadline check passes. These fixtures do not measure physical printer compatibility or identify every printer behind a print server. No catalog rows or release archives are added.
+
+Final `go vet ./...` and `go test -race ./...` pass on macOS ARM64 with Go 1.26.8. The combined Companion/Roku/IPP IPv4/IPv6 socket fixtures pass under the race detector and are included in both CI platform jobs.
+
+An independent CUPS v2.3.4 `ippeveprinter` interoperability check also passed: a temporary synthetic printer (`-M Example -m "Laser 42"`) accepted the codec request with ID 17 at `/ipp/print`, and its 211-byte response decoded to the expected make/model, queue name and IEEE-1284 device ID. The emulator was terminated after the check. This verifies one actual CUPS implementation, not physical hardware. Both new strict-framing regressions were also checked against individually removed guards: each failed with its guard removed and passed after restoration.

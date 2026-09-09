@@ -16,8 +16,8 @@ jobs:
           cache: true
       - run: go vet ./...
       - run: go test -race ./...
-      - name: Companion and Roku IPv4/IPv6 identity fixtures
-        run: LANTERN_NETWORK_TESTS=1 go test -race ./pkg/scanner -run 'TestRoku.*NetworkIntegration|TestMDNSSplitReplyNetworkIntegration' -count=1
+      - name: Companion, Roku and IPP IPv4/IPv6 identity fixtures
+        run: LANTERN_NETWORK_TESTS=1 go test -race ./pkg/scanner -run 'TestRoku.*NetworkIntegration|TestIPP.*NetworkIntegration|TestMDNSSplitReplyNetworkIntegration' -count=1 -timeout=90s
       - run: go build -trimpath -o bin/lantern ./cmd/lantern
       - run: ./bin/lantern demo
       - run: python3 scripts/test-event-stream.py

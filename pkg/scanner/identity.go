@@ -53,7 +53,7 @@ func identify(ads []Advertisement) *Identity {
 func identifyWithLocalModel(ads []Advertisement, localModel string) *Identity {
 	claims := localModelClaims(localModel)
 	addValue := func(field, key, value string, a Advertisement) {
-		if a.Protocol == "roku" || (a.Protocol == "mdns" && strings.EqualFold(a.Service, "_companion-link._tcp")) {
+		if a.Protocol == "roku" || a.Protocol == "ipp" || (a.Protocol == "mdns" && strings.EqualFold(a.Service, "_companion-link._tcp")) {
 			value = identityText(value)
 		}
 		value = strings.TrimSpace(CleanText(value))
@@ -64,7 +64,7 @@ func identifyWithLocalModel(ads []Advertisement, localModel string) *Identity {
 			value = string([]rune(value)[:256])
 		}
 		source := a.Protocol + ":" + a.Instance
-		if a.Protocol == "upnp" || a.Protocol == "shelly" || a.Protocol == "roku" {
+		if a.Protocol == "upnp" || a.Protocol == "shelly" || a.Protocol == "roku" || a.Protocol == "ipp" {
 			source = a.Protocol + ":" + a.Properties["location"] + "#" + a.Instance
 		}
 		reference := ""
@@ -79,6 +79,9 @@ func identifyWithLocalModel(ads []Advertisement, localModel string) *Identity {
 		}
 		if a.Protocol == "roku" {
 			reference = rokuInfoReference
+		}
+		if a.Protocol == "ipp" {
+			reference = ippIdentityReference
 		}
 		if a.Protocol == "shelly" {
 			reference = shellyInfoReference
@@ -98,6 +101,22 @@ func identifyWithLocalModel(ads []Advertisement, localModel string) *Identity {
 	}
 	for _, a := range ads {
 		switch a.Protocol {
+		case "ipp":
+			if a.Service != "printer-attributes" {
+				continue
+			}
+			if identityText(a.Properties["device-id-model"]) != "" {
+				add("model", "device-id-model", a)
+			} else {
+				add("model", "printer-make-and-model", a)
+			}
+			add("manufacturer", "device-id-manufacturer", a)
+			add("printer_name", "printer-name", a)
+			add("printer_make_and_model", "printer-make-and-model", a)
+			add("printer_device_identity", "device-id-identity", a)
+			if a.Properties["transport"] == "tls-unverified" {
+				claims = append(claims, IdentityClaim{Field: "transport", Value: "TLS certificate not verified", Source: "ipp:" + a.Properties["location"] + "#" + a.Instance, Key: "transport", Basis: "transport", Reference: "https://www.rfc-editor.org/rfc/rfc7472.html#section-3"})
+			}
 		case "ws-discovery":
 			if a.Service != "probe-match" {
 				continue
@@ -219,6 +238,8 @@ func identifyWithLocalModel(ads []Advertisement, localModel string) *Identity {
 			return 4
 		}
 		switch c.Key {
+		case "device-id-model", "device-id-manufacturer", "printer-make-and-model":
+			return 0
 		case "manufacturer", "friendlyName", "friendly_name", "name", "modelName", "usb_mfg", "usb_mdl", "vendor-name", "model-name", "user-device-name":
 			return 0
 		case "model", "md", "am", "model-number", "friendly-device-name":
@@ -294,7 +315,8 @@ func identifyWithLocalModel(ads []Advertisement, localModel string) *Identity {
 		}
 		linked := c.Source == selectedModel.Source && c.Key == selectedModel.Key && strings.EqualFold(c.Identifier, result.Model)
 		localLinked := selectedModel.Basis != "local-system" || c.Source == selectedModel.Source
-		if c.Field == "manufacturer" && result.Manufacturer == "" && localLinked && rokuLinked && (c.Basis != "catalog" || linked) {
+		ippLinked := (!strings.HasPrefix(c.Source, "ipp:") && !strings.HasPrefix(selectedModel.Source, "ipp:")) || c.Source == selectedModel.Source
+		if c.Field == "manufacturer" && result.Manufacturer == "" && ippLinked && localLinked && rokuLinked && (c.Basis != "catalog" || linked) {
 			result.Manufacturer = c.Value
 		}
 		if c.Field == "model_name" && c.Basis == "catalog" && c.Source == selectedModel.Source && c.Key == selectedModel.Key && strings.EqualFold(c.Identifier, modelIdentifier) && !contains(result.ModelNames, c.Value) {
