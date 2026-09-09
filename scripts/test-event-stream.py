@@ -23,7 +23,9 @@ initial = [r for r in rows if r['type'] == 'device']
 updates = [r for r in rows if r['type'] == 'device_update']
 assert len(initial) == len(updates) == 1, rows
 assert rows.index(initial[0]) < rows.index(updates[0]) < len(rows)-2
-assert {r['phase'] for r in rows if r['type'] == 'progress'} == {'discovery', 'ports', 'enrichment'}
+assert {r['phase'] for r in rows if r['type'] == 'progress'} == {'ports', 'enrichment'}
+tcp_progress = [r for r in rows if r['type'] == 'progress' and r['phase'] == 'ports']
+assert tcp_progress[-1]['completed'] == tcp_progress[-1]['total'] == len({port, 80, 443, 22})
 assert updates[0]['phase'] == 'enrichment' and updates[0]['completed'] == updates[0]['total'] == 1
 assert updates[0]['device'] == rows[-1]['report']['devices'][0]
 assert [p['port'] for p in updates[0]['device']['ports']] == [port]

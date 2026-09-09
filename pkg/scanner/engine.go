@@ -336,7 +336,21 @@ func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, 
 	if len(o.Ports) == 0 {
 		discovery = nil
 	}
-	run(hosts, discovery, "discovery")
+	// Direct targets already qualify for every requested port. Run those jobs
+	// alongside the liveness probes instead of waiting for discovery timeouts
+	// and non-TCP discovery passes before starting the requested services.
+	probeAllTargets := o.AllHosts || o.Target.Bits() == o.Target.Addr().BitLen()
+	if probeAllTargets {
+		initialPorts := append([]uint16(nil), o.Ports...)
+		for _, p := range discovery {
+			if !requestedPorts[p] {
+				initialPorts = append(initialPorts, p)
+			}
+		}
+		run(hosts, initialPorts, "ports")
+	} else {
+		run(hosts, discovery, "discovery")
+	}
 	pingWG.Wait()
 	discoveryWG.Wait()
 	arpWG.Wait()
@@ -431,25 +445,27 @@ func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, 
 			d.Vendor, _ = vendors.Lookup(d.MAC)
 		}
 	}
-	var scanHosts []netip.Addr
-	for _, ip := range hosts {
-		if found[ip] != nil || o.Target.Bits() == o.Target.Addr().BitLen() || o.AllHosts {
-			scanHosts = append(scanHosts, ip)
-		}
-	}
-	var scanPorts []uint16
-	for _, p := range o.Ports {
-		skip := false
-		for _, dp := range discovery {
-			if p == dp {
-				skip = true
+	if !probeAllTargets {
+		var scanHosts []netip.Addr
+		for _, ip := range hosts {
+			if found[ip] != nil {
+				scanHosts = append(scanHosts, ip)
 			}
 		}
-		if !skip {
-			scanPorts = append(scanPorts, p)
+		var scanPorts []uint16
+		for _, p := range o.Ports {
+			skip := false
+			for _, dp := range discovery {
+				if p == dp {
+					skip = true
+				}
+			}
+			if !skip {
+				scanPorts = append(scanPorts, p)
+			}
 		}
+		run(scanHosts, scanPorts, "ports")
 	}
-	run(scanHosts, scanPorts, "ports")
 	// Enrichment is bounded independently; slow DNS cannot hold sockets open.
 	enriched := 0
 	event(Event{Type: "progress", Phase: "enrichment", Total: len(found)})

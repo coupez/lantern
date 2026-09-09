@@ -248,3 +248,19 @@ go test ./pkg/scanner -run '^$' -bench '^BenchmarkDiffServiceObservations$' -ben
 ```
 
 Logs and medians: `research/results/service-diff-final-benchmarks.log` and `service-diff-benchmark-summary.json` (ignored development evidence).
+
+## Direct-target TCP scheduling
+
+Single-address and `--all-hosts` scans already qualify every target for every requested port. Previously, they completed liveness probes on ports 80, 443 and 22, waited for other discovery methods, and only then started the remaining requested ports. The combined pass starts requested ports immediately, retaining the original liveness jobs and connection limit. Ordinary subnet scans still filter targets after discovery.
+
+A controlled macOS ARM64 benchmark on Apple M4 Max with Go 1.26.8 used one IPv4 address, one requested port (8080), three additional liveness ports, four workers and a 10 ms delay per probe. ICMP, multicast, DNS and descriptions were disabled; the injected neighbor source returned no entries. Five sequential benchmark rounds of ten scans each compared parent `f8dfb21` with this change, using the same benchmark source and no concurrent test jobs.
+
+| Median per scan | Before | Combined pass |
+| --- | ---: | ---: |
+| Duration | 23.788 ms | 12.331 ms |
+| Allocated bytes | 48,662 B | 48,560 B |
+| Allocations | 612 | 609 |
+
+This workload completed about **1.93× faster** (48% less elapsed time), reflecting overlap of the controlled waits. It is not a physical-network throughput or Fing comparison. Real gains depend on target behavior, worker capacity, requested ports, other discovery and enrichment costs. The probe count and configured maximum concurrency are unchanged; cancellation may retain a different subset because requested ports now run first.
+
+The deterministic scheduling regression holds liveness probes until a requested probe starts. It fails against the parent implementation and passes for native IPv4/IPv6 single addresses and all-hosts ranges. Exhaustive two-address/full-port tests cover both ordinary and all-hosts schedules. Real macOS/Linux CLI fixtures cover full-port scanning, JSONL progress and cancellation, terminal restoration, snapshots and banner/watch behavior. Raw logs are `research/results/direct-target-{before,after}-benchmark.log` and `direct-target-baseline-regression.log` (ignored).
