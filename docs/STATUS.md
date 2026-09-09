@@ -57,6 +57,8 @@ The expanded [device-identification roadmap](device-identification-roadmap.md) r
 
 - ONVIF GetDeviceInformation adds endpoint-scoped manufacturer/model/firmware for eligible same-peer WS-Discovery services. Bounded unauthenticated SOAP reads preserve discovery on failure; serial/hardware-ID fields are discarded. Physical compatibility and credentialed inventory remain pending.
 
+- Explicit SNMPv2c inventory reads one configured peer, with bounded system/ENTITY-MIB requests, chassis model source OIDs, ambiguity preservation and credential-free reports. Scan/watch integration, SNMPv3 and physical device coverage remain future work. See [inventory semantics](snmp-inventory.md).
+
 ## Still required before calling the broad goal finished
 
 1. Expand identification: broader device/model catalogs, additional protocol fingerprints, and real-device coverage of the implemented mDNS/UPnP model paths. No claim of mapping everything.

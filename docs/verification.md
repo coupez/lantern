@@ -517,3 +517,15 @@ Reproduce that optional compatibility check with a clean simulator checkout at `
 The evaluator's initial Linux CI failure was independently reproduced as missing synthetic examples in the Docker test image. Both the Dockerfile and build-context allowlist now include them; the isolated Linux evaluator/CLI race tests and all four public CI jobs pass on the fixed evaluator head. This fix is included in the ONVIF branch's base. Existing rc.7 archives predate these source additions and remain unchanged.
 
 The final targeted ONVIF parser, identity and IPv4/IPv6/TLS socket tests also pass with the race detector in an isolated Linux ARM64 container (`--network none --cap-drop ALL`). This establishes controlled Linux behavior; physical-device results remain pending.
+
+## Explicit SNMP inventory
+
+The SNMPv2c codec and collector pass Go unit/race tests for bounded BER, OID and integer handling, credential redaction, exact binding sets, unknown fields, ambiguous root chassis and incomplete class walks. A 15-second two-worker codec fuzz run passed with 2,160,535 executions after the compatibility fixes. Valid nonminimal definite BER lengths and standard application tags are accepted; malformed lengths, unsigned overflow, unknown tags and trailing bytes fail.
+
+Native macOS IPv4/IPv6 UDP fixtures exercise the three-request GET/GETBULK/GET sequence, exact requested columns and repetition limits, response correlation, pre-cancelled zero-packet behavior, partial reports after a chassis-query timeout, and prompt in-flight cancellation. An isolated Linux ARM64 container also exercises SNMP core/CLI behavior. These are controlled fixtures, not physical managed-device coverage.
+
+The compiled CLI additionally passes `python3 scripts/test-snmp-interop.py` against an **unmodified Net-SNMP daemon**, using its real UDP/BER/access-control/GET/GETBULK implementation with synthetic system fields and a small `pass_persist` ENTITY-MIB provider. Net-SNMP 5.6.2.1 was used on macOS; Debian's packaged Net-SNMP was used in the Linux ARM64 container with `--network none --cap-drop ALL`. Both JSON and plain output preserve the expected chassis model and source OIDs without printing the supplied credential. The fixture owns an ephemeral loopback port, temporary configuration and subprocess lifetime. It does not change the host's SNMP service.
+
+Independent-server testing exposed a class-walk completion bug: 33 total GETBULK bindings can include an early exit from the requested column. The fix counts class rows, handles repeated end-of-MIB markers, and retains strict ordering and malformed-index rejection. A fully populated response can therefore prove completion without falsely promoting a truncated 33-row class table.
+
+Physical-device model precision/recall and interoperability with vendor SNMP implementations remain unmeasured. The command is separate from scan/watch and is absent from rc.7 archives. See [usage, provenance and collection bounds](snmp-inventory.md).

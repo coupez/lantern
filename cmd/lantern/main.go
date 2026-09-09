@@ -11,6 +11,7 @@ import (
 	"github.com/coupez/lantern/pkg/fingerprints"
 	"github.com/coupez/lantern/pkg/models"
 	"github.com/coupez/lantern/pkg/scanner"
+	"github.com/coupez/lantern/pkg/snmp"
 	"github.com/coupez/lantern/pkg/vendors"
 	"io"
 	"net"
@@ -48,6 +49,10 @@ func run(args []string) error {
 		return nil
 	case "evaluate":
 		return evaluateCommand(args, os.Stdout)
+	case "snmp":
+		ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		defer cancel()
+		return snmpCommand(ctx, args, os.Stdout, os.LookupEnv, snmp.Read)
 	case "observe":
 		return observeCommand(args)
 	case "interfaces":
@@ -153,6 +158,7 @@ func help() {
   lantern watch [CIDR]            Live dashboard and network changes
   lantern observe --read FILE    Import DHCP evidence from PCAP/PCAPNG offline
   lantern evaluate --truth FILE  Score saved observations against device labels
+  lantern snmp IP --community-env NAME  Read configured SNMP device inventory
   lantern interfaces              List available IPv4/IPv6 networks
   lantern lookup MAC              Identify a MAC vendor offline
   lantern fingerprint [TYPE TEXT] Offline service recognition
@@ -200,7 +206,7 @@ func help() {
 
 // Move positionals behind flags so both `scan CIDR --json` and `scan --json CIDR` work.
 func reorder(args []string) []string {
-	value := map[string]bool{"profile": true, "ports": true, "timeout": true, "concurrency": true, "interface": true, "save": true, "interval": true, "max-hosts": true}
+	value := map[string]bool{"profile": true, "ports": true, "timeout": true, "concurrency": true, "interface": true, "save": true, "interval": true, "max-hosts": true, "community-env": true, "port": true}
 	var flags, pos []string
 	for i := 0; i < len(args); i++ {
 		s := args[i]
