@@ -18,6 +18,23 @@ jobs:
       - run: go test -race ./...
       - run: go build -trimpath -o bin/lantern ./cmd/lantern
       - run: ./bin/lantern demo
-      - name: Linux protocol and ARP runtime tests
+      - run: python3 scripts/test-event-stream.py
+      - run: python3 scripts/test-full-ports.py
+      - run: python3 scripts/test-doctor.py
+      - run: python3 scripts/test-watch-pty.py
+      - run: python3 scripts/test-snapshot-cli.py
+      - run: python3 scripts/test-banner-fingerprints.py
+      - run: python3 scripts/test-banner-import.py
+      - run: python3 scripts/test-ethernet-fixture.py
+      - name: Native Bonjour Matter interoperability on loopback
+        if: runner.os == 'macOS'
+        run: python3 scripts/test-matter-dnssd.py
+      - run: python3 scripts/test-install.py
+      - name: Verify release archives
+        if: runner.os == 'Linux'
+        run: |
+          sh scripts/release.sh ci
+          python3 scripts/test-release.py ci
+      - name: Linux protocol, ARP, and NDP runtime tests
         if: runner.os == 'Linux'
         run: make linux-test

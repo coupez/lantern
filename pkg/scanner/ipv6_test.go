@@ -2,6 +2,7 @@ package scanner
 
 import (
 	"context"
+	"errors"
 	"golang.org/x/net/dns/dnsmessage"
 	"net"
 	"net/netip"
@@ -66,7 +67,7 @@ func TestIPv6SeedsBoundedToLocalInterface(t *testing.T) {
 		}
 	}
 	result := filterIPv6Seeds(seeds, o, "test0", ps)
-	if len(result.hosts) != 2 || len(result.hits) != 2 || len(result.warnings) != 1 {
+	if len(result.hosts) != 2 || len(result.hits) != 2 || len(result.warnings) != 1 || result.warnings[0].method != "candidates" {
 		t.Fatalf("%+v", result)
 	}
 	o.MaxHosts = 10
@@ -164,5 +165,21 @@ func TestIPv6SparseEngineCandidateLimit(t *testing.T) {
 	}}).Scan(context.Background(), o, nil)
 	if err != nil || r.AddressMode != "discovered" || r.Targets != 1 || len(r.Devices) != 1 || len(r.Warnings) != 1 || r.Devices[0].IP.String() != "::1" {
 		t.Fatal(r, err)
+	}
+	if len(r.IncompleteMethods) != 1 || r.IncompleteMethods[0] != "candidates" {
+		t.Fatal(r.IncompleteMethods)
+	}
+	// A seed-pass failure must survive a successful post-probe cache refresh.
+	o.MaxHosts = 10
+	calls := 0
+	r, err = (Engine{NeighborSource: func(context.Context) (map[netip.Addr]string, error) {
+		calls++
+		if calls == 1 {
+			return nil, errors.New("seed neighbor lookup failed")
+		}
+		return nil, nil
+	}}).Scan(context.Background(), o, nil)
+	if err != nil || calls != 2 || len(r.IncompleteMethods) != 1 || r.IncompleteMethods[0] != "neighbors" {
+		t.Fatal(r, calls, err)
 	}
 }

@@ -3,66 +3,17 @@ package scanner
 import (
 	"encoding/json"
 	"fmt"
+	"net/netip"
 	"os"
 	"path/filepath"
-	"sort"
-	"strings"
 )
 
-type Change struct {
-	Type   string `json:"type"`
-	IP     string `json:"ip"`
-	Detail string `json:"detail,omitempty"`
-}
-
-func Diff(before, after Report) []Change {
-	// Partial scans cannot establish that an earlier device disappeared.
-	out := []Change{}
-	old := map[string]Device{}
-	now := map[string]Device{}
-	for _, d := range before.Devices {
-		old[d.IP.String()] = d
-	}
-	for _, d := range after.Devices {
-		now[d.IP.String()] = d
-		previous, ok := old[d.IP.String()]
-		if !ok {
-			out = append(out, Change{"added", d.IP.String(), d.MAC})
-			continue
-		}
-		if previous.MAC != d.MAC {
-			out = append(out, Change{"changed", d.IP.String(), "MAC: " + previous.MAC + " → " + d.MAC})
-		}
-		if portKey(previous) != portKey(d) {
-			out = append(out, Change{"changed", d.IP.String(), "ports: " + portKey(previous) + " → " + portKey(d)})
-		}
-	}
-	for _, d := range before.Devices {
-		if _, ok := now[d.IP.String()]; !ok && !after.Cancelled {
-			out = append(out, Change{"missing", d.IP.String(), d.MAC})
-		}
-	}
-	sort.Slice(out, func(i, j int) bool {
-		if out[i].IP == out[j].IP {
-			return out[i].Detail < out[j].Detail
-		}
-		return out[i].IP < out[j].IP
-	})
-	return out
-}
-func portKey(d Device) string {
-	p := make([]int, 0, len(d.Ports))
-	for _, v := range d.Ports {
-		p = append(p, int(v.Number))
-	}
-	sort.Ints(p)
-	s := make([]string, len(p))
-	for i, v := range p {
-		s[i] = fmt.Sprint(v)
-	}
-	return strings.Join(s, ",")
-}
+// Save atomically writes a schema-1 report. Invalid or repeated device addresses
+// are rejected before touching the destination.
 func Save(path string, r Report) error {
+	if err := validateSnapshot(r); err != nil {
+		return err
+	}
 	b, err := json.MarshalIndent(r, "", "  ")
 	if err != nil {
 		return err
@@ -82,6 +33,9 @@ func Save(path string, r Report) error {
 	}
 	return os.Rename(name, path)
 }
+
+// Load reads a schema-1 report with valid, unique native device addresses.
+// On failure it returns a zero Report; optional legacy metadata may be absent.
 func Load(path string) (Report, error) {
 	var r Report
 	b, err := os.ReadFile(path)
@@ -89,10 +43,28 @@ func Load(path string) (Report, error) {
 		return r, err
 	}
 	if err = json.Unmarshal(b, &r); err != nil {
-		return r, err
+		return Report{}, fmt.Errorf("snapshot %q: %w", path, err)
 	}
-	if r.Schema != 1 {
-		return r, fmt.Errorf("unsupported snapshot schema %d", r.Schema)
+	if err := validateSnapshot(r); err != nil {
+		return Report{}, fmt.Errorf("snapshot %q: %w", path, err)
 	}
 	return r, nil
+}
+
+func validateSnapshot(r Report) error {
+	if r.Schema != 1 {
+		return fmt.Errorf("unsupported snapshot schema %d", r.Schema)
+	}
+	seen := make(map[netip.Addr]int, len(r.Devices))
+	for i, device := range r.Devices {
+		ip := device.IP
+		if !ip.IsValid() || ip.Is4In6() || ip.WithZone("").IsUnspecified() || ip.IsMulticast() {
+			return fmt.Errorf("snapshot device %d has an invalid native unicast IP %q", i+1, ip.String())
+		}
+		if previous, exists := seen[ip]; exists {
+			return fmt.Errorf("snapshot device %d repeats IP %q from device %d", i+1, ip.String(), previous)
+		}
+		seen[ip] = i + 1
+	}
+	return nil
 }

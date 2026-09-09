@@ -20,7 +20,7 @@ type bpfARP struct {
 	pending []byte
 }
 
-func openARP(iface *net.Interface) (arpConn, error) {
+func openEthernet(iface *net.Interface, etherType uint16, capture uint32) (frameConn, error) {
 	var fd int
 	var err error
 	for i := 0; i < 256; i++ {
@@ -35,7 +35,7 @@ func openARP(iface *net.Interface) (arpConn, error) {
 	if err != nil {
 		return nil, err
 	}
-	closeOnError := func(err error) (arpConn, error) { unix.Close(fd); return nil, err }
+	closeOnError := func(err error) (frameConn, error) { unix.Close(fd); return nil, err }
 	if _, err = syscall.SetBpfBuflen(fd, 32768); err != nil {
 		return closeOnError(err)
 	}
@@ -55,8 +55,8 @@ func openARP(iface *net.Interface) (arpConn, error) {
 	if err = syscall.SetBpfHeadercmpl(fd, 1); err != nil {
 		return closeOnError(err)
 	}
-	// Capture only ARP frames, and only the first 64 bytes needed for decoding.
-	filter := []syscall.BpfInsn{{Code: 0x28, K: 12}, {Code: 0x15, K: 0x0806, Jf: 1}, {Code: 0x06, K: 64}, {Code: 0x06, K: 0}}
+	// Capture only the requested Ethernet protocol with a bounded snapshot size.
+	filter := []syscall.BpfInsn{{Code: 0x28, K: 12}, {Code: 0x15, K: uint32(etherType), Jf: 1}, {Code: 0x06, K: capture}, {Code: 0x06, K: 0}}
 	if err = syscall.SetBpf(fd, filter); err != nil {
 		return closeOnError(err)
 	}
@@ -67,7 +67,7 @@ func openARP(iface *net.Interface) (arpConn, error) {
 	if size < 64 || size > 512*1024 {
 		return closeOnError(fmt.Errorf("invalid BPF buffer size %d", size))
 	}
-	f := os.NewFile(uintptr(fd), "lantern-arp")
+	f := os.NewFile(uintptr(fd), "lantern-ethernet")
 	if err = f.SetReadDeadline(time.Time{}); err != nil {
 		f.Close()
 		return nil, err

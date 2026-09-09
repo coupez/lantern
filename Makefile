@@ -1,6 +1,14 @@
-.PHONY: build test check demo clean linux-test
+.PHONY: build install test check demo clean linux-test terminal-test install-test release
+PREFIX ?= $(HOME)/.local
+DESTDIR ?=
+VERSION ?= dev
+LINUX_PLATFORM ?=
+export PREFIX DESTDIR VERSION LINUX_PLATFORM
 build:
 	go build -trimpath -ldflags='-s -w' -o bin/lantern ./cmd/lantern
+install: build
+	install -d "$$DESTDIR$$PREFIX/bin"
+	install -m 755 bin/lantern "$$DESTDIR$$PREFIX/bin/lantern"
 test:
 	go test -race ./...
 check:
@@ -12,5 +20,13 @@ clean:
 	rm -f bin/lantern
 
 linux-test:
-	docker build -f scripts/Dockerfile.linux-test -t lantern-linux-test:local .
-	docker run --rm --cap-drop ALL --cap-add NET_RAW lantern-linux-test:local
+	sh scripts/test-linux.sh
+
+terminal-test: build
+	python3 scripts/test-watch-pty.py
+
+install-test:
+	python3 scripts/test-install.py
+
+release:
+	sh scripts/release.sh "$$VERSION"

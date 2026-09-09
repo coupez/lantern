@@ -3,13 +3,16 @@ package scanner
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"golang.org/x/net/dns/dnsmessage"
 	"golang.org/x/net/ipv4"
 	"golang.org/x/net/ipv6"
+	"io"
 	"net"
 	"net/netip"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -56,12 +59,19 @@ func (r *mdnsRecords) ingest(b []byte) bool {
 		if _, ok := r.display[name]; !ok && len(r.display) >= 2048 {
 			continue
 		}
-		r.display[name] = rr.Header.Name.String()
+		if _, ok := r.display[name]; !ok {
+			r.display[name] = rr.Header.Name.String()
+		}
 		switch v := rr.Body.(type) {
 		case *dnsmessage.PTRResource:
 			ptr := strings.ToLower(v.PTR.String())
 			if strings.HasSuffix(ptr, ".local.") && !contains(r.pointers[name], ptr) && len(r.pointers[name]) < 128 {
 				r.pointers[name] = append(r.pointers[name], ptr)
+				// PTR targets carry the advertised instance spelling. Follow-up
+				// replies may echo our lowercase query name; keep the original.
+				if _, ok := r.display[ptr]; !ok && len(r.display) < 2048 {
+					r.display[ptr] = v.PTR.String()
+				}
 			}
 		case *dnsmessage.AAAAResource:
 			a := netip.AddrFrom16(v.AAAA)
@@ -93,9 +103,12 @@ func (r *mdnsRecords) ingest(b []byte) bool {
 			props := map[string]string{}
 			for _, s := range v.TXT {
 				key, value, _ := strings.Cut(s, "=")
-				key = strings.ToLower(CleanText(key))
+				if !validTXTKey(key) {
+					continue
+				}
+				key = strings.ToLower(key)
 				if _, exists := props[key]; !exists {
-					props[key] = CleanText(value)
+					props[key] = value // Preserve input for recognition; sanitize only display text.
 				}
 			}
 			r.txt[name] = props
@@ -149,50 +162,38 @@ func multicastSocket(ctx context.Context, local netip.Addr, iface *net.Interface
 		c.Close()
 		return nil, nil, err
 	}
-	c.SetDeadline(time.Now().Add(timeout))
+	if err := c.SetDeadline(time.Now().Add(timeout)); err != nil {
+		c.Close()
+		return nil, nil, err
+	}
 	stop := context.AfterFunc(ctx, func() { c.Close() })
 	return c, func() { stop(); c.Close() }, nil
 }
-func localInterface(target netip.Prefix) (*net.Interface, netip.Addr) {
-	return localInterfaceOn(target, "")
-}
-func localInterfaceOn(target netip.Prefix, preferred string) (*net.Interface, netip.Addr) {
-	interfaces, _ := net.Interfaces()
-	for _, i := range interfaces {
-		if i.Flags&net.FlagUp == 0 || i.Flags&net.FlagMulticast == 0 || (preferred != "" && preferred != i.Name) {
-			continue
-		}
-		as, _ := i.Addrs()
-		for _, a := range as {
-			p, err := netip.ParsePrefix(a.String())
-			if err == nil && p.Addr().Is6() == target.Addr().Is6() && target.Overlaps(p) {
-				return &i, scoped(p.Addr(), i.Name)
-			}
-		}
-	}
-	return nil, netip.Addr{}
-}
+
 func mdnsSweep(ctx context.Context, target netip.Prefix, timeout time.Duration) ([]discoveryHit, error) {
 	return mdnsSweepOn(ctx, target, timeout, "")
 }
 func mdnsSweepOn(ctx context.Context, target netip.Prefix, timeout time.Duration, preferred string) ([]discoveryHit, error) {
-	iface, local := localInterfaceOn(target, preferred)
-	if iface == nil {
+	if ctx.Err() != nil {
 		return nil, nil
 	}
-	c, close, err := multicastSocket(ctx, local, iface, timeout)
+	deadline := time.Now().Add(timeout)
+	c, iface, local, close, err := openMulticastSocket(ctx, target, preferred, timeout)
 	if err != nil {
-		return nil, fmt.Errorf("mDNS: %w", err)
+		return nil, discoveryCompletion(ctx, "mDNS", fmt.Errorf("mDNS socket: %w", err), 0, 0)
+	}
+	if iface == nil {
+		return nil, nil
 	}
 	defer close()
 	destination := &net.UDPAddr{IP: net.IPv4(224, 0, 0, 251), Port: 5353}
 	if local.Is6() {
 		destination = &net.UDPAddr{IP: net.ParseIP("ff02::fb"), Port: 5353, Zone: iface.Name}
 	}
-	return collectMDNS(ctx, c, destination, target)
+	return collectMDNS(ctx, c, destination, target, deadline)
 }
 
-var mdnsKinds = []string{"_services._dns-sd._udp", "_workstation._tcp", "_http._tcp", "_https._tcp", "_ssh._tcp", "_smb._tcp", "_ipp._tcp", "_ipps._tcp", "_printer._tcp", "_pdl-datastream._tcp", "_airplay._tcp", "_raop._tcp", "_googlecast._tcp", "_hap._tcp", "_home-assistant._tcp", "_spotify-connect._tcp", "_device-info._tcp"}
+var mdnsKinds = []string{"_services._dns-sd._udp", "_workstation._tcp", "_http._tcp", "_https._tcp", "_ssh._tcp", "_smb._tcp", "_ipp._tcp", "_ipps._tcp", "_printer._tcp", "_pdl-datastream._tcp", "_airplay._tcp", "_raop._tcp", "_googlecast._tcp", "_hap._tcp", "_matterc._udp", "_matterd._udp", "_matter._tcp", "_esphomelib._tcp", "_shelly._tcp", "_home-assistant._tcp", "_spotify-connect._tcp", "_device-info._tcp"}
 
 // serviceType extracts the final service/protocol/domain labels, independently
 // of dots or service-looking text in a human-readable instance name.
@@ -266,36 +267,120 @@ func (r *mdnsRecords) followups(family6 ...bool) []dnsmessage.Question {
 	return out
 }
 
-// collectMDNS stays within the socket's original deadline; answers cannot extend
-// scan duration. A 128-query budget prevents unbounded service enumeration.
-func collectMDNS(ctx context.Context, c *net.UDPConn, destination *net.UDPAddr, target netip.Prefix) ([]discoveryHit, error) {
+type mdnsUDPConn interface {
+	discoveryUDPConn
+	SetReadDeadline(time.Time) error
+}
+
+type mdnsQueryAttempt struct {
+	question dnsmessage.Question
+	attempts int
+	next     time.Time
+}
+
+// answered identifies questions with at least one usable response. This is a
+// bounded one-shot resolver, not a continuous shared-record browser: once a
+// PTR has any answer we do not repeat it to seek other responders.
+func (r *mdnsRecords) answered(q dnsmessage.Question) bool {
+	name := strings.ToLower(q.Name.String())
+	switch q.Type {
+	case dnsmessage.TypePTR:
+		return len(r.pointers[name]) > 0
+	case dnsmessage.TypeSRV:
+		_, ok := r.services[name]
+		return ok
+	case dnsmessage.TypeTXT:
+		_, ok := r.txt[name]
+		return ok
+	case dnsmessage.TypeA, dnsmessage.TypeAAAA:
+		for _, ip := range r.addresses[name] {
+			if ip.Is4() == (q.Type == dnsmessage.TypeA) && !ip.IsUnspecified() && !ip.IsMulticast() {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// collectMDNS stays within the owner's absolute deadline. A zero deadline is
+// reserved for fault-test sockets that supply their own terminal read errors.
+// Unanswered questions get at most two retries, spaced at least 1s then 2s;
+// every transmission counts toward the existing 128-query traffic budget.
+func collectMDNS(ctx context.Context, c mdnsUDPConn, destination *net.UDPAddr, target netip.Prefix, deadline time.Time) ([]discoveryHit, error) {
+	if ctx.Err() != nil {
+		return nil, nil
+	}
 	sent := map[dnsmessage.Question]bool{}
-	send := func(q dnsmessage.Question) error {
-		if sent[q] || len(sent) >= 128 || ctx.Err() != nil {
+	var pending []*mdnsQueryAttempt
+	queries := 0
+	r := newMDNSRecords()
+	packets := 0
+	finish := func(err error) ([]discoveryHit, error) {
+		return scopedHits(r.hits(target), destination.Zone), discoveryCompletion(ctx, "mDNS", err, packets, queries)
+	}
+	transmit := func(attempt *mdnsQueryAttempt) error {
+		if queries >= maxMDNSQueries || ctx.Err() != nil || (!deadline.IsZero() && !time.Now().Before(deadline)) {
 			return nil
 		}
-		sent[q] = true
-		m := dnsmessage.Message{Header: dnsmessage.Header{ID: 0x4c41}, Questions: []dnsmessage.Question{q}}
+		m := dnsmessage.Message{Header: dnsmessage.Header{ID: 0x4c41}, Questions: []dnsmessage.Question{attempt.question}}
 		b, err := m.Pack()
 		if err != nil {
 			return err
 		}
-		_, err = c.WriteToUDP(b, destination)
+		queries++
+		err = writeDiscoveryDatagram(c, b, destination)
+		attempt.attempts++
+		attempt.next = time.Now().Add(time.Second << uint(attempt.attempts-1))
 		return err
+	}
+	send := func(q dnsmessage.Question) error {
+		if sent[q] || queries >= maxMDNSQueries || ctx.Err() != nil || (!deadline.IsZero() && !time.Now().Before(deadline)) {
+			return nil
+		}
+		sent[q] = true
+		attempt := &mdnsQueryAttempt{question: q}
+		pending = append(pending, attempt)
+		return transmit(attempt)
 	}
 	for _, kind := range mdnsKinds {
 		name, _ := dnsmessage.NewName(kind + ".local.")
 		if err := send(dnsmessage.Question{Name: name, Type: dnsmessage.TypePTR, Class: dnsmessage.ClassINET}); err != nil {
-			return nil, fmt.Errorf("mDNS query: %w", err)
+			return finish(fmt.Errorf("mDNS query: %w", err))
 		}
 	}
-	r := newMDNSRecords()
 	b := make([]byte, 9000)
-	for packets := 0; packets < 512; packets++ {
+	for packets < maxDiscoveryPackets && ctx.Err() == nil {
+		if !deadline.IsZero() {
+			if !time.Now().Before(deadline) {
+				return finish(nil)
+			}
+			readUntil := deadline
+			for _, attempt := range pending {
+				if queries >= maxMDNSQueries || attempt.attempts >= 3 || r.answered(attempt.question) {
+					continue
+				}
+				if !time.Now().Before(attempt.next) {
+					if err := transmit(attempt); err != nil {
+						return finish(fmt.Errorf("mDNS retry: %w", err))
+					}
+				}
+				if attempt.attempts < 3 && attempt.next.Before(readUntil) {
+					readUntil = attempt.next
+				}
+			}
+			if err := c.SetReadDeadline(readUntil); err != nil {
+				return finish(fmt.Errorf("mDNS read deadline: %w", err))
+			}
+		}
 		n, peer, err := c.ReadFromUDP(b)
 		if err != nil {
-			break
+			var timeout net.Error
+			if !deadline.IsZero() && errors.As(err, &timeout) && timeout.Timeout() && time.Now().Before(deadline) {
+				continue
+			}
+			return finish(discoveryReceiveError("mDNS", err))
 		}
+		packets++
 		if peer.Port != destination.Port || (peer.Zone != "" && peer.Zone != destination.Zone) {
 			continue
 		}
@@ -306,16 +391,16 @@ func collectMDNS(ctx context.Context, c *net.UDPConn, destination *net.UDPAddr, 
 		if !r.ingest(b[:n]) {
 			continue
 		}
-		if len(sent) >= 128 {
+		if queries >= maxMDNSQueries {
 			continue
 		}
 		for _, q := range r.followups(target.Addr().Is6()) {
 			if err := send(q); err != nil {
-				return scopedHits(r.hits(target), destination.Zone), fmt.Errorf("mDNS follow-up: %w", err)
+				return finish(fmt.Errorf("mDNS follow-up: %w", err))
 			}
 		}
 	}
-	return scopedHits(r.hits(target), destination.Zone), nil
+	return finish(nil)
 }
 
 func scopedHits(hits []discoveryHit, zone string) []discoveryHit {
@@ -351,45 +436,61 @@ func ssdpSweep(ctx context.Context, target netip.Prefix, timeout time.Duration) 
 	return ssdpSweepOn(ctx, target, timeout, "")
 }
 func ssdpSweepOn(ctx context.Context, target netip.Prefix, timeout time.Duration, preferred string) ([]discoveryHit, error) {
-	iface, local := localInterfaceOn(target, preferred)
+	if ctx.Err() != nil {
+		return nil, nil
+	}
+	c, iface, local, close, err := openMulticastSocket(ctx, target, preferred, timeout)
+	if err != nil {
+		return nil, discoveryCompletion(ctx, "SSDP", fmt.Errorf("SSDP socket: %w", err), 0, 0)
+	}
 	if iface == nil {
 		return nil, nil
 	}
-	c, close, err := multicastSocket(ctx, local, iface, timeout)
-	if err != nil {
-		return nil, fmt.Errorf("SSDP: %w", err)
-	}
 	defer close()
 	destination := &net.UDPAddr{IP: net.IPv4(239, 255, 255, 250), Port: 1900}
-	host := "239.255.255.250:1900"
 	if local.Is6() {
 		destination = &net.UDPAddr{IP: net.ParseIP("ff02::c"), Port: 1900, Zone: iface.Name}
-		host = "[ff02::c]:1900"
-		ipv6.NewPacketConn(c).SetMulticastHopLimit(1)
+		err = ipv6.NewPacketConn(c).SetMulticastHopLimit(1)
 	} else {
-		ipv4.NewPacketConn(c).SetMulticastTTL(1)
+		err = ipv4.NewPacketConn(c).SetMulticastTTL(1)
 	}
-	query := "M-SEARCH * HTTP/1.1\r\nHOST: " + host + "\r\nMAN: \"ssdp:discover\"\r\nMX: 1\r\nST: ssdp:all\r\n\r\n"
-	if _, err = c.WriteToUDP([]byte(query), destination); err != nil {
-		return nil, fmt.Errorf("SSDP query: %w", err)
+	if err != nil {
+		return nil, discoveryCompletion(ctx, "SSDP", fmt.Errorf("SSDP multicast hop limit: %w", err), 0, 0)
+	}
+	return collectSSDP(ctx, c, destination, target, iface.Name)
+}
+
+func collectSSDP(ctx context.Context, c discoveryUDPConn, destination *net.UDPAddr, target netip.Prefix, zone string) ([]discoveryHit, error) {
+	if ctx.Err() != nil {
+		return nil, nil
 	}
 	var hits []discoveryHit
+	packets := 0
+	finish := func(err error) ([]discoveryHit, error) {
+		return hits, discoveryCompletion(ctx, "SSDP", err, packets, 0)
+	}
+	host := net.JoinHostPort(destination.IP.String(), strconv.Itoa(destination.Port))
+	query := "M-SEARCH * HTTP/1.1\r\nHOST: " + host + "\r\nMAN: \"ssdp:discover\"\r\nMX: 1\r\nST: ssdp:all\r\n\r\n"
+	if err := writeDiscoveryDatagram(c, []byte(query), destination); err != nil {
+		return finish(fmt.Errorf("SSDP query: %w", err))
+	}
 	b := make([]byte, 8192)
-	for packets := 0; packets < 512; packets++ {
+	for packets < maxDiscoveryPackets && ctx.Err() == nil {
 		n, peer, err := c.ReadFromUDP(b)
 		if err != nil {
-			break
+			return finish(discoveryReceiveError("SSDP", err))
 		}
+		packets++
 		a, ok := netip.AddrFromSlice(peer.IP)
-		if !ok || !inTarget(target, a.Unmap()) || (peer.Zone != "" && peer.Zone != iface.Name) {
+		if !ok || !inTarget(target, a.Unmap()) || (peer.Zone != "" && peer.Zone != zone) {
 			continue
 		}
 		ad, ok := parseSSDP(b[:n])
 		if ok {
-			hits = append(hits, discoveryHit{IP: scoped(a.Unmap(), iface.Name), Ads: []Advertisement{ad}, Evidence: "ssdp"})
+			hits = append(hits, discoveryHit{IP: scoped(a.Unmap(), zone), Ads: []Advertisement{ad}, Evidence: "ssdp"})
 		}
 	}
-	return hits, nil
+	return finish(nil)
 }
 
 func normalizeAdvertisements(d *Device) {
@@ -407,4 +508,66 @@ func normalizeAdvertisements(d *Device) {
 	for _, k := range keys {
 		d.Advertisements = append(d.Advertisements, unique[k])
 	}
+}
+
+// RFC 6763 section 6.4: printable ASCII, nonempty; '=' is split before this call.
+func validTXTKey(key string) bool {
+	if key == "" {
+		return false
+	}
+	for i := range len(key) {
+		if key[i] < 0x20 || key[i] > 0x7e || key[i] == '=' {
+			return false
+		}
+	}
+	return true
+}
+
+const (
+	maxDiscoveryPackets = 512
+	maxMDNSQueries      = 128
+)
+
+// Collectors borrow a socket whose owner supplies deadlines and cancellation.
+// The minimal interface lets faults be tested without sending network traffic.
+type discoveryUDPConn interface {
+	ReadFromUDP([]byte) (int, *net.UDPAddr, error)
+	WriteToUDP([]byte, *net.UDPAddr) (int, error)
+}
+
+func writeDiscoveryDatagram(c discoveryUDPConn, packet []byte, destination *net.UDPAddr) error {
+	n, err := c.WriteToUDP(packet, destination)
+	if err == nil && n != len(packet) {
+		return io.ErrShortWrite
+	}
+	return err
+}
+
+func discoveryReceiveError(protocol string, err error) error {
+	var timeout net.Error
+	if errors.As(err, &timeout) && timeout.Timeout() {
+		return nil
+	}
+	return fmt.Errorf("%s receive: %w", protocol, err)
+}
+
+func discoveryCompletion(ctx context.Context, protocol string, err error, packets, queries int) error {
+	if ctx.Err() != nil {
+		return nil
+	}
+	var limits []string
+	if queries >= maxMDNSQueries {
+		limits = append(limits, fmt.Sprintf("%s query limit reached (%d); some service details may be incomplete", protocol, maxMDNSQueries))
+	}
+	if packets >= maxDiscoveryPackets {
+		limits = append(limits, fmt.Sprintf("%s packet limit reached (%d); discovery may be incomplete", protocol, maxDiscoveryPackets))
+	}
+	if len(limits) == 0 {
+		return err
+	}
+	message := strings.Join(limits, "; ")
+	if err != nil {
+		return fmt.Errorf("%w; %s", err, message)
+	}
+	return errors.New(message)
 }

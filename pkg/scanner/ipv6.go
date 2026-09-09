@@ -72,11 +72,16 @@ func onIPv6Link(a netip.Addr, iface string, prefixes []netip.Prefix) bool {
 	return false
 }
 
+type discoveryWarning struct {
+	method string
+	err    error
+}
+
 type ipv6Seeds struct {
 	hosts    []netip.Addr
 	hits     []discoveryHit
 	macs     map[netip.Addr]string
-	warnings []error
+	warnings []discoveryWarning
 	iface    string
 }
 
@@ -92,12 +97,12 @@ func discoverIPv6(ctx context.Context, o Options, source func(context.Context) (
 	}
 	var mu sync.Mutex
 	var wg sync.WaitGroup
-	addHits := func(hits []discoveryHit, err error) {
+	addHits := func(hits []discoveryHit, method string, err error) {
 		mu.Lock()
 		defer mu.Unlock()
 		result.hits = append(result.hits, hits...)
 		if err != nil && ctx.Err() == nil {
-			result.warnings = append(result.warnings, err)
+			result.warnings = append(result.warnings, discoveryWarning{method, err})
 		}
 	}
 	wg.Add(1)
@@ -107,7 +112,7 @@ func discoverIPv6(ctx context.Context, o Options, source func(context.Context) (
 		mu.Lock()
 		result.macs = table
 		if err != nil && ctx.Err() == nil {
-			result.warnings = append(result.warnings, err)
+			result.warnings = append(result.warnings, discoveryWarning{"neighbors", err})
 		}
 		mu.Unlock()
 	}()
@@ -115,17 +120,17 @@ func discoverIPv6(ctx context.Context, o Options, source func(context.Context) (
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			err := pingAllNodes6(ctx, iface, o.Target, o.Timeout, o.MaxHosts, func(h pingHit) { addHits([]discoveryHit{{IP: h.IP, Evidence: "icmp"}}, nil) })
-			addHits(nil, err)
+			err := pingAllNodes6(ctx, iface, o.Target, o.Timeout, o.MaxHosts, func(h pingHit) { addHits([]discoveryHit{{IP: h.IP, Evidence: "icmp"}}, "icmp", nil) })
+			addHits(nil, "icmp", err)
 		}()
 	}
 	if o.Multicast {
-		for _, sweep := range []func(context.Context, netip.Prefix, time.Duration, string) ([]discoveryHit, error){mdnsSweepOn, ssdpSweepOn} {
+		for _, sweep := range []func(context.Context, netip.Prefix, time.Duration, string) ([]discoveryHit, error){mdnsSweepOn, ssdpSweepOn, wsdSweepOn} {
 			wg.Add(1)
 			go func(sweep func(context.Context, netip.Prefix, time.Duration, string) ([]discoveryHit, error)) {
 				defer wg.Done()
 				hits, err := sweep(ctx, o.Target, max(o.Timeout, time.Second), iface.Name)
-				addHits(hits, err)
+				addHits(hits, "multicast", err)
 			}(sweep)
 		}
 	}
@@ -161,7 +166,7 @@ func filterIPv6Seeds(result ipv6Seeds, o Options, iface string, prefixes []netip
 	}
 	sort.Slice(result.hosts, func(i, j int) bool { return result.hosts[i].Less(result.hosts[j]) })
 	if len(result.hosts) > o.MaxHosts {
-		result.warnings = append(result.warnings, fmt.Errorf("IPv6 candidate limit reached: retaining %d of %d discovered addresses", o.MaxHosts, len(result.hosts)))
+		result.warnings = append(result.warnings, discoveryWarning{"candidates", fmt.Errorf("IPv6 candidate limit reached: retaining %d of %d discovered addresses", o.MaxHosts, len(result.hosts))})
 		result.hosts = result.hosts[:o.MaxHosts]
 	}
 	keep := map[netip.Addr]bool{}

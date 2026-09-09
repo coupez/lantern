@@ -1,0 +1,1087 @@
+{
+  "s1cm-0dxw00": [
+    {
+      "identifier": "S1CM-0DXW00",
+      "name": "Shelly Camera",
+      "generation": 3
+    }
+  ],
+  "s3bl-c010007aeu": [
+    {
+      "identifier": "S3BL-C010007AEU",
+      "name": "Shelly Multicolor Bulb Gen3",
+      "generation": 3
+    }
+  ],
+  "s3bl-d010009aeu": [
+    {
+      "identifier": "S3BL-D010009AEU",
+      "name": "Shelly Duo Bulb Gen3",
+      "generation": 3
+    }
+  ],
+  "s3dm-0010ww": [
+    {
+      "identifier": "S3DM-0010WW",
+      "name": "Shelly Dimmer 0/1-10V PM Gen3",
+      "generation": 3
+    }
+  ],
+  "s3dm-0a101wwl": [
+    {
+      "identifier": "S3DM-0A101WWL",
+      "name": "Shelly Dimmer Gen3",
+      "generation": 3
+    }
+  ],
+  "s3dm-0a1ww": [
+    {
+      "identifier": "S3DM-0A1WW",
+      "name": "Shelly DALI Dimmer Gen3",
+      "generation": 3
+    }
+  ],
+  "s3em-002cxceu": [
+    {
+      "identifier": "S3EM-002CXCEU",
+      "name": "Shelly EM Gen3",
+      "generation": 3
+    }
+  ],
+  "s3em-003cxceu63": [
+    {
+      "identifier": "S3EM-003CXCEU63",
+      "name": "Shelly 3EM-63 Gen3",
+      "generation": 3
+    }
+  ],
+  "s3gw-1dbt001": [
+    {
+      "identifier": "S3GW-1DBT001",
+      "name": "Shelly BLU Gateway Gen3",
+      "generation": 3
+    }
+  ],
+  "s3mx-0a": [
+    {
+      "identifier": "S3MX-0A",
+      "name": "Shelly X MOD1",
+      "generation": 3
+    }
+  ],
+  "s3pl-00112eu": [
+    {
+      "identifier": "S3PL-00112EU",
+      "name": "Shelly Plug S Gen3",
+      "generation": 3
+    }
+  ],
+  "s3pl-10112eu": [
+    {
+      "identifier": "S3PL-10112EU",
+      "name": "Shelly AZ Plug",
+      "generation": 3
+    }
+  ],
+  "s3pl-20112eu": [
+    {
+      "identifier": "S3PL-20112EU",
+      "name": "Shelly Outdoor Plug S Gen3",
+      "generation": 3
+    }
+  ],
+  "s3pl-30110eu": [
+    {
+      "identifier": "S3PL-30110EU",
+      "name": "Shelly Plug M Gen3",
+      "generation": 3
+    }
+  ],
+  "s3pl-30116eu": [
+    {
+      "identifier": "S3PL-30116EU",
+      "name": "Shelly Plug PM Gen3",
+      "generation": 3
+    }
+  ],
+  "s3pm-001pceu16": [
+    {
+      "identifier": "S3PM-001PCEU16",
+      "name": "Shelly PM Mini Gen3",
+      "generation": 3
+    }
+  ],
+  "s3sh-0a2p4eu": [
+    {
+      "identifier": "S3SH-0A2P4EU",
+      "name": "Shelly Shutter",
+      "generation": 3
+    }
+  ],
+  "s3sn-0024x": [
+    {
+      "identifier": "S3SN-0024X",
+      "name": "Shelly I4 Gen3",
+      "generation": 3
+    }
+  ],
+  "s3sn-0u12a": [
+    {
+      "identifier": "S3SN-0U12A",
+      "name": "Shelly H&T Gen3",
+      "generation": 3
+    }
+  ],
+  "s3sn-0u53x": [
+    {
+      "identifier": "S3SN-0U53X",
+      "name": "Shelly Pill",
+      "generation": 3
+    }
+  ],
+  "s3sn-1u12a": [
+    {
+      "identifier": "S3SN-1U12A",
+      "name": "Shelly AZ H&T",
+      "generation": 3
+    }
+  ],
+  "s3sw-001p16eu": [
+    {
+      "identifier": "S3SW-001P16EU",
+      "name": "Shelly 1PM Gen3",
+      "generation": 3
+    }
+  ],
+  "s3sw-001p8eu": [
+    {
+      "identifier": "S3SW-001P8EU",
+      "name": "Shelly 1PM Mini Gen3",
+      "generation": 3
+    }
+  ],
+  "s3sw-001x16eu": [
+    {
+      "identifier": "S3SW-001X16EU",
+      "name": "Shelly 1 Gen3",
+      "generation": 3
+    }
+  ],
+  "s3sw-001x8eu": [
+    {
+      "identifier": "S3SW-001X8EU",
+      "name": "Shelly 1 Mini Gen3",
+      "generation": 3
+    }
+  ],
+  "s3sw-002p16eu": [
+    {
+      "identifier": "S3SW-002P16EU",
+      "name": "Shelly 2PM Gen3",
+      "generation": 3
+    }
+  ],
+  "s3sw-0a1x1eul": [
+    {
+      "identifier": "S3SW-0A1X1EUL",
+      "name": "Shelly 1L Gen3",
+      "generation": 3
+    }
+  ],
+  "s3sw-0a2x4eul": [
+    {
+      "identifier": "S3SW-0A2X4EUL",
+      "name": "Shelly 2L Gen3",
+      "generation": 3
+    }
+  ],
+  "s4dm-0010ww": [
+    {
+      "identifier": "S4DM-0010WW",
+      "name": "Shelly Dimmer 0/1-10V PM Gen4",
+      "generation": 4
+    }
+  ],
+  "s4dm-0a101wwl": [
+    {
+      "identifier": "S4DM-0A101WWL",
+      "name": "Shelly Dimmer Gen4",
+      "generation": 4
+    }
+  ],
+  "s4dm-0a102us": [
+    {
+      "identifier": "S4DM-0A102US",
+      "name": "Shelly Dimmer Gen4 US",
+      "generation": 4
+    }
+  ],
+  "s4em-001cxceu63": [
+    {
+      "identifier": "S4EM-001CXCEU63",
+      "name": "Shelly EM-63 Gen4",
+      "generation": 4
+    }
+  ],
+  "s4em-001pxceu16": [
+    {
+      "identifier": "S4EM-001PXCEU16",
+      "name": "Shelly EM Mini Gen4",
+      "generation": 4
+    }
+  ],
+  "s4em-002cxceu": [
+    {
+      "identifier": "S4EM-002CXCEU",
+      "name": "Shelly EM Gen4",
+      "generation": 4
+    }
+  ],
+  "s4pb-00cu000002": [
+    {
+      "identifier": "S4PB-00CU000002",
+      "name": "Shelly Cury",
+      "generation": 4
+    }
+  ],
+  "s4pl-00116us": [
+    {
+      "identifier": "S4PL-00116US",
+      "name": "Shelly Plug US Gen4",
+      "generation": 4
+    }
+  ],
+  "s4pl-00415us": [
+    {
+      "identifier": "S4PL-00415US",
+      "name": "Shelly Power Strip 4 US Gen4",
+      "generation": 4
+    }
+  ],
+  "s4pl-00416eu": [
+    {
+      "identifier": "S4PL-00416EU",
+      "name": "Shelly Power Strip 4 Gen4",
+      "generation": 4
+    }
+  ],
+  "s4pl-10416eu": [
+    {
+      "identifier": "S4PL-10416EU",
+      "name": "Shelly Power Strip 4 Gen4",
+      "generation": 4
+    }
+  ],
+  "s4sn-0071a": [
+    {
+      "identifier": "S4SN-0071A",
+      "name": "Shelly Flood Gen4",
+      "generation": 4
+    }
+  ],
+  "s4sn-0071z": [
+    {
+      "identifier": "S4SN-0071Z",
+      "name": "Shelly Flood S Gen4",
+      "generation": 4
+    }
+  ],
+  "s4sn-0a24x": [
+    {
+      "identifier": "S4SN-0A24X",
+      "name": "Shelly I4 Gen4",
+      "generation": 4
+    }
+  ],
+  "s4sn-0u61x": [
+    {
+      "identifier": "S4SN-0U61X",
+      "name": "Shelly Presence Gen4",
+      "generation": 4
+    }
+  ],
+  "s4sw-001p16eu": [
+    {
+      "identifier": "S4SW-001P16EU",
+      "name": "Shelly 1PM Gen4",
+      "generation": 4
+    }
+  ],
+  "s4sw-001p8eu": [
+    {
+      "identifier": "S4SW-001P8EU",
+      "name": "Shelly 1PM Mini Gen4",
+      "generation": 4
+    }
+  ],
+  "s4sw-001x16eu": [
+    {
+      "identifier": "S4SW-001X16EU",
+      "name": "Shelly 1 Gen4",
+      "generation": 4
+    }
+  ],
+  "s4sw-001x8eu": [
+    {
+      "identifier": "S4SW-001X8EU",
+      "name": "Shelly 1 Mini Gen4",
+      "generation": 4
+    }
+  ],
+  "s4sw-002p16eu": [
+    {
+      "identifier": "S4SW-002P16EU",
+      "name": "Shelly 2PM Gen4",
+      "generation": 4
+    }
+  ],
+  "s4sw-0a1x1eul": [
+    {
+      "identifier": "S4SW-0A1X1EUL",
+      "name": "Shelly 1L Gen4",
+      "generation": 4
+    }
+  ],
+  "s4sw-0a2x4eul": [
+    {
+      "identifier": "S4SW-0A2X4EUL",
+      "name": "Shelly 2L Gen4",
+      "generation": 4
+    }
+  ],
+  "sawd-0a1xx10eu1": [
+    {
+      "identifier": "SAWD-0A1XX10EU1",
+      "name": "Shelly Wall Display",
+      "generation": 2
+    }
+  ],
+  "sawd-2a1xx10eu1": [
+    {
+      "identifier": "SAWD-2A1XX10EU1",
+      "name": "Shelly Wall Display X2",
+      "generation": 2
+    }
+  ],
+  "sawd-3a1xe10eu2": [
+    {
+      "identifier": "SAWD-3A1XE10EU2",
+      "name": "Shelly Wall Display XL",
+      "generation": 2
+    }
+  ],
+  "sawd-5a1xx10eu0": [
+    {
+      "identifier": "SAWD-5A1XX10EU0",
+      "name": "Shelly Wall Display X2i",
+      "generation": 2
+    }
+  ],
+  "sawd-6a1xx10eu0": [
+    {
+      "identifier": "SAWD-6A1XX10EU0",
+      "name": "Shelly Wall Display X1i",
+      "generation": 2
+    }
+  ],
+  "sh2led-1": [
+    {
+      "identifier": "SH2LED-1",
+      "name": "Shelly 2LED",
+      "generation": 1
+    }
+  ],
+  "shair-1": [
+    {
+      "identifier": "SHAIR-1",
+      "name": "Shelly Air",
+      "generation": 1
+    }
+  ],
+  "shbduo-1": [
+    {
+      "identifier": "SHBDUO-1",
+      "name": "Shelly DUO",
+      "generation": 1
+    }
+  ],
+  "shblb-1": [
+    {
+      "identifier": "SHBLB-1",
+      "name": "Shelly Bulb",
+      "generation": 1
+    }
+  ],
+  "shbtn-1": [
+    {
+      "identifier": "SHBTN-1",
+      "name": "Shelly Button1",
+      "generation": 1
+    }
+  ],
+  "shbtn-2": [
+    {
+      "identifier": "SHBTN-2",
+      "name": "Shelly Button1",
+      "generation": 1
+    }
+  ],
+  "shbvin-1": [
+    {
+      "identifier": "SHBVIN-1",
+      "name": "Shelly Vintage",
+      "generation": 1
+    }
+  ],
+  "shcb-1": [
+    {
+      "identifier": "SHCB-1",
+      "name": "Shelly Bulb RGBW",
+      "generation": 1
+    }
+  ],
+  "shcl-255": [
+    {
+      "identifier": "SHCL-255",
+      "name": "Shelly Color",
+      "generation": 1
+    }
+  ],
+  "shdimw-1": [
+    {
+      "identifier": "SHDIMW-1",
+      "name": "Shelly Dimmer W1",
+      "generation": 1
+    }
+  ],
+  "shdm-1": [
+    {
+      "identifier": "SHDM-1",
+      "name": "Shelly Dimmer",
+      "generation": 1
+    }
+  ],
+  "shdm-2": [
+    {
+      "identifier": "SHDM-2",
+      "name": "Shelly Dimmer 2",
+      "generation": 1
+    }
+  ],
+  "shdw-1": [
+    {
+      "identifier": "SHDW-1",
+      "name": "Shelly Door/Window",
+      "generation": 1
+    }
+  ],
+  "shdw-2": [
+    {
+      "identifier": "SHDW-2",
+      "name": "Shelly Door/Window 2",
+      "generation": 1
+    }
+  ],
+  "shem": [
+    {
+      "identifier": "SHEM",
+      "name": "Shelly EM",
+      "generation": 1
+    }
+  ],
+  "shem-3": [
+    {
+      "identifier": "SHEM-3",
+      "name": "Shelly 3EM",
+      "generation": 1
+    }
+  ],
+  "shgs-1": [
+    {
+      "identifier": "SHGS-1",
+      "name": "Shelly Gas",
+      "generation": 1
+    }
+  ],
+  "shht-1": [
+    {
+      "identifier": "SHHT-1",
+      "name": "Shelly H&T",
+      "generation": 1
+    }
+  ],
+  "shix3-1": [
+    {
+      "identifier": "SHIX3-1",
+      "name": "Shelly i3",
+      "generation": 1
+    }
+  ],
+  "shmos-01": [
+    {
+      "identifier": "SHMOS-01",
+      "name": "Shelly Motion",
+      "generation": 1
+    }
+  ],
+  "shmos-02": [
+    {
+      "identifier": "SHMOS-02",
+      "name": "Shelly Motion 2",
+      "generation": 1
+    }
+  ],
+  "shplg-1": [
+    {
+      "identifier": "SHPLG-1",
+      "name": "Shelly Plug",
+      "generation": 1
+    }
+  ],
+  "shplg-s": [
+    {
+      "identifier": "SHPLG-S",
+      "name": "Shelly Plug S",
+      "generation": 1
+    }
+  ],
+  "shplg-u1": [
+    {
+      "identifier": "SHPLG-U1",
+      "name": "Shelly Plug US",
+      "generation": 1
+    }
+  ],
+  "shplg2-1": [
+    {
+      "identifier": "SHPLG2-1",
+      "name": "Shelly Plug E",
+      "generation": 1
+    }
+  ],
+  "shrgbw2": [
+    {
+      "identifier": "SHRGBW2",
+      "name": "Shelly RGBW2",
+      "generation": 1
+    }
+  ],
+  "shrgbww-01": [
+    {
+      "identifier": "SHRGBWW-01",
+      "name": "Shelly RGBW",
+      "generation": 1
+    }
+  ],
+  "shsen-1": [
+    {
+      "identifier": "SHSEN-1",
+      "name": "Shelly Sense",
+      "generation": 1
+    }
+  ],
+  "shsm-01": [
+    {
+      "identifier": "SHSM-01",
+      "name": "Shelly Smoke",
+      "generation": 1
+    }
+  ],
+  "shsm-02": [
+    {
+      "identifier": "SHSM-02",
+      "name": "Shelly Smoke 2",
+      "generation": 1
+    }
+  ],
+  "shspot-1": [
+    {
+      "identifier": "SHSPOT-1",
+      "name": "Shelly Spot",
+      "generation": 1
+    }
+  ],
+  "shspot-2": [
+    {
+      "identifier": "SHSPOT-2",
+      "name": "Shelly Spot 2",
+      "generation": 1
+    }
+  ],
+  "shsw-1": [
+    {
+      "identifier": "SHSW-1",
+      "name": "Shelly 1",
+      "generation": 1
+    }
+  ],
+  "shsw-21": [
+    {
+      "identifier": "SHSW-21",
+      "name": "Shelly 2",
+      "generation": 1
+    }
+  ],
+  "shsw-25": [
+    {
+      "identifier": "SHSW-25",
+      "name": "Shelly 2.5",
+      "generation": 1
+    }
+  ],
+  "shsw-44": [
+    {
+      "identifier": "SHSW-44",
+      "name": "Shelly 4Pro",
+      "generation": 1
+    }
+  ],
+  "shsw-l": [
+    {
+      "identifier": "SHSW-L",
+      "name": "Shelly 1L",
+      "generation": 1
+    }
+  ],
+  "shsw-pm": [
+    {
+      "identifier": "SHSW-PM",
+      "name": "Shelly 1PM",
+      "generation": 1
+    }
+  ],
+  "shtrv-01": [
+    {
+      "identifier": "SHTRV-01",
+      "name": "Shelly Valve",
+      "generation": 1
+    }
+  ],
+  "shuni-1": [
+    {
+      "identifier": "SHUNI-1",
+      "name": "Shelly UNI",
+      "generation": 1
+    }
+  ],
+  "shvin-1": [
+    {
+      "identifier": "SHVIN-1",
+      "name": "Shelly Vintage",
+      "generation": 1
+    }
+  ],
+  "shwt-1": [
+    {
+      "identifier": "SHWT-1",
+      "name": "Shelly Flood",
+      "generation": 1
+    }
+  ],
+  "sndc-0d4p10ww": [
+    {
+      "identifier": "SNDC-0D4P10WW",
+      "name": "Shelly Plus RGBW PM",
+      "generation": 2
+    }
+  ],
+  "sndm-00100ww": [
+    {
+      "identifier": "SNDM-00100WW",
+      "name": "Shelly Plus 0-10V Dimmer",
+      "generation": 2
+    }
+  ],
+  "sndm-0013us": [
+    {
+      "identifier": "SNDM-0013US",
+      "name": "Shelly Plus Wall Dimmer",
+      "generation": 2
+    }
+  ],
+  "sngw-0a11ww010": [
+    {
+      "identifier": "SNGW-0A11WW010",
+      "name": "Shelly Plus 10V",
+      "generation": 2
+    }
+  ],
+  "sngw-bt01": [
+    {
+      "identifier": "SNGW-BT01",
+      "name": "Shelly BLU Gateway",
+      "generation": 2
+    }
+  ],
+  "snpl-00110it": [
+    {
+      "identifier": "SNPL-00110IT",
+      "name": "Shelly Plus Plug IT",
+      "generation": 2
+    }
+  ],
+  "snpl-00112eu": [
+    {
+      "identifier": "SNPL-00112EU",
+      "name": "Shelly Plus Plug S",
+      "generation": 2
+    }
+  ],
+  "snpl-00112uk": [
+    {
+      "identifier": "SNPL-00112UK",
+      "name": "Shelly Plus Plug UK",
+      "generation": 2
+    }
+  ],
+  "snpl-00116us": [
+    {
+      "identifier": "SNPL-00116US",
+      "name": "Shelly Plus Plug US",
+      "generation": 2
+    }
+  ],
+  "snpl-10112eu": [
+    {
+      "identifier": "SNPL-10112EU",
+      "name": "Shelly Plus Plug S",
+      "generation": 2
+    }
+  ],
+  "snpm-001pceu16": [
+    {
+      "identifier": "SNPM-001PCEU16",
+      "name": "Shelly Plus PM Mini",
+      "generation": 2
+    }
+  ],
+  "snsn-0013a": [
+    {
+      "identifier": "SNSN-0013A",
+      "name": "Shelly Plus H&T",
+      "generation": 2
+    }
+  ],
+  "snsn-0024x": [
+    {
+      "identifier": "SNSN-0024X",
+      "name": "Shelly Plus I4",
+      "generation": 2
+    }
+  ],
+  "snsn-0031z": [
+    {
+      "identifier": "SNSN-0031Z",
+      "name": "Shelly Plus Smoke",
+      "generation": 2
+    }
+  ],
+  "snsn-0043x": [
+    {
+      "identifier": "SNSN-0043X",
+      "name": "Shelly Plus Uni",
+      "generation": 2
+    }
+  ],
+  "snsn-0d24x": [
+    {
+      "identifier": "SNSN-0D24X",
+      "name": "Shelly Plus I4DC",
+      "generation": 2
+    }
+  ],
+  "snsw-001p15ul": [
+    {
+      "identifier": "SNSW-001P15UL",
+      "name": "Shelly Plus 1PM UL",
+      "generation": 2
+    }
+  ],
+  "snsw-001p16eu": [
+    {
+      "identifier": "SNSW-001P16EU",
+      "name": "Shelly Plus 1PM",
+      "generation": 2
+    }
+  ],
+  "snsw-001p8eu": [
+    {
+      "identifier": "SNSW-001P8EU",
+      "name": "Shelly Plus 1PM Mini",
+      "generation": 2
+    }
+  ],
+  "snsw-001x15ul": [
+    {
+      "identifier": "SNSW-001X15UL",
+      "name": "Shelly Plus 1 UL",
+      "generation": 2
+    }
+  ],
+  "snsw-001x16eu": [
+    {
+      "identifier": "SNSW-001X16EU",
+      "name": "Shelly Plus 1",
+      "generation": 2
+    }
+  ],
+  "snsw-001x8eu": [
+    {
+      "identifier": "SNSW-001X8EU",
+      "name": "Shelly Plus 1 Mini",
+      "generation": 2
+    }
+  ],
+  "snsw-002p15ul": [
+    {
+      "identifier": "SNSW-002P15UL",
+      "name": "Shelly Plus 2PM UL",
+      "generation": 2
+    }
+  ],
+  "snsw-002p16eu": [
+    {
+      "identifier": "SNSW-002P16EU",
+      "name": "Shelly Plus 2PM",
+      "generation": 2
+    }
+  ],
+  "snsw-102p16eu": [
+    {
+      "identifier": "SNSW-102P16EU",
+      "name": "Shelly Plus 2PM",
+      "generation": 2
+    }
+  ],
+  "spcb-01veneu": [
+    {
+      "identifier": "SPCB-01VENEU",
+      "name": "Shelly Pro 1CB",
+      "generation": 2
+    }
+  ],
+  "spcb-02veneu": [
+    {
+      "identifier": "SPCB-02VENEU",
+      "name": "Shelly Pro 2CB",
+      "generation": 2
+    }
+  ],
+  "spcb-03veneu": [
+    {
+      "identifier": "SPCB-03VENEU",
+      "name": "Shelly Pro 3CB",
+      "generation": 2
+    }
+  ],
+  "spcb-04veneu": [
+    {
+      "identifier": "SPCB-04VENEU",
+      "name": "Shelly Pro 4CB",
+      "generation": 2
+    }
+  ],
+  "spcc-001pe10eu": [
+    {
+      "identifier": "SPCC-001PE10EU",
+      "name": "Shelly Pro Dimmer 0/1-10V PM",
+      "generation": 2
+    }
+  ],
+  "spdc-0d5pe16eu": [
+    {
+      "identifier": "SPDC-0D5PE16EU",
+      "name": "Shelly Pro RGBWW PM",
+      "generation": 2
+    }
+  ],
+  "spdm-001pe01eu": [
+    {
+      "identifier": "SPDM-001PE01EU",
+      "name": "Shelly Pro Dimmer 1PM",
+      "generation": 2
+    }
+  ],
+  "spdm-002pe01eu": [
+    {
+      "identifier": "SPDM-002PE01EU",
+      "name": "Shelly Pro Dimmer 2PM",
+      "generation": 2
+    }
+  ],
+  "spem-002cebeu50": [
+    {
+      "identifier": "SPEM-002CEBEU50",
+      "name": "Shelly Pro EM",
+      "generation": 2
+    }
+  ],
+  "spem-003cebeu": [
+    {
+      "identifier": "SPEM-003CEBEU",
+      "name": "Shelly Pro 3EM",
+      "generation": 2
+    }
+  ],
+  "spem-003cebeu120": [
+    {
+      "identifier": "SPEM-003CEBEU120",
+      "name": "Shelly Pro 3EM",
+      "generation": 2
+    }
+  ],
+  "spem-003cebeu400": [
+    {
+      "identifier": "SPEM-003CEBEU400",
+      "name": "Shelly Pro 3EM-400",
+      "generation": 2
+    }
+  ],
+  "spem-003cebeu63": [
+    {
+      "identifier": "SPEM-003CEBEU63",
+      "name": "Shelly Pro 3EM 3CT63",
+      "generation": 2
+    }
+  ],
+  "spsh-002pe16eu": [
+    {
+      "identifier": "SPSH-002PE16EU",
+      "name": "Shelly Pro Dual Cover PM",
+      "generation": 2
+    }
+  ],
+  "spsw-001pe16eu": [
+    {
+      "identifier": "SPSW-001PE16EU",
+      "name": "Shelly Pro 1PM",
+      "generation": 2
+    }
+  ],
+  "spsw-001xe16eu": [
+    {
+      "identifier": "SPSW-001XE16EU",
+      "name": "Shelly Pro 1",
+      "generation": 2
+    }
+  ],
+  "spsw-002pe16eu": [
+    {
+      "identifier": "SPSW-002PE16EU",
+      "name": "Shelly Pro 2PM",
+      "generation": 2
+    }
+  ],
+  "spsw-002xe16eu": [
+    {
+      "identifier": "SPSW-002XE16EU",
+      "name": "Shelly Pro 2",
+      "generation": 2
+    }
+  ],
+  "spsw-003xe16eu": [
+    {
+      "identifier": "SPSW-003XE16EU",
+      "name": "Shelly Pro 3",
+      "generation": 2
+    }
+  ],
+  "spsw-004pe16eu": [
+    {
+      "identifier": "SPSW-004PE16EU",
+      "name": "Shelly Pro 4PM",
+      "generation": 2
+    }
+  ],
+  "spsw-101pe16eu": [
+    {
+      "identifier": "SPSW-101PE16EU",
+      "name": "Shelly Pro 1PM",
+      "generation": 2
+    }
+  ],
+  "spsw-101xe16eu": [
+    {
+      "identifier": "SPSW-101XE16EU",
+      "name": "Shelly Pro 1",
+      "generation": 2
+    }
+  ],
+  "spsw-102pe16eu": [
+    {
+      "identifier": "SPSW-102PE16EU",
+      "name": "Shelly Pro 2PM",
+      "generation": 2
+    }
+  ],
+  "spsw-102xe16eu": [
+    {
+      "identifier": "SPSW-102XE16EU",
+      "name": "Shelly Pro 2",
+      "generation": 2
+    }
+  ],
+  "spsw-104pe16eu": [
+    {
+      "identifier": "SPSW-104PE16EU",
+      "name": "Shelly Pro 4PM",
+      "generation": 2
+    }
+  ],
+  "spsw-201pe15ul": [
+    {
+      "identifier": "SPSW-201PE15UL",
+      "name": "Shelly Pro 1PM UL",
+      "generation": 2
+    }
+  ],
+  "spsw-201pe16eu": [
+    {
+      "identifier": "SPSW-201PE16EU",
+      "name": "Shelly Pro 1PM",
+      "generation": 2
+    }
+  ],
+  "spsw-201xe15ul": [
+    {
+      "identifier": "SPSW-201XE15UL",
+      "name": "Shelly Pro 1 UL",
+      "generation": 2
+    }
+  ],
+  "spsw-201xe16eu": [
+    {
+      "identifier": "SPSW-201XE16EU",
+      "name": "Shelly Pro 1",
+      "generation": 2
+    }
+  ],
+  "spsw-202pe16eu": [
+    {
+      "identifier": "SPSW-202PE16EU",
+      "name": "Shelly Pro 2PM",
+      "generation": 2
+    }
+  ],
+  "spsw-202xe12ul": [
+    {
+      "identifier": "SPSW-202XE12UL",
+      "name": "Shelly Pro 2 UL",
+      "generation": 2
+    }
+  ],
+  "spsw-202xe16eu": [
+    {
+      "identifier": "SPSW-202XE16EU",
+      "name": "Shelly Pro 2",
+      "generation": 2
+    }
+  ],
+  "spsw-204pe16eu": [
+    {
+      "identifier": "SPSW-204PE16EU",
+      "name": "Shelly Pro 4PM",
+      "generation": 2
+    }
+  ]
+}

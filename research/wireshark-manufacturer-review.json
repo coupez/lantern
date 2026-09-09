@@ -1,0 +1,63 @@
+{
+  "reviewed": "2026-09-09",
+  "revision": "857d9b98e9d70c0f0666bea18c3b2b060e5bd93b",
+  "upstream_source_spdx": "GPL-2.0-or-later",
+  "sources": [
+    {
+      "path": "tools/make-manuf.py",
+      "url": "https://raw.githubusercontent.com/wireshark/wireshark/857d9b98e9d70c0f0666bea18c3b2b060e5bd93b/tools/make-manuf.py",
+      "sha256": "f48be8df9cb3514bd495d9388c5d55ef5e0c2efdb1c51246b0cf2a714b8d46d0",
+      "bytes": 13788
+    },
+    {
+      "path": "epan/manuf-data.c",
+      "url": "https://raw.githubusercontent.com/wireshark/wireshark/857d9b98e9d70c0f0666bea18c3b2b060e5bd93b/epan/manuf-data.c",
+      "sha256": "6302d1bfc3a44fffc072ea16ee936f63e65100a34c83f14869cd16855fe74f6f",
+      "bytes": 4397802
+    },
+    {
+      "path": "wka",
+      "url": "https://raw.githubusercontent.com/wireshark/wireshark/857d9b98e9d70c0f0666bea18c3b2b060e5bd93b/wka",
+      "sha256": "c8aa65f11c0d24539818a1d223071481ada34723f1aae85f70f20b8a4539e980",
+      "bytes": 12664
+    },
+    {
+      "path": "COPYING",
+      "url": "https://raw.githubusercontent.com/wireshark/wireshark/857d9b98e9d70c0f0666bea18c3b2b060e5bd93b/COPYING",
+      "sha256": "edaef632cbb643e4e7a221717a6c441a4c1a7c918e6e4d56debc3d8739b233f6",
+      "bytes": 17984
+    }
+  ],
+  "lantern_index": {
+    "path": "pkg/vendors/data/ieee.tsv.gz",
+    "sha256": "163b1cbc9e5a2df8ad207e43ace0021090d56c07167c0886ea0c828585e95470",
+    "source_metadata": "pkg/vendors/data/sources.json"
+  },
+  "comparison": {
+    "revision": "857d9b98e9d70c0f0666bea18c3b2b060e5bd93b",
+    "wireshark_rows": 58195,
+    "by_prefix_bits": {
+      "24": 39871,
+      "28": 6579,
+      "36": 11745
+    },
+    "lantern_ieee_rows": 58421,
+    "shared_prefixes": 57976,
+    "wireshark_only_prefixes": 219,
+    "wireshark_only_locally_administered": 219,
+    "wireshark_only_global_unicast": 0,
+    "lantern_only_prefixes": 445,
+    "lantern_only_by_registry": {
+      "MA-L": 439,
+      "IAB": 1,
+      "MA-S": 5
+    },
+    "lantern_only_registration_authority": 436,
+    "wka_rows": 246,
+    "wka_multicast_rows": 194,
+    "wka_locally_administered_rows": 73
+  },
+  "decision": "Do not import: this pinned manufacturer table adds no global-unicast prefix absent from Lantern; local address prefixes and well-known protocol/virtual addresses must not be promoted to manufacturer identity. No Wireshark table or code is embedded.",
+  "cid_crosscheck": "The upstream generator includes IEEE CID. Direct retrieval of the CID CSV returned HTTP 418; exact CID membership of all extra prefixes was not independently verified.",
+  "next_research": "Well-known virtual-router address roles could be evaluated against primary protocol specifications, separately from registered-vendor identity."
+}

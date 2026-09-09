@@ -45,7 +45,7 @@ func TestCatalogIntegrityAndProvenance(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if fmt.Sprintf("%x", sha256.Sum256(data)) != s.IndexSHA256 || Count() != s.Identifiers || s.License != "MIT" || s.InputRecords < 1500 {
+	if fmt.Sprintf("%x", sha256.Sum256(data)) != s.IndexSHA256 || len(index) != s.Identifiers || s.License != "MIT" || s.InputRecords < 1500 {
 		t.Fatal(s)
 	}
 	assignments, ambiguous := 0, 0

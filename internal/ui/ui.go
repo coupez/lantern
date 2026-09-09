@@ -2,14 +2,15 @@ package ui
 
 import (
 	"fmt"
-	"golang.org/x/term"
+	"github.com/coupez/lantern/pkg/scanner"
 	"io"
-	"lantern/pkg/scanner"
 	"os"
 	"sort"
 	"strings"
 	"time"
-	"unicode/utf8"
+
+	"github.com/rivo/uniseg"
+	"golang.org/x/term"
 )
 
 type UI struct {
@@ -17,6 +18,7 @@ type UI struct {
 	Color bool
 	Width int
 	last  time.Time
+	phase string
 }
 
 func New(out *os.File, noColor bool) *UI {
@@ -41,13 +43,18 @@ func (u *UI) Progress(e scanner.Event) {
 	if !u.Color {
 		return
 	}
-	if e.Type == "progress" && time.Since(u.last) > 70*time.Millisecond {
+	if (e.Type == "progress" || e.Type == "device_update") && (e.Phase != u.phase || time.Since(u.last) > 70*time.Millisecond) {
 		u.last = time.Now()
+		u.phase = e.Phase
 		pct := 0
 		if e.Total > 0 {
 			pct = e.Completed * 100 / e.Total
 		}
-		fmt.Fprintf(u.Out, "\r\x1b[2K  %s  Probing  %3d%%  %s", u.style("38;5;81", "◌"), pct, u.style("38;5;245", fmt.Sprintf("%d / %d", e.Completed, e.Total)))
+		label := "Probing"
+		if e.Phase == "enrichment" {
+			label = "Identifying"
+		}
+		fmt.Fprintf(u.Out, "\r\x1b[2K  %s  %s  %3d%%  %s", u.style("38;5;81", "◌"), label, pct, u.style("38;5;245", fmt.Sprintf("%d / %d", e.Completed, e.Total)))
 	}
 	if e.Type == "device" {
 		fmt.Fprintf(u.Out, "\r\x1b[2K  %s  %-15s %s\n", u.style("38;5;158", "+"), e.Device.IP, u.style("38;5;245", "discovered"))
@@ -59,15 +66,24 @@ func (u *UI) Clear() {
 	}
 }
 func fit(s string, n int) string {
-	s = scanner.CleanText(s)
-	r := []rune(s)
-	if len(r) > n {
-		if n < 2 {
-			return ""
-		}
-		return string(r[:n-1]) + "…"
+	if n <= 0 {
+		return ""
 	}
-	return s + strings.Repeat(" ", n-utf8.RuneCountInString(s))
+	s = scanner.CleanText(s)
+	if width := uniseg.StringWidth(s); width <= n {
+		return s + strings.Repeat(" ", n-width)
+	}
+	var out strings.Builder
+	used := 0
+	g := uniseg.NewGraphemes(s)
+	for g.Next() {
+		if used+g.Width() > n-1 {
+			break
+		}
+		out.WriteString(g.Str())
+		used += g.Width()
+	}
+	return out.String() + "…" + strings.Repeat(" ", n-used-1)
 }
 func (u *UI) Report(r scanner.Report) {
 	u.Clear()
@@ -79,7 +95,17 @@ func (u *UI) Report(r scanner.Report) {
 			responsive++
 		}
 	}
-	fmt.Fprintf(u.Out, "\n  %s  %s  %s\n\n", u.style("1;38;5;158", fmt.Sprintf("%d devices", len(r.Devices))), u.style("38;5;81", fmt.Sprintf("%d open ports", open)), u.style("38;5;245", fmt.Sprintf("%.2fs · %d addresses", float64(r.DurationMS)/1000, r.Probed)))
+	counts := []string{fmt.Sprintf("%d devices", len(r.Devices)), fmt.Sprintf("%d open ports", open), fmt.Sprintf("%.2fs · %d addresses", float64(r.DurationMS)/1000, r.Probed)}
+	styles := []string{"1;38;5;158", "38;5;81", "38;5;245"}
+	if uniseg.StringWidth("  "+strings.Join(counts, "  ")) > u.Width {
+		fmt.Fprintln(u.Out)
+		for i, count := range counts {
+			fmt.Fprintf(u.Out, "  %s\n", u.style(styles[i], strings.TrimRight(fit(count, max(1, u.Width-2)), " ")))
+		}
+		fmt.Fprintln(u.Out)
+	} else {
+		fmt.Fprintf(u.Out, "\n  %s  %s  %s\n\n", u.style(styles[0], counts[0]), u.style(styles[1], counts[1]), u.style(styles[2], counts[2]))
+	}
 	if r.AddressMode == "discovered" {
 		fmt.Fprintln(u.Out, "  IPv6 discovery · observed addresses on this interface")
 		fmt.Fprintln(u.Out)
@@ -106,6 +132,8 @@ func (u *UI) Report(r scanner.Report) {
 				name = d.Identity.Name
 			} else if name == "" && d.Identity.Model != "" {
 				name = d.Identity.Model
+			} else if name == "" && d.Identity.Firmware != "" {
+				name = d.Identity.Firmware
 			}
 		}
 		if name == "" {
@@ -138,9 +166,25 @@ func (u *UI) Report(r scanner.Report) {
 			fmt.Fprintf(u.Out, "    %s\n", fit(name, max(12, u.Width-6)))
 			fmt.Fprintf(u.Out, "    %s\n", u.style("38;5;245", fit(mac+" · "+services, max(12, u.Width-6))))
 		}
-		if d.Identity != nil && d.Identity.Model != "" {
+		if d.Identity != nil && d.Identity.Firmware != "" {
+			label := strings.TrimSpace(d.Identity.Firmware + " " + d.Identity.FirmwareVersion)
+			fmt.Fprintf(u.Out, "    %s\n", u.style("38;5;245", fit("Firmware · "+label, max(12, u.Width-6))))
+		}
+		for _, port := range d.Ports {
+			if port.Fingerprint != nil {
+				fmt.Fprintf(u.Out, "    %s\n", u.style("38;5;245", fit(fmt.Sprintf("Catalog · TCP %d · %s", port.Number, port.Fingerprint.Summary()), max(12, u.Width-6))))
+			}
+		}
+		if role := d.Vendor.AddressRole; role != nil {
+			fmt.Fprintf(u.Out, "    %s\n", u.style("38;5;245", fit(fmt.Sprintf("MAC range · %s · ID %d", role.Name, role.Identifier), max(12, u.Width-6))))
+		}
+		if d.Identity != nil && (d.Identity.Model != "" || len(d.Identity.ModelNames) > 0) {
 			label := d.Identity.Model
-			if len(d.Identity.ModelNames) == 1 {
+			if label == "" && len(d.Identity.ModelNames) == 1 {
+				label = "Catalog · " + d.Identity.ModelNames[0]
+			} else if label == "" {
+				label = fmt.Sprintf("Catalog · %d possible models", len(d.Identity.ModelNames))
+			} else if len(d.Identity.ModelNames) == 1 {
 				label = d.Identity.ModelNames[0] + " · " + label
 			} else if len(d.Identity.ModelNames) > 1 {
 				label += fmt.Sprintf(" · %d possible models", len(d.Identity.ModelNames))
@@ -151,26 +195,25 @@ func (u *UI) Report(r scanner.Report) {
 			fmt.Fprintf(u.Out, "    %s\n", u.style("38;5;245", fit(label, max(12, u.Width-6))))
 		}
 	}
-	fmt.Fprintf(u.Out, "\n  %s\n", u.style("38;5;245", fmt.Sprintf("● %d responsive   ○ %d cached neighbors", responsive, len(r.Devices)-responsive)))
+	fmt.Fprintln(u.Out)
+	for _, line := range wrapCells(fmt.Sprintf("● %d responsive   ○ %d cached neighbors", responsive, len(r.Devices)-responsive), max(1, u.Width-2)) {
+		fmt.Fprintf(u.Out, "  %s\n", u.style("38;5;245", line))
+	}
 	if r.ICMP != nil && (r.ICMP.Retries > 0 || r.ICMP.Failed > 0) {
 		fmt.Fprintf(u.Out, "  ICMP · %d sent · %d retries · %d unsent\n", r.ICMP.Sent, r.ICMP.Retries, r.ICMP.Failed)
 	}
 	for _, w := range r.Warnings {
 		fmt.Fprintf(u.Out, "  %s %s\n", u.style("38;5;220", "!"), scanner.CleanText(w))
 	}
+	if r.Error != "" {
+		fmt.Fprintln(u.Out, "  Scan failed; partial results shown:", scanner.CleanText(r.Error))
+	}
 	if r.Cancelled {
 		fmt.Fprintln(u.Out, "  Scan interrupted; partial results shown.")
 	}
 	fmt.Fprintln(u.Out)
 }
-func live(d scanner.Device) bool {
-	for _, e := range d.Evidence {
-		if e == "arp" || e == "icmp" || e == "tcp-open" || e == "tcp-refused" || e == "mdns" || e == "ssdp" || e == "local-interface" {
-			return true
-		}
-	}
-	return false
-}
+func live(d scanner.Device) bool { return d.Responsive() }
 
 func (u *UI) Details(r scanner.Report) {
 	for _, d := range r.Devices {
@@ -183,10 +226,20 @@ func (u *UI) Details(r scanner.Report) {
 		field("Names", strings.Join(d.Names, ", "))
 		field("MAC", d.MAC)
 		field("Vendor", d.Vendor.Name)
+		if role := d.Vendor.AddressRole; role != nil {
+			field("MAC range", role.Name)
+			field("Range ID", fmt.Sprint(role.Identifier))
+			field("Prefix", role.Prefix)
+			for _, reference := range role.References {
+				field("Range source", reference)
+			}
+		}
 		if d.Identity != nil {
 			field("Reported name", d.Identity.Name)
 			field("Maker", d.Identity.Manufacturer)
 			field("Model", d.Identity.Model)
+			field("Firmware", d.Identity.Firmware)
+			field("FW version", d.Identity.FirmwareVersion)
 			for _, name := range d.Identity.ModelNames {
 				label := "Catalog model"
 				if len(d.Identity.ModelNames) > 1 {
@@ -202,6 +255,9 @@ func (u *UI) Details(r scanner.Report) {
 				if c.Catalog != "" {
 					detail += " · " + c.Catalog
 				}
+				if c.Reference != "" {
+					detail += " · " + c.Reference
+				}
 				field("Source", detail)
 			}
 		}
@@ -212,6 +268,21 @@ func (u *UI) Details(r scanner.Report) {
 		field("Evidence", strings.Join(d.Evidence, ", "))
 		for _, p := range d.Ports {
 			field("TCP open", fmt.Sprintf("%d · %s  %s", p.Number, p.Service, p.Banner))
+			if match := p.Fingerprint; match != nil {
+				field("Catalog", match.Name)
+				field("Match field", match.Field)
+				field("Catalog src", match.Reference)
+				field("Certainty", match.Certainty)
+				field("Preference", match.Preference)
+				keys := make([]string, 0, len(match.Fields))
+				for key := range match.Fields {
+					keys = append(keys, key)
+				}
+				sort.Strings(keys)
+				for _, key := range keys {
+					field("Catalog claim", key+" = "+match.Fields[key])
+				}
+			}
 		}
 		for _, a := range d.Advertisements {
 			field(strings.ToUpper(a.Protocol), a.Instance+" "+a.Service)

@@ -146,7 +146,38 @@ func TestKindIsIndependentOfProbeCompletionOrder(t *testing.T) {
 	if inferKind(a) != "printer" || inferKind(a) != inferKind(b) {
 		t.Fatal(inferKind(a), inferKind(b))
 	}
-	if inferKind(Device{Advertisements: []Advertisement{{Service: "_ipp._tcp"}}}) != "printer" {
+	if inferKind(Device{Advertisements: []Advertisement{{Protocol: "mdns", Service: "_ipp._tcp"}}}) != "printer" {
 		t.Fatal("missed advertised printer")
+	}
+}
+
+func TestCleanTextPreservesJoinersButRejectsDirectionControls(t *testing.T) {
+	const text = "👩‍💻 فارسی\u200cمتن"
+	if got := CleanText(text + "\u202e\u2066\u2069\u200b\x1b\u009b"); got != text {
+		t.Fatalf("%q", got)
+	}
+}
+
+func TestCorePortPlanDeduplicatesWithoutMutatingCaller(t *testing.T) {
+	o := Defaults()
+	o.Target = netip.MustParsePrefix("10.0.0.1/32")
+	o.ICMP, o.Multicast, o.Resolve, o.Descriptions = false, false, false, false
+	o.Ports = []uint16{8080, 22, 8080, 443, 80, 8080, 443}
+	before := fmt.Sprint(o.Ports)
+	f := &fakeDialer{}
+	r, err := (Engine{Dialer: f, NeighborSource: noNeighbors}).Scan(context.Background(), o, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if f.calls.Load() != 4 || len(r.Devices) != 1 || len(r.Devices[0].Ports) != 1 {
+		t.Fatalf("duplicate probes: calls=%d devices=%+v", f.calls.Load(), r.Devices)
+	}
+	if fmt.Sprint(o.Ports) != before || fmt.Sprint(r.Coverage.TCPPorts) != "[22 80 443 8080]" {
+		t.Fatalf("caller=%v coverage=%+v", o.Ports, r.Coverage)
+	}
+	o.Ports = append(o.Ports, 0)
+	_, err = (Engine{Dialer: f, NeighborSource: noNeighbors}).Scan(context.Background(), o, nil)
+	if err == nil || f.calls.Load() != 4 {
+		t.Fatal("zero port must fail before probing", err, f.calls.Load())
 	}
 }

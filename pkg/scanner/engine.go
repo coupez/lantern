@@ -3,7 +3,7 @@ package scanner
 import (
 	"context"
 	"fmt"
-	"lantern/pkg/vendors"
+	"github.com/coupez/lantern/pkg/vendors"
 	"net"
 	"net/netip"
 	"sort"
@@ -15,8 +15,12 @@ import (
 type Engine struct {
 	Dialer         Dialer
 	NeighborSource func(context.Context) (map[netip.Addr]string, error)
+	// NetBIOSSource optionally replaces the UDP node-status exchange.
+	NetBIOSSource func(context.Context, []netip.Addr, time.Duration) (NetBIOSResult, error)
 	// ARPSource optionally replaces native ARP exchange for integrations/tests.
 	ARPSource func(context.Context, Options, []netip.Addr) (ARPResult, error)
+	// NDPSource optionally replaces native IPv6 neighbor solicitation.
+	NDPSource func(context.Context, Options, []netip.Addr) (NDPResult, error)
 }
 
 func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, error) {
@@ -37,18 +41,35 @@ func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, 
 	if o.ARP && !o.Target.Addr().Is4() {
 		return r, fmt.Errorf("ARP requires an IPv4 target; IPv6 uses neighbor discovery")
 	}
-	requestedPorts := make(map[uint16]bool, len(o.Ports))
+	if o.NDP && !o.Target.Addr().Is6() {
+		return r, fmt.Errorf("NDP requires an IPv6 target; IPv4 uses ARP")
+	}
+	if o.NetBIOS && !o.Target.Addr().Is4() {
+		return r, fmt.Errorf("NetBIOS discovery requires an IPv4 target")
+	}
+	requestedPorts := make(map[uint16]bool, min(len(o.Ports), 65535))
+	ports := make([]uint16, 0, min(len(o.Ports), 65535))
 	for _, p := range o.Ports {
 		if p == 0 {
 			return r, fmt.Errorf("port must be between 1 and 65535")
 		}
-		requestedPorts[p] = true
+		if !requestedPorts[p] {
+			requestedPorts[p] = true
+			ports = append(ports, p)
+		}
 	}
+	o.Ports = ports // Own the execution plan; never change the caller's slice.
+	if o.NDP && o.Interface == "" && e.NDPSource == nil {
+		if link, err := ndpInterface(o.Target, ""); err == nil {
+			o.Interface = link.iface.Name
+		}
+	}
+	r.Coverage = coverageFor(o)
 	sparse := sparseIPv6(o.Target, o.MaxHosts)
 	if o.Target.Addr().Is6() && !sparse && o.Target.Addr().IsLinkLocalUnicast() && o.Interface == "" {
 		return r, fmt.Errorf("link-local IPv6 target needs --interface or an %%interface zone")
 	}
-	if o.Target.Addr().Is6() && o.Interface != "" {
+	if o.Interface != "" {
 		if _, err := net.InterfaceByName(o.Interface); err != nil {
 			return r, err
 		}
@@ -84,6 +105,7 @@ func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, 
 	var mu sync.Mutex
 	found := map[netip.Addr]*Device{}
 	warnings := map[string]bool{}
+	incomplete := map[string]bool{}
 	attempted := map[netip.Addr]bool{}
 	tcpAttempts, tcpErrors := 0, 0
 	markAttempt := func(ip netip.Addr) { mu.Lock(); attempted[ip] = true; mu.Unlock() }
@@ -91,10 +113,15 @@ func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, 
 		if emit != nil {
 			emit(v)
 		}
-	} // Called under mu: callbacks are serialized.
-	warn := func(err error) {
+	} // Concurrent producers hold mu; phase/done events follow producer joins.
+	warn := func(method string, err error) {
 		if err != nil {
 			mu.Lock()
+			// Keep structured failures even when human-readable warnings hit
+			// their cap. Cancellation is recorded independently on the report.
+			if ctx.Err() == nil {
+				incomplete[method] = true
+			}
 			message := err.Error()
 			if len(warnings) < 16 {
 				warnings[message] = true
@@ -120,29 +147,22 @@ func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, 
 			d.Evidence = append(d.Evidence, evidence)
 		}
 		if port > 0 {
-			exists := false
-			for _, p := range d.Ports {
-				if p.Number == port {
-					exists = true
-				}
+			// Only TCP jobs supply ports. The owned, deduplicated plan probes
+			// each address/port once across discovery and the remaining ports.
+			// Rescanning the growing slice here would make all-open scans O(P²).
+			service := serviceName(port)
+			if service == "" {
+				service = "unknown"
 			}
-			if !exists {
-				service := serviceName(port)
-				if service == "" {
-					service = "unknown"
-				}
-				d.Ports = append(d.Ports, Port{Number: port, Service: service})
-			}
+			d.Ports = append(d.Ports, Port{Number: port, Service: service})
 		}
-		if fresh {
-			snapshot := *d
-			snapshot.Evidence = append([]string{}, d.Evidence...)
-			snapshot.Ports = append([]Port{}, d.Ports...)
+		if fresh && emit != nil {
+			snapshot := d.Clone()
 			event(Event{Type: "device", Device: &snapshot})
 		}
 	}
-	for _, err := range seeds.warnings {
-		warn(err)
+	for _, w := range seeds.warnings {
+		warn(w.method, w.err)
 	}
 	if sparse {
 		for _, ip := range hosts {
@@ -174,17 +194,37 @@ func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, 
 			func(ctx context.Context, p netip.Prefix, t time.Duration) ([]discoveryHit, error) {
 				return ssdpSweepOn(ctx, p, t, o.Interface)
 			},
+			func(ctx context.Context, p netip.Prefix, t time.Duration) ([]discoveryHit, error) {
+				return wsdSweepOn(ctx, p, t, o.Interface)
+			},
 		} {
 			discoveryWG.Add(1)
 			go func(sweep func(context.Context, netip.Prefix, time.Duration) ([]discoveryHit, error)) {
 				defer discoveryWG.Done()
 				hits, err := sweep(ctx, o.Target, max(o.Timeout, time.Second))
-				warn(err)
+				warn("multicast", err)
 				mu.Lock()
 				discovered = append(discovered, hits...)
 				mu.Unlock()
 			}(sweep)
 		}
+	}
+	var netbiosWG sync.WaitGroup
+	var netbiosResult NetBIOSResult
+	if o.NetBIOS {
+		netbiosWG.Add(1)
+		go func() {
+			defer netbiosWG.Done()
+			source := e.NetBIOSSource
+			if source == nil {
+				source = netbiosSweep
+			}
+			var err error
+			netbiosResult, err = source(ctx, hosts, o.Timeout)
+			if ctx.Err() == nil {
+				warn("netbios", err)
+			}
+		}()
 	}
 	var arpWG sync.WaitGroup
 	var arpResult ARPResult
@@ -199,7 +239,24 @@ func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, 
 			var err error
 			arpResult, err = source(ctx, o, hosts)
 			if ctx.Err() == nil {
-				warn(err)
+				warn("arp", err)
+			}
+		}()
+	}
+	var ndpWG sync.WaitGroup
+	var ndpResult NDPResult
+	if o.NDP {
+		ndpWG.Add(1)
+		go func() {
+			defer ndpWG.Done()
+			source := e.NDPSource
+			if source == nil {
+				source = ndpSweep
+			}
+			var err error
+			ndpResult, err = source(ctx, o, hosts)
+			if ctx.Err() == nil {
+				warn("ndp", err)
 			}
 		}()
 	}
@@ -210,7 +267,7 @@ func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, 
 			defer pingWG.Done()
 			stats, err := pingSweep(ctx, hosts, o.Timeout, func(h pingHit) { add(h.IP, "icmp", h.RTT, 0) }, markAttempt)
 			r.ICMP = &stats
-			warn(err)
+			warn("icmp", err)
 		}()
 	}
 	type job struct {
@@ -218,7 +275,7 @@ func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, 
 		port uint16
 	}
 
-	run := func(addresses []netip.Addr, ports []uint16) {
+	run := func(addresses []netip.Addr, ports []uint16, phase string) {
 		total := len(addresses) * len(ports)
 		lastProgress := time.Time{}
 		ch := make(chan job)
@@ -235,7 +292,7 @@ func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, 
 					markAttempt(j.ip)
 					alive, open, rtt, err := dialer.Probe(ctx, j.ip, j.port, o.Timeout)
 					if err != nil {
-						warn(err)
+						warn("tcp", err)
 					}
 					if alive {
 						var port uint16
@@ -256,7 +313,7 @@ func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, 
 					completed++
 					if completed == total || time.Since(lastProgress) > 100*time.Millisecond {
 						lastProgress = time.Now()
-						event(Event{Type: "progress", Completed: completed, Total: total})
+						event(Event{Type: "progress", Phase: phase, Completed: completed, Total: total})
 					}
 					mu.Unlock()
 				}
@@ -279,27 +336,64 @@ func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, 
 	if len(o.Ports) == 0 {
 		discovery = nil
 	}
-	run(hosts, discovery)
+	// Direct targets already qualify for every requested port. Run those jobs
+	// alongside the liveness probes instead of waiting for discovery timeouts
+	// and non-TCP discovery passes before starting the requested services.
+	probeAllTargets := o.AllHosts || o.Target.Bits() == o.Target.Addr().BitLen()
+	if probeAllTargets {
+		initialPorts := append([]uint16(nil), o.Ports...)
+		for _, p := range discovery {
+			if !requestedPorts[p] {
+				initialPorts = append(initialPorts, p)
+			}
+		}
+		run(hosts, initialPorts, "ports")
+	} else {
+		run(hosts, discovery, "discovery")
+	}
 	pingWG.Wait()
 	discoveryWG.Wait()
 	arpWG.Wait()
-	for _, ip := range arpResult.Probed {
+	ndpWG.Wait()
+	netbiosWG.Wait()
+	for _, ip := range netbiosResult.Probed {
 		if targeted[ip] {
 			markAttempt(ip)
 		}
 	}
-	for _, n := range arpResult.Neighbors {
-		if !targeted[n.IP] {
+	seenNetBIOS := map[netip.Addr]bool{}
+	for _, reply := range netbiosResult.Replies {
+		if !targeted[reply.IP] || seenNetBIOS[reply.IP] {
 			continue
 		}
-		mac, err := net.ParseMAC(n.MAC)
-		if err != nil || !validEthernetMAC(mac) {
-			continue
+		seenNetBIOS[reply.IP] = true
+		discovered = append(discovered, netbiosHit(reply))
+	}
+	for _, result := range []struct {
+		evidence  string
+		probed    []netip.Addr
+		neighbors []Neighbor
+	}{
+		{"arp", arpResult.Probed, arpResult.Neighbors}, {"ndp", ndpResult.Probed, ndpResult.Neighbors},
+	} {
+		for _, ip := range result.probed {
+			if targeted[ip] {
+				markAttempt(ip)
+			}
 		}
-		add(n.IP, "arp", n.RTT, 0)
-		d := found[n.IP]
-		d.MAC = mac.String()
-		d.Vendor, _ = vendors.Lookup(d.MAC)
+		for _, n := range result.neighbors {
+			if !targeted[n.IP] {
+				continue
+			}
+			mac, err := net.ParseMAC(n.MAC)
+			if err != nil || !validEthernetMAC(mac) {
+				continue
+			}
+			add(n.IP, result.evidence, n.RTT, 0)
+			d := found[n.IP]
+			d.MAC = mac.String()
+			d.Vendor, _ = vendors.Lookup(d.MAC)
+		}
 	}
 	for _, h := range discovered {
 		add(h.IP, h.Evidence, 0, 0)
@@ -317,18 +411,18 @@ func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, 
 		if o.Target.Addr().Is6() {
 			source = func(ctx context.Context) (map[netip.Addr]string, error) { return neighbors6(ctx, o.Interface) }
 		} else {
-			source = neighbors
+			source = func(ctx context.Context) (map[netip.Addr]string, error) { return neighborsOn(ctx, o.Interface) }
 		}
 	}
 	table, err := source(ctx)
 	if ctx.Err() == nil {
-		warn(err)
+		warn("neighbors", err)
 	}
 	for _, ip := range hosts {
 		if mac, ok := table[ip]; ok {
 			add(ip, "neighbor-cache", 0, 0)
 			d := found[ip]
-			if !contains(d.Evidence, "arp") {
+			if !contains(d.Evidence, "arp") && !contains(d.Evidence, "ndp") {
 				d.MAC = mac
 				d.Vendor, _ = vendors.Lookup(mac)
 			}
@@ -341,7 +435,7 @@ func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, 
 	}
 	for _, network := range networks {
 		ip, err := netip.ParseAddr(network.Address)
-		if err != nil || !targeted[ip] || (o.Target.Addr().Is6() && o.Interface != "" && network.Interface != o.Interface) {
+		if err != nil || !targeted[ip] || (o.Interface != "" && network.Interface != o.Interface) {
 			continue
 		}
 		add(ip, "local-interface", 0, 0)
@@ -351,27 +445,32 @@ func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, 
 			d.Vendor, _ = vendors.Lookup(d.MAC)
 		}
 	}
-	var scanHosts []netip.Addr
-	for _, ip := range hosts {
-		if found[ip] != nil || o.Target.Bits() == o.Target.Addr().BitLen() || o.AllHosts {
-			scanHosts = append(scanHosts, ip)
-		}
-	}
-	var scanPorts []uint16
-	for _, p := range o.Ports {
-		skip := false
-		for _, dp := range discovery {
-			if p == dp {
-				skip = true
+	if !probeAllTargets {
+		var scanHosts []netip.Addr
+		for _, ip := range hosts {
+			if found[ip] != nil {
+				scanHosts = append(scanHosts, ip)
 			}
 		}
-		if !skip {
-			scanPorts = append(scanPorts, p)
+		var scanPorts []uint16
+		for _, p := range o.Ports {
+			skip := false
+			for _, dp := range discovery {
+				if p == dp {
+					skip = true
+				}
+			}
+			if !skip {
+				scanPorts = append(scanPorts, p)
+			}
 		}
+		run(scanHosts, scanPorts, "ports")
 	}
-	run(scanHosts, scanPorts)
 	// Enrichment is bounded independently; slow DNS cannot hold sockets open.
+	enriched := 0
+	event(Event{Type: "progress", Phase: "enrichment", Total: len(found)})
 	enrich := make(chan *Device)
+	bannerSlots := make(chan struct{}, min(32, o.Concurrency))
 	var wg sync.WaitGroup
 	for i := 0; i < min(32, len(found)); i++ {
 		wg.Add(1)
@@ -392,9 +491,7 @@ func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, 
 					}
 				}
 				if o.Banners && ctx.Err() == nil {
-					for i := range d.Ports {
-						d.Ports[i].Banner = readBanner(ctx, d.IP, d.Ports[i], o.Timeout)
-					}
+					enrichBannerObservations(ctx, d, o.Timeout, bannerSlots, readBannerObservation)
 				}
 				if o.Descriptions && ctx.Err() == nil {
 					enrichDescriptions(ctx, d, o.Timeout)
@@ -405,6 +502,13 @@ func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, 
 				d.Kind = inferKind(*d)
 				sort.Slice(d.Ports, func(i, j int) bool { return d.Ports[i].Number < d.Ports[j].Number })
 				sort.Strings(d.Evidence)
+				if emit != nil {
+					snapshot := d.Clone()
+					mu.Lock()
+					enriched++
+					event(Event{Type: "device_update", Phase: "enrichment", Device: &snapshot, Completed: enriched, Total: len(found)})
+					mu.Unlock()
+				}
 			}
 		}()
 	}
@@ -421,12 +525,18 @@ func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, 
 		r.Warnings = append(r.Warnings, w)
 	}
 	sort.Strings(r.Warnings)
+	for method := range incomplete {
+		r.IncompleteMethods = append(r.IncompleteMethods, method)
+	}
+	sort.Strings(r.IncompleteMethods)
 	r.Cancelled = ctx.Err() != nil
 	r.DurationMS = time.Since(start).Milliseconds()
 	r.Probed = len(attempted)
 	event(Event{Type: "done", Completed: r.Probed, Total: len(hosts)})
 	if tcpAttempts > 0 && tcpErrors == tcpAttempts && !r.Cancelled {
-		return r, fmt.Errorf("all TCP probes failed; check network permissions (first errors: %v)", r.Warnings)
+		err := fmt.Errorf("all TCP probes failed; check network permissions (first errors: %v)", r.Warnings)
+		r.Error = err.Error()
+		return r, err
 	}
 	return r, nil
 }
@@ -437,38 +547,4 @@ func contains(s []string, v string) bool {
 		}
 	}
 	return false
-}
-
-// inferKind returns a stable hint derived from advertised or reachable services.
-func inferKind(d Device) string {
-	services := ""
-	for _, a := range d.Advertisements {
-		services += " " + strings.ToLower(a.Service)
-	}
-	for _, rule := range []struct{ needle, kind string }{{"_ipp", "printer"}, {"_printer", "printer"}, {"internetgatewaydevice", "router"}, {"_home-assistant", "smart home hub"}, {"_hap.", "smart home device"}, {"_googlecast", "media"}, {"_airplay", "media"}, {"_raop", "media"}, {"mediarenderer", "media"}} {
-		if strings.Contains(services, rule.needle) {
-			return rule.kind
-		}
-	}
-	has := func(port uint16) bool {
-		for _, p := range d.Ports {
-			if p.Number == port {
-				return true
-			}
-		}
-		return false
-	}
-	if has(631) || has(9100) {
-		return "printer"
-	}
-	if has(8008) || has(8009) || has(7000) {
-		return "media"
-	}
-	if has(554) {
-		return "camera / media"
-	}
-	if has(445) || has(3389) {
-		return "computer / NAS"
-	}
-	return "device"
 }

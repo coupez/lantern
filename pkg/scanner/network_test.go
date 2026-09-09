@@ -32,6 +32,7 @@ func testNetworkIntegration(t *testing.T, address string) {
 			go func() {
 				defer c.Close()
 				c.SetDeadline(time.Now().Add(time.Second))
+				fmt.Fprint(c, "Authorized fixture use only\r\n\r\n")
 				fmt.Fprint(c, "SSH-2.0-Lantern_Test\r\n")
 			}()
 		}

@@ -7,22 +7,23 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"github.com/coupez/lantern/internal/ui"
+	"github.com/coupez/lantern/pkg/fingerprints"
+	"github.com/coupez/lantern/pkg/models"
+	"github.com/coupez/lantern/pkg/scanner"
+	"github.com/coupez/lantern/pkg/vendors"
 	"io"
-	"lantern/internal/ui"
-	"lantern/pkg/models"
-	"lantern/pkg/scanner"
-	"lantern/pkg/vendors"
 	"net"
 	"os"
 	"os/signal"
-	"runtime"
 	"strconv"
 	"strings"
 	"syscall"
 	"time"
 )
 
-var version = "0.1.0-dev"
+// Set by release builds; go install uses the module version when unset.
+var version string
 
 func main() {
 	if err := run(os.Args[1:]); err != nil {
@@ -43,7 +44,7 @@ func run(args []string) error {
 		help()
 		return nil
 	case "version":
-		fmt.Println("lantern", version)
+		fmt.Println("lantern", buildVersion())
 		return nil
 	case "interfaces":
 		n, err := scanner.Networks()
@@ -56,16 +57,41 @@ func run(args []string) error {
 			fmt.Printf("%-12s %-39s %s\n", v.Interface, v.CIDR, v.MAC)
 		}
 		return nil
+	case "fingerprint":
+		if len(args) == 0 {
+			fmt.Printf("%d offline SSH/HTTP/FTP/SMTP/IMAP/POP3 banner patterns · Rapid7 Recog catalog claims\n", fingerprints.Count())
+			return nil
+		}
+		if len(args) == 1 && args[0] == "sources" {
+			fmt.Print(fingerprints.Sources)
+			return nil
+		}
+		if len(args) != 2 || (args[0] != "ssh" && args[0] != "http" && args[0] != "ftp" && args[0] != "smtp" && args[0] != "imap" && args[0] != "pop3") {
+			return errors.New("usage: lantern fingerprint [ssh SOFTWARE_AND_COMMENTS | http SERVER_HEADER | ftp GREETING_TEXT | smtp GREETING_TEXT | imap GREETING_TEXT | pop3 GREETING_TEXT | sources]")
+		}
+		field := fingerprints.HTTPServer
+		if args[0] == "ssh" {
+			field = fingerprints.SSHBanner
+		} else if args[0] == "ftp" {
+			field = fingerprints.FTPBanner
+		} else if args[0] == "smtp" {
+			field = fingerprints.SMTPBanner
+		} else if args[0] == "imap" {
+			field = fingerprints.IMAPBanner
+		} else if args[0] == "pop3" {
+			field = fingerprints.POP3Banner
+		}
+		return json.NewEncoder(os.Stdout).Encode(fingerprints.Lookup(field, args[1]))
 	case "models":
 		if len(args) == 0 {
-			fmt.Printf("%d offline AppleDB hardware identifiers · exact matches with all candidates\n", models.Count())
+			fmt.Printf("%d offline AppleDB/Shelly hardware identifiers · exact matches with all candidates\n", models.Count())
 			return nil
 		}
 		if len(args) != 1 {
 			return errors.New("usage: lantern models [IDENTIFIER | sources]")
 		}
 		if args[0] == "sources" {
-			return json.NewEncoder(os.Stdout).Encode(models.Provenance())
+			return json.NewEncoder(os.Stdout).Encode(models.Sources())
 		}
 		return json.NewEncoder(os.Stdout).Encode(models.Lookup(args[0]))
 	case "vendors":
@@ -98,23 +124,13 @@ func run(args []string) error {
 		}
 		return json.NewEncoder(os.Stdout).Encode(scanner.Diff(a, b))
 	case "doctor":
-		fmt.Printf("Lantern %s · %s/%s\nOffline vendor assignments: %d\n", version, runtime.GOOS, runtime.GOARCH, vendors.Count())
-		n, err := scanner.Networks()
-		if err != nil {
-			return err
-		}
-		for _, v := range n {
-			fmt.Printf("Network: %s on %s\n", v.CIDR, v.Interface)
-		}
-		fmt.Println("Discovery: ICMP echo + TCP connect + neighbor cache\nNo account, cloud lookup, telemetry, or root required on macOS.\nLinux ICMP availability depends on ping_group_range; TCP remains available.")
-		return nil
+		ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		defer cancel()
+		return doctorCommand(ctx, args, os.Stdout, scanner.Diagnose)
 	case "wake":
 		return wake(args)
 	case "demo":
-		u := ui.New(os.Stdout, false)
-		u.Intro("192.168.1.0/24", "DEMO · synthetic data")
-		u.Report(demo())
-		return nil
+		return demoCommand(args)
 	case "inspect":
 		return scan(append([]string{"--profile", "deep", "--details"}, args...), false)
 	case "scan", "watch":
@@ -130,15 +146,17 @@ func help() {
   lantern                         Discover your local network
   lantern scan [CIDR | IP]        Scan a network or single host
   lantern inspect IP              Detailed device and service inspection
-  lantern watch [CIDR]            Repeat scans and report changes
+  lantern watch [CIDR]            Live dashboard and network changes
   lantern interfaces              List available IPv4/IPv6 networks
   lantern lookup MAC              Identify a MAC vendor offline
+  lantern fingerprint [TYPE TEXT] Offline service recognition
+                                  TYPE: ssh, http, ftp, smtp, imap, pop3; or sources
   lantern models [IDENTIFIER]     Look up hardware model candidates offline
   lantern vendors [sources]       Database size and provenance
   lantern diff before.json after.json
   lantern wake MAC [broadcast-IP] Send a Wake-on-LAN packet
-  lantern doctor                  Check local capabilities
-  lantern demo                    Preview the CLI with sample data
+  lantern doctor [--json]         Check local capabilities without sending probes
+  lantern demo [--watch]          Preview with synthetic data; no network use
 
   Scan options
     --profile quick|standard|deep  Default: standard
@@ -148,17 +166,20 @@ func help() {
     --interface en0                Select local network / IPv6 zone
     --ipv6                         Discover local IPv6 neighbors
     --arp                          Direct IPv4 ARP (needs raw link access)
+    --ndp                          Direct IPv6 NDP (needs raw link access)
+    --netbios                      IPv4 NetBIOS names (deep default)
     --json | --jsonl | --csv        Structured output
     --save scan.json               Save a snapshot atomically
     --no-dns | --no-icmp            Disable discovery components
-    --no-multicast                  Skip mDNS and SSDP (quick default)
-    --no-descriptions               Skip UPnP model/name reads
+    --no-multicast                  Skip mDNS, SSDP, WS-Discovery (quick default)
+    --no-descriptions               Skip UPnP/Shelly identity reads
     --details                      Show full device records
-    --banners                      Read SSH/HTTP/service banners
+    --banners                      Read SSH/HTTP/HTTPS/service banners
     --all-hosts                    Scan ports even on silent hosts
+    --plain                        Append watch reports without a dashboard
     --interval 10s                 Delay between watch scans
     --max-hosts 4096               Maximum target addresses
-    --no-color                     Plain output (also NO_COLOR)
+    --no-color                     Disable colors (also NO_COLOR)
 
   Examples
     lantern scan --ipv6 --interface en0
@@ -202,6 +223,7 @@ func scan(args []string, watch bool) error {
 	asJSONL := f.Bool("jsonl", false, "")
 	asCSV := f.Bool("csv", false, "")
 	noColor := f.Bool("no-color", false, "")
+	plain := f.Bool("plain", false, "append watch reports without a dashboard")
 	details := f.Bool("details", false, "")
 	noDNS := f.Bool("no-dns", false, "")
 	ipv6 := f.Bool("ipv6", false, "discover IPv6 neighbors on the selected interface")
@@ -213,6 +235,8 @@ func scan(args []string, watch bool) error {
 	f.IntVar(&o.Concurrency, "concurrency", o.Concurrency, "")
 	f.IntVar(&o.MaxHosts, "max-hosts", o.MaxHosts, "")
 	f.BoolVar(&o.Banners, "banners", false, "")
+	f.BoolVar(&o.NetBIOS, "netbios", false, "unicast IPv4 NetBIOS node-status discovery")
+	f.BoolVar(&o.NDP, "ndp", false, "direct IPv6 neighbor solicitation (requires raw link access)")
 	f.BoolVar(&o.ARP, "arp", false, "direct IPv4 ARP discovery (requires raw link access)")
 	f.BoolVar(&o.AllHosts, "all-hosts", false, "scan ports even without discovery responses")
 	f.Usage = help
@@ -286,10 +310,13 @@ func scan(args []string, watch bool) error {
 	} else if *ipv6 {
 		o.Target, o.Interface, err = scanner.AutoTarget6(*iface)
 	} else {
-		o.Target, err = scanner.AutoTarget(*iface)
+		o.Target, o.Interface, err = scanner.AutoTarget4(*iface)
 	}
 	if err != nil {
 		return err
+	}
+	if *profile == "deep" && !explicit["netbios"] && o.Target.Addr().Is4() {
+		o.NetBIOS = true
 	}
 	o.Resolve = !*noDNS
 	o.ICMP = !*noICMP
@@ -297,8 +324,31 @@ func scan(args []string, watch bool) error {
 	o.Descriptions = !*noDescriptions
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
+	if *asJSONL {
+		// Return EPIPE so streaming scans can cancel, join workers, and save.
+		signal.Ignore(syscall.SIGPIPE)
+		defer signal.Reset(syscall.SIGPIPE)
+	}
 	u := ui.New(os.Stderr, *noColor)
 	human := formats == 0
+	if watch && human && !*plain && ui.CanWatch(os.Stdin, os.Stdout) {
+		label := o.Target.String()
+		if o.Interface != "" {
+			label += " on " + o.Interface
+		}
+		return ui.RunWatch(ctx, os.Stdin, os.Stdout, ui.WatchOptions{
+			Target: label, Profile: *profile, Interval: *interval, NoColor: *noColor, Details: *details,
+			Scan: func(ctx context.Context, emit func(scanner.Event)) (scanner.Report, error) {
+				return (scanner.Engine{}).Scan(ctx, o, emit)
+			},
+			Complete: func(r scanner.Report) error {
+				if *save != "" {
+					return scanner.Save(*save, r)
+				}
+				return nil
+			},
+		})
+	}
 	enc := json.NewEncoder(os.Stdout)
 	var previous *scanner.Report
 	for {
@@ -309,52 +359,51 @@ func scan(args []string, watch bool) error {
 			}
 			u.Intro(label, *profile)
 		}
-		var outputErr error
-		report, err := (scanner.Engine{}).Scan(ctx, o, func(e scanner.Event) {
-			if human {
-				u.Progress(e)
+		output := scanOutput{}
+		if (human && u.Color) || *asJSONL {
+			output.Event = func(e scanner.Event) error {
+				if human {
+					u.Progress(e)
+				}
+				if *asJSONL {
+					return enc.Encode(e)
+				}
+				return nil
 			}
-			if *asJSONL && outputErr == nil {
-				outputErr = enc.Encode(e)
-			}
-		})
-		if err != nil {
-			u.Clear()
-			return err
-		}
-		if human {
-			u.Clear()
-		}
-		if outputErr != nil {
-			return outputErr
 		}
 		if *save != "" {
-			if err = scanner.Save(*save, report); err != nil {
-				return err
-			}
+			output.Save = func(r scanner.Report) error { return scanner.Save(*save, r) }
 		}
-		if human {
-			view := ui.New(os.Stdout, *noColor)
-			view.Report(report)
-			if *details {
-				view.Details(report)
+		output.Report = func(report scanner.Report) error {
+			if human {
+				view := ui.New(os.Stdout, *noColor)
+				view.Report(report)
+				if *details {
+					view.Details(report)
+				}
+				return nil
 			}
-		} else if *asJSON {
-			enc.SetIndent("", "  ")
-			if err = enc.Encode(report); err != nil {
-				return err
+			if *asJSON {
+				enc.SetIndent("", "  ")
+				return enc.Encode(report)
 			}
-		} else if *asJSONL {
-			if err = enc.Encode(struct {
-				Type   string         `json:"type"`
-				Report scanner.Report `json:"report"`
-			}{"report", report}); err != nil {
-				return err
+			if *asJSONL {
+				return enc.Encode(struct {
+					Type   string         `json:"type"`
+					Report scanner.Report `json:"report"`
+				}{"report", report})
 			}
-		} else {
-			if err = writeCSV(os.Stdout, report); err != nil {
-				return err
+			return writeCSV(os.Stdout, report)
+		}
+		report, err := scanWithOutput(ctx, func(ctx context.Context, emit func(scanner.Event)) (scanner.Report, error) {
+			r, err := (scanner.Engine{}).Scan(ctx, o, emit)
+			if human {
+				u.Clear()
 			}
+			return r, err
+		}, output)
+		if err != nil {
+			return err
 		}
 		if previous != nil && !report.Cancelled {
 			changes := scanner.Diff(*previous, report)
@@ -386,7 +435,7 @@ func scan(args []string, watch bool) error {
 }
 func writeCSV(w io.Writer, r scanner.Report) error {
 	c := csv.NewWriter(w)
-	if err := c.Write([]string{"ip", "mac", "vendor", "names", "ports", "evidence", "reported_name", "manufacturer", "model", "model_candidates"}); err != nil {
+	if err := c.Write([]string{"ip", "mac", "vendor", "names", "ports", "evidence", "reported_name", "manufacturer", "model", "model_candidates", "firmware", "firmware_version", "mac_address_role", "mac_address_role_id", "service_fingerprints"}); err != nil {
 		return err
 	}
 	for _, d := range r.Devices {
@@ -396,10 +445,22 @@ func writeCSV(w io.Writer, r scanner.Report) error {
 		}
 		row := []string{d.IP.String(), d.MAC, d.Vendor.Name, strings.Join(d.Names, ";"), strings.Join(p, ";"), strings.Join(d.Evidence, ";")}
 		if d.Identity != nil {
-			row = append(row, d.Identity.Name, d.Identity.Manufacturer, d.Identity.Model, strings.Join(d.Identity.ModelNames, ";"))
+			row = append(row, d.Identity.Name, d.Identity.Manufacturer, d.Identity.Model, strings.Join(d.Identity.ModelNames, ";"), d.Identity.Firmware, d.Identity.FirmwareVersion)
 		} else {
-			row = append(row, "", "", "", "")
+			row = append(row, "", "", "", "", "", "")
 		}
+		if role := d.Vendor.AddressRole; role != nil {
+			row = append(row, role.Name, strconv.Itoa(int(role.Identifier)))
+		} else {
+			row = append(row, "", "")
+		}
+		var matches []string
+		for _, port := range d.Ports {
+			if port.Fingerprint != nil {
+				matches = append(matches, fmt.Sprintf("%d/%s: %s", port.Number, port.Service, port.Fingerprint.Summary()))
+			}
+		}
+		row = append(row, strings.Join(matches, ";"))
 		for i, s := range row {
 			if len(s) > 0 && strings.ContainsAny(s[:1], "=+-@\t\r") {
 				row[i] = "'" + s
@@ -449,4 +510,53 @@ func demo() scanner.Report {
 	data := `[{"ip":"192.168.1.1","mac":"00:11:22:33:44:55","names":["gateway.home"],"vendor":{"name":"Example Networks"},"ports":[{"port":80,"service":"http"},{"port":443,"service":"https"}],"evidence":["icmp"]},{"ip":"192.168.1.12","mac":"ac:de:48:12:34:56","names":["studio-mac.local"],"ports":[{"port":22,"service":"ssh"}],"evidence":["tcp-open"]},{"ip":"192.168.1.24","mac":"02:12:34:56:78:90","vendor":{"private":true},"evidence":["neighbor-cache"]},{"ip":"192.168.1.40","mac":"00:80:77:12:34:56","names":["office-printer.local"],"ports":[{"port":631,"service":"ipp"},{"port":9100,"service":"printer"}],"evidence":["tcp-open"]}]`
 	json.Unmarshal([]byte(data), &r.Devices)
 	return r
+}
+
+func demoCommand(args []string) error {
+	f := flag.NewFlagSet("demo", flag.ContinueOnError)
+	watch := f.Bool("watch", false, "preview the interactive dashboard without scanning")
+	noColor := f.Bool("no-color", false, "disable color")
+	if err := f.Parse(args); err != nil {
+		if err == flag.ErrHelp {
+			return nil
+		}
+		return err
+	}
+	if f.NArg() != 0 {
+		return errors.New("usage: lantern demo [--watch] [--no-color]")
+	}
+	if !*watch {
+		u := ui.New(os.Stdout, *noColor)
+		u.Intro("192.168.1.0/24", "DEMO · synthetic data")
+		u.Report(demo())
+		return nil
+	}
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer cancel()
+	cycle := 0
+	return ui.RunWatch(ctx, os.Stdin, os.Stdout, ui.WatchOptions{Target: "192.168.1.0/24", Profile: "DEMO · synthetic data", Interval: 3 * time.Second, NoColor: *noColor,
+		Scan: func(ctx context.Context, emit func(scanner.Event)) (scanner.Report, error) {
+			r := demo()
+			r.Started = time.Now()
+			cycle++
+			if cycle%2 == 0 {
+				r.Devices = r.Devices[:3]
+			}
+			for i := range r.Devices {
+				timer := time.NewTimer(120 * time.Millisecond)
+				select {
+				case <-ctx.Done():
+					timer.Stop()
+					r.Devices = r.Devices[:i]
+					r.Cancelled = true
+					r.DurationMS = time.Since(r.Started).Milliseconds()
+					return r, nil
+				case <-timer.C:
+				}
+				emit(scanner.Event{Type: "device", Device: &r.Devices[i]})
+				emit(scanner.Event{Type: "progress", Completed: i + 1, Total: len(r.Devices)})
+			}
+			r.DurationMS = time.Since(r.Started).Milliseconds()
+			return r, nil
+		}})
 }

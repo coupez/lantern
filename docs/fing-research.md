@@ -29,6 +29,10 @@ The binaries were scanned for valid embedded zlib streams. Nine streams were ext
 
 ## What this establishes
 
+A second static pass inspected ARM64 routines in the previously hashed native package. `EthernetOuis::initSingleton()` at `0x10519c` obtains the configurable filename, calls an input-file stream's `open`, loads properties, parses hexadecimal keys, and inserts entries into a hash index. This is stronger evidence for a file-backed loader than the earlier filename strings alone; it did not recover an embedded OUI table.
+
+The agent's `RecogCatalog::recogCatalogLookup` at `0x100187fb0` calls `FingAgentInfo::getUserProfile` and then `RemoteFingBox::recogCatalogLookup`. This supports a remote-client path for the inspected catalog lookup. It does not establish that every recognition path is cloud-only or rule out caches and other embedded data. The original binary hashes were rechecked against the inventory. Addresses, hash checks, and bounded conclusions are recorded in `research/fing-static-analysis.json`; raw disassembly stays in the ignored extraction directory. No app, lookup service, or runtime cache was used.
+
 The downloaded packages do not expose the requested standalone MAC mapping file. We have not recovered Fing's complete proprietary recognition catalog and do not claim to have done so. Additional compiled data or data downloaded at runtime remains possible. No credentials, cloud recognition endpoints, or paid services were used.
 
 Local research artifacts are under `research/downloads/` and `research/extracted/`, excluded by `.gitignore`. Lantern's code and generated datasets have no dependency on those proprietary resources.
@@ -42,8 +46,14 @@ Local research artifacts are under `research/downloads/` and `research/extracted
 | mDNS / DNS-SD | Hostname, advertised service, model/TXT properties | Bounded local discovery implemented |
 | SSDP | Advertised service, server, USN, description URL | Descriptions now read from the responder IP with limits; embedded devices matched by UDN |
 | PyChromecast model table (MIT) | Exact Cast model → manufacturer | 40 mappings embedded from a pinned commit |
+| AppleDB (MIT) | Hardware identifiers → product candidates | 606 identifiers, 886 assignments; ambiguity preserved |
+| aioshelly (Apache-2.0) | Shelly model identifiers + generation → product names | 155 records; generation-aware matching and offline lookup |
 | Reverse DNS | PTR names | Bounded optional lookup |
-| SSH / HTTP / FTP / SMTP responses | Device-reported software banners | Bounded explicit/deep inspection |
-| Wireshark manuf / Nmap fingerprints / community catalogs | Potential extra mappings and fingerprints | Not imported; provenance and applicable source terms need evaluation |
+| SSH / HTTP / FTP / SMTP / IMAP / POP3 responses | Device-reported software banners | Bounded explicit/deep inspection, including HTTPS and implicit TLS mail greetings |
+| Wireshark manufacturer / well-known-address sources | IEEE-derived prefixes and protocol address roles | Pinned comparison found no additional global-unicast manufacturer prefixes; [review and provenance](manufacturer-source-review.md). No data imported |
+| Nmap MAC / service-probe catalogs | MAC prefixes and probe-dependent service matches | Pinned NPSL review; four extra MAC prefixes are virtual-NIC labels. No import; [review](banner-catalog-review.md#nmap) |
+| Rapid7 Recog SSH / HTTP / FTP / SMTP / IMAP / POP3 catalogs | 946 patterns over six collected banner fields | BSD-2-Clause; scoped port claims, with 1,597 examples and 2,411 expected fields verified; [recognition](recognition.md#banner-fingerprints), [initial review](banner-catalog-review.md#recog), and [mail review](mail-access-catalog-review.md) |
+| SmartThings Edge Matter catalog (Apache-2.0) | Exact Matter vendor/product identifiers → product candidates | 998 pairs embedded; [recognition and provenance](recognition.md) |
+| Matter and HomeKit protocol categories | Advertised type/category → device-type hints | 65 Matter types and 36 HomeKit categories; separate from exact product identity |
 
 MAC assignment alone cannot identify every device model or undo a randomized MAC. Lantern keeps protocol evidence distinct from inferred device types.

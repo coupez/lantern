@@ -1,0 +1,41 @@
+{
+  "reviewed_date": "2026-09-09",
+  "catalog_revision": "d3d20938da9f5f1e442c2419fe6c30cd651b6878",
+  "license": "BSD-2-Clause",
+  "sources": [
+    {
+      "path": "xml/imap_banners.xml",
+      "url": "https://raw.githubusercontent.com/rapid7/recog/d3d20938da9f5f1e442c2419fe6c30cd651b6878/xml/imap_banners.xml",
+      "bytes": 18711,
+      "sha256": "21710f2207dd001b3e4a8fccf1adf45f11d7dfcecb18f30c217c91ae720fa199"
+    },
+    {
+      "path": "xml/pop_banners.xml",
+      "url": "https://raw.githubusercontent.com/rapid7/recog/d3d20938da9f5f1e442c2419fe6c30cd651b6878/xml/pop_banners.xml",
+      "bytes": 30909,
+      "sha256": "7823a1c6783402a8d6081adf996ac73f8331e50b899ec403455a125140921b2a"
+    }
+  ],
+  "compatibility": [
+    {
+      "sha256": "21710f2207dd001b3e4a8fccf1adf45f11d7dfcecb18f30c217c91ae720fa199",
+      "patterns": 18,
+      "examples": 29,
+      "capture_assertions": 34,
+      "other_assertions_not_evaluated": 0,
+      "examples_matching_multiple_patterns": 3,
+      "examples_matching_an_earlier_pattern": 0,
+      "issues": []
+    },
+    {
+      "sha256": "7823a1c6783402a8d6081adf996ac73f8331e50b899ec403455a125140921b2a",
+      "patterns": 30,
+      "examples": 39,
+      "capture_assertions": 44,
+      "other_assertions_not_evaluated": 0,
+      "examples_matching_multiple_patterns": 2,
+      "examples_matching_an_earlier_pattern": 0,
+      "issues": []
+    }
+  ]
+}

@@ -29,6 +29,7 @@ type Source struct {
 	ArchiveSHA256        string `json:"archive_sha256"`
 	LicenseSHA256        string `json:"license_sha256"`
 	IndexSHA256          string `json:"index_sha256"`
+	SourceSHA256         string `json:"source_sha256,omitempty"`
 	InputRecords         int    `json:"input_records"`
 	Identifiers          int    `json:"identifiers"`
 	Assignments          int    `json:"assignments"`
@@ -45,6 +46,7 @@ type Match struct {
 	Catalog      string `json:"catalog"`
 	Source       string `json:"source"`
 	SHA256       string `json:"sha256"`
+	Generation   int    `json:"generation,omitempty"`
 }
 type record struct {
 	Identifier   string `json:"identifier"`
@@ -85,6 +87,17 @@ func Lookup(identifier string) []Match {
 	if len(identifier) > 256 {
 		return []Match{}
 	}
+	if strings.HasPrefix(strings.ToLower(strings.TrimSpace(identifier)), "matter:") {
+		return lookupMatterIdentifier(identifier)
+	}
+	return append(LookupApple(identifier), LookupShelly(identifier, 0)...)
+}
+
+// LookupApple restricts matching to the AppleDB namespace for Apple protocol fields.
+func LookupApple(identifier string) []Match {
+	if len(identifier) > 256 {
+		return []Match{}
+	}
 	load()
 	rows := index[strings.ToLower(strings.TrimSpace(identifier))]
 	result := make([]Match, 0, len(rows))
@@ -97,5 +110,12 @@ func Lookup(identifier string) []Match {
 	}
 	return result
 }
-func Count() int         { load(); return len(index) }
+func Count() int {
+	load()
+	loadShelly()
+	loadMatter()
+	return len(index) + len(shellyIndex) + len(matterIndex)
+}
+
+// Provenance returns the original AppleDB source. Use Sources for all catalogs.
 func Provenance() Source { load(); return source }

@@ -80,3 +80,48 @@ func TestMDNSTXTCaseAndFirstDuplicate(t *testing.T) {
 		t.Fatal(p)
 	}
 }
+
+func TestMDNSTXTDoesNotRepairRecognitionInputs(t *testing.T) {
+	instance := dnsmessage.MustNewName("Fixture._hap._tcp.local.")
+	m := dnsmessage.Message{Header: dnsmessage.Header{Response: true}, Answers: []dnsmessage.Resource{{Header: dnsmessage.ResourceHeader{Name: instance, Type: dnsmessage.TypeTXT, Class: dnsmessage.ClassINET, TTL: 120}, Body: &dnsmessage.TXTResource{TXT: []string{"c\x00i=5", "=empty", "\xff=invalid", "CI=7\x00", "ci=5", "md=Mac16,9\x00", "flag", "value=a=b"}}}}}
+	b, err := m.Pack()
+	if err != nil {
+		t.Fatal(err)
+	}
+	r := newMDNSRecords()
+	if !r.ingest(b) {
+		t.Fatal("packet rejected")
+	}
+	props := r.txt["fixture._hap._tcp.local."]
+	if len(props) != 4 || props["ci"] != "7\x00" || props["md"] != "Mac16,9\x00" || props["value"] != "a=b" {
+		t.Fatalf("TXT input changed: %+v", props)
+	}
+	a := hapFixture("5")
+	a.Properties = props
+	if inferKind(Device{Advertisements: []Advertisement{a}}) != "smart home device" {
+		t.Fatal("malformed category repaired")
+	}
+	// The same preservation prevents a wire-level control from creating a catalog match.
+	a.Service = "_device-info._tcp"
+	a.Properties = map[string]string{"model": props["md"]}
+	if len(identify([]Advertisement{a}).ModelNames) != 0 {
+		t.Fatal("malformed model repaired before catalog lookup")
+	}
+}
+
+func TestMDNSPreservesPTRSpellingAcrossFollowups(t *testing.T) {
+	r := newMDNSRecords()
+	instance := "Living.Room._hap._tcp.local."
+	for _, rr := range []dnsmessage.Resource{
+		{Header: dnsmessage.ResourceHeader{Name: dnsmessage.MustNewName("_hap._tcp.local."), Type: dnsmessage.TypePTR, Class: dnsmessage.ClassINET, TTL: 120}, Body: &dnsmessage.PTRResource{PTR: dnsmessage.MustNewName(instance)}},
+		{Header: dnsmessage.ResourceHeader{Name: dnsmessage.MustNewName("living.room._hap._tcp.local."), Type: dnsmessage.TypeSRV, Class: dnsmessage.ClassINET, TTL: 120}, Body: &dnsmessage.SRVResource{Port: 1234, Target: dnsmessage.MustNewName("lamp.local.")}},
+	} {
+		b, err := (&dnsmessage.Message{Header: dnsmessage.Header{Response: true}, Answers: []dnsmessage.Resource{rr}}).Pack()
+		if err != nil || !r.ingest(b) {
+			t.Fatal(err)
+		}
+	}
+	if got := r.display["living.room._hap._tcp.local."]; got != instance {
+		t.Fatalf("PTR spelling overwritten: %q", got)
+	}
+}

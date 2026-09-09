@@ -26,3 +26,37 @@ The hardware model identifier catalog is adapted from AppleDB by emiyl and
 contributors under MIT. Its pinned revision, input hashes, and selection rules
 are recorded in pkg/models/data/sources.json; per-record hashes are embedded
 in the index. The upstream license is reproduced in THIRD_PARTY_LICENSES.
+
+Terminal grapheme segmentation and cell widths use github.com/rivo/uniseg
+by Oliver Kuederle under MIT. Its license is reproduced in THIRD_PARTY_LICENSES.
+
+The Shelly model-name/generation catalog is adapted from aioshelly by Paulus
+Schoutsen and contributors under Apache-2.0. Only literal identifier/name/
+generation records are retained; implementation, control support, and firmware
+requirements are omitted. Pinned source/license/index hashes and selection rules
+are in pkg/models/data/shelly-sources.json. The upstream license is reproduced
+in THIRD_PARTY_LICENSES. The Shelly manufacturer field is a catalog brand label,
+separate from IEEE assignments and device-reported fields.
+
+Matter device-type labels are adapted from connectedhomeip v1.4.0.0 by
+Project CHIP Authors under Apache-2.0. Standard numeric type IDs, labels, and
+the application/utility distinction are retained; vendor-specific examples and
+cluster/control definitions are omitted. Source revisions, hashes, and selection
+rules are in pkg/scanner/data/matter-types.json. The upstream copyright, NOTICE,
+and license are reproduced in THIRD_PARTY_LICENSES. These are protocol category
+labels, not a retail model or manufacturer database or a certification claim.
+
+Matter product-label candidates are adapted from SmartThingsCommunity's
+SmartThingsEdgeDrivers under Apache-2.0. Only unconditional exact vendor/product
+ID pairs and deviceLabel strings are retained; device profiles, implementation,
+generic category fingerprints, and reserved/test IDs are omitted. The source
+revision, per-file hashes, generated index hash, counts, and selection rules are
+in pkg/models/data/matter-sources.json. The upstream license is reproduced in
+THIRD_PARTY_LICENSES. Labels are catalog candidates, not authenticated model,
+manufacturer, certification, or SmartThings compatibility claims.
+
+SSH, HTTP Server, FTP, SMTP, IMAP and POP3 greeting fingerprints are adapted from Rapid7 Recog under
+BSD-2-Clause. All 946 pinned patterns retain ordering, parameters, source lines,
+and qualifiers. Source/license/index hashes are in pkg/fingerprints/data/sources.json;
+the copyright and license are reproduced in THIRD_PARTY_LICENSES. Matches are
+source-linked catalog interpretations, not authenticated hardware/software identity.

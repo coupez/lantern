@@ -1,0 +1,299 @@
+{
+  "source": {
+    "repository": "https://github.com/project-chip/connectedhomeip",
+    "revision": "43aa98c2d30ee547c6b587b9de7bbb794f175ece",
+    "version": "v1.4.0.0",
+    "retrieved": "2026-09-08",
+    "license": "Apache-2.0",
+    "copyright": "Copyright (c) 2021 Project CHIP Authors",
+    "selection": "Standard 16-bit IDs only; strip Matter prefix; class Simple marks application types. No model/vendor mapping.",
+    "inputs": [
+      {
+        "url": "https://raw.githubusercontent.com/project-chip/connectedhomeip/43aa98c2d30ee547c6b587b9de7bbb794f175ece/src/app/zap-templates/zcl/data-model/chip/matter-devices.xml",
+        "sha256": "0daebaf3cd8fe4fb6650f7ee9112ef75e032cb732903ff5c14e4e9de7de8ce21"
+      },
+      {
+        "url": "https://raw.githubusercontent.com/project-chip/connectedhomeip/43aa98c2d30ee547c6b587b9de7bbb794f175ece/src/lib/dnssd/TxtFields.h",
+        "sha256": "13ef2031e869d19c2d999bf5b3a2f7ee3511bbc016dc43b34763eae0be94690d"
+      },
+      {
+        "url": "https://raw.githubusercontent.com/project-chip/connectedhomeip/43aa98c2d30ee547c6b587b9de7bbb794f175ece/src/lib/dnssd/TxtFields.cpp",
+        "sha256": "e872463d258e49f88545e7970bea93ee2ec870fdd8124aba2a26440d3615e81c"
+      },
+      {
+        "url": "https://raw.githubusercontent.com/project-chip/connectedhomeip/43aa98c2d30ee547c6b587b9de7bbb794f175ece/src/lib/dnssd/ServiceNaming.h",
+        "sha256": "98a1a7cb07d2dab873e65075a9265e1570dcbd91d49255af2490378f5a7622f1"
+      },
+      {
+        "url": "https://raw.githubusercontent.com/project-chip/connectedhomeip/43aa98c2d30ee547c6b587b9de7bbb794f175ece/LICENSE",
+        "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+      },
+      {
+        "url": "https://raw.githubusercontent.com/project-chip/connectedhomeip/43aa98c2d30ee547c6b587b9de7bbb794f175ece/NOTICE",
+        "sha256": "8e576da197f576b82b633a037f7844cdf45e1a9142e6c7fc01793d9487a3a950"
+      }
+    ]
+  },
+  "types": {
+    "10": {
+      "name": "Door Lock",
+      "application": true
+    },
+    "11": {
+      "name": "Door Lock Controller",
+      "application": true
+    },
+    "14": {
+      "name": "Aggregator",
+      "application": false
+    },
+    "15": {
+      "name": "Generic Switch",
+      "application": true
+    },
+    "17": {
+      "name": "Power Source",
+      "application": false
+    },
+    "18": {
+      "name": "OTA Requestor",
+      "application": false
+    },
+    "19": {
+      "name": "Bridged Device",
+      "application": false
+    },
+    "20": {
+      "name": "OTA Provider",
+      "application": false
+    },
+    "21": {
+      "name": "Contact Sensor",
+      "application": true
+    },
+    "22": {
+      "name": "Root Node",
+      "application": false
+    },
+    "25": {
+      "name": "Secondary Network Interface Device Type",
+      "application": false
+    },
+    "34": {
+      "name": "Speaker",
+      "application": true
+    },
+    "35": {
+      "name": "Casting Video Player",
+      "application": true
+    },
+    "36": {
+      "name": "Content App",
+      "application": true
+    },
+    "39": {
+      "name": "Mode Select",
+      "application": true
+    },
+    "40": {
+      "name": "Basic Video Player",
+      "application": true
+    },
+    "41": {
+      "name": "Casting Video Client",
+      "application": true
+    },
+    "42": {
+      "name": "Video Remote Control",
+      "application": true
+    },
+    "43": {
+      "name": "Fan",
+      "application": true
+    },
+    "44": {
+      "name": "Air Quality Sensor",
+      "application": true
+    },
+    "45": {
+      "name": "Air Purifier",
+      "application": true
+    },
+    "65": {
+      "name": "Water Freeze Detector",
+      "application": true
+    },
+    "66": {
+      "name": "Water Valve",
+      "application": true
+    },
+    "67": {
+      "name": "Water Leak Detector",
+      "application": true
+    },
+    "68": {
+      "name": "Rain Sensor",
+      "application": true
+    },
+    "112": {
+      "name": "Refrigerator",
+      "application": true
+    },
+    "113": {
+      "name": "Temperature Controlled Cabinet",
+      "application": true
+    },
+    "114": {
+      "name": "Room Air Conditioner",
+      "application": true
+    },
+    "115": {
+      "name": "Laundry Washer",
+      "application": true
+    },
+    "116": {
+      "name": "Robotic Vacuum Cleaner",
+      "application": true
+    },
+    "117": {
+      "name": "Dishwasher",
+      "application": true
+    },
+    "118": {
+      "name": "Smoke CO Alarm",
+      "application": true
+    },
+    "119": {
+      "name": "Cook Surface",
+      "application": true
+    },
+    "120": {
+      "name": "Cooktop",
+      "application": true
+    },
+    "121": {
+      "name": "Microwave Oven",
+      "application": true
+    },
+    "122": {
+      "name": "Extractor Hood",
+      "application": true
+    },
+    "123": {
+      "name": "Oven",
+      "application": true
+    },
+    "124": {
+      "name": "Laundry Dryer",
+      "application": true
+    },
+    "144": {
+      "name": "Network Infrastructure Manager",
+      "application": true
+    },
+    "145": {
+      "name": "Thread Border Router",
+      "application": true
+    },
+    "256": {
+      "name": "On/Off Light",
+      "application": true
+    },
+    "257": {
+      "name": "Dimmable Light",
+      "application": true
+    },
+    "259": {
+      "name": "On/Off Light Switch",
+      "application": true
+    },
+    "260": {
+      "name": "Dimmer Switch",
+      "application": true
+    },
+    "261": {
+      "name": "Color Dimmer Switch",
+      "application": true
+    },
+    "262": {
+      "name": "Light Sensor",
+      "application": true
+    },
+    "263": {
+      "name": "Occupancy Sensor",
+      "application": true
+    },
+    "266": {
+      "name": "On/Off Plug-in Unit",
+      "application": true
+    },
+    "267": {
+      "name": "Dimmable Plug-in Unit",
+      "application": true
+    },
+    "268": {
+      "name": "Color Temperature Light",
+      "application": true
+    },
+    "269": {
+      "name": "Extended Color Light",
+      "application": true
+    },
+    "514": {
+      "name": "Window Covering",
+      "application": true
+    },
+    "515": {
+      "name": "Window Covering Controller",
+      "application": true
+    },
+    "768": {
+      "name": "Heating/Cooling Unit",
+      "application": true
+    },
+    "769": {
+      "name": "Thermostat",
+      "application": true
+    },
+    "770": {
+      "name": "Temperature Sensor",
+      "application": true
+    },
+    "771": {
+      "name": "Pump",
+      "application": true
+    },
+    "772": {
+      "name": "Pump Controller",
+      "application": true
+    },
+    "773": {
+      "name": "Pressure Sensor",
+      "application": true
+    },
+    "774": {
+      "name": "Flow Sensor",
+      "application": true
+    },
+    "775": {
+      "name": "Humidity Sensor",
+      "application": true
+    },
+    "1292": {
+      "name": "EVSE",
+      "application": true
+    },
+    "1296": {
+      "name": "Electrical Sensor",
+      "application": false
+    },
+    "2112": {
+      "name": "Control Bridge",
+      "application": true
+    },
+    "2128": {
+      "name": "On/Off Sensor",
+      "application": true
+    }
+  }
+}
