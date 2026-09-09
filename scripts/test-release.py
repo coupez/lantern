@@ -131,7 +131,7 @@ for system,arch in targets:
                 assert diagnostics['os'] == system and diagnostics['arch'] == arch, diagnostics
                 assert diagnostics['version'] == version, diagnostics
                 if args.macos_amd64 and system == 'darwin':
-                    for fixture in ['test-event-stream.py', 'test-watch-pty.py', 'test-snapshot-cli.py', 'test-banner-fingerprints.py']:
+                    for fixture in ['test-event-stream.py', 'test-full-ports.py', 'test-watch-pty.py', 'test-snapshot-cli.py', 'test-banner-fingerprints.py']:
                         subprocess.run(['python3', str(root/'scripts'/fixture), str(exe)], check=True, timeout=90)
                 print(f'PASS packaged runtime: {system}/{arch}',flush=True)
     if system == 'linux' and args.linux_containers:
@@ -173,7 +173,7 @@ with tempfile.TemporaryDirectory(prefix='lantern-archive-') as tmp:
     report = json.loads(run('doctor', '--json'))
     assert report['os'] == 'linux' and report['arch'] == os.environ['LANTERN_EXPECT_GOARCH'], report
     assert report['version'] == os.environ['LANTERN_EXPECT_VERSION'], report
-    for fixture in ['test-event-stream.py', 'test-watch-pty.py', 'test-snapshot-cli.py', 'test-banner-fingerprints.py', 'test-greeting-fingerprints.py', 'test-mail-fingerprints.py']:
+    for fixture in ['test-event-stream.py', 'test-full-ports.py', 'test-watch-pty.py', 'test-snapshot-cli.py', 'test-banner-fingerprints.py', 'test-greeting-fingerprints.py', 'test-mail-fingerprints.py']:
         subprocess.run(['python3', '/usr/local/bin/' + fixture, str(exe)], check=True, timeout=90)
 """
         result = subprocess.run(['docker', 'run', '--rm', '-i', '--platform', f'linux/{arch}',
