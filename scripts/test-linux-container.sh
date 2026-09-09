@@ -31,6 +31,7 @@ python3 /usr/local/bin/test-doctor.py /tmp/lantern --expect-arp available
 python3 /usr/local/bin/test-watch-pty.py /tmp/lantern
 python3 /usr/local/bin/test-snapshot-cli.py /tmp/lantern
 python3 /usr/local/bin/test-inventory-enrichment.py /tmp/lantern
+python3 /usr/local/bin/test-dhcp-capture.py /tmp/lantern
 python3 /usr/local/bin/test-ubiquiti-discovery.py /tmp/lantern
 python3 /usr/local/bin/test-banner-fingerprints.py /tmp/lantern
 python3 /usr/local/bin/test-greeting-fingerprints.py /tmp/lantern

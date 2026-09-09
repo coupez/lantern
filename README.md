@@ -30,6 +30,7 @@ lantern scan --json > network.json
 lantern scan --jsonl               # streaming discovery events + final report
 lantern scan --csv > network.csv
 lantern observe --read capture.pcap --jsonl # offline DHCPv4/v6 fingerprint evidence
+lantern fingerbank --read observe.json    # local preview of optional DHCP cloud lookup
 lantern snmp 192.0.2.1 --community-env LANTERN_SNMP_COMMUNITY --json
 lantern android --transport-id 42 --json # use the selected authorized ADB transport
 lantern diff before.json after.json
@@ -84,6 +85,8 @@ Deep IPv4 scans and `lantern inspect IP` include a unicast NetBIOS node-status p
 Computer names, workgroups, registration flags, and reported unit IDs remain in the raw advertisements; recognized computer names also enter the name/identity fields. A workgroup is not a host name, and a reported unit ID does not override an observed MAC. Registrations are service hints, not verified open TCP ports or operating-system identification. NetBIOS-disabled systems need the other discovery paths. This protocol supports IPv4 and the default empty NetBIOS scope only.
 
 ## Configured device inventory
+
+`lantern fingerbank --read observe.json` previews DHCP classification payloads from an `observe --json` export. A separate `--packet N --submit --key-env NAME` sends exactly one selected payload to Fingerbank Cloud. Provider classifications remain separate from measured hardware identity; see [review, submission and data handling](docs/fingerbank-lookup.md).
 
 `lantern snmp IP --community-env NAME --json` reads system fields and bounded ENTITY-MIB chassis inventory from one explicitly configured SNMPv2c device. A unique root chassis can supply a reported model, while agent descriptions and vendor namespaces remain separate. Communities are supplied through the named environment variable; v2c is unencrypted. Ordinary scan/watch profiles do not send SNMP queries. See [setup, evidence and limits](docs/snmp-inventory.md).
 

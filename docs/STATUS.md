@@ -54,6 +54,7 @@ The expanded [device-identification roadmap](device-identification-roadmap.md) r
 - Additional native Fing disassembly confirms a configurable file-loading OUI initializer and a remote-client path for the inspected catalog lookup. No complete recognition database was recovered; hash-checked evidence and limits are recorded.
 
 - Offline DHCPv4/v6 PCAP/PCAPNG import is available through `observe`, retaining raw option order, capture provenance and partial summaries without a bundled classifier.
+- Optional Fingerbank DHCP classification previews exact payloads locally and requires explicit single-packet cloud submission. Provider scores/hierarchy remain separate from scanner identity and evaluation; no real-account or physical-model accuracy validation yet. See [usage and bounds](fingerbank-lookup.md).
 - Direct local Mac kernel-model collection is implemented for selected local-interface addresses, with linked AppleDB candidates and preserved network conflicts. It does not identify other machines through their kernel.
 - IPP/IPPS Get-Printer-Attributes collection is implemented for discovered Bonjour endpoints, using bounded response parsing and endpoint-scoped model claims. Only synthetic fixtures establish its current validation; physical printer/queue coverage is not measured.
 
