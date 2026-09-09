@@ -173,7 +173,7 @@ func TestBannerDeadlineFailureAndUnsupportedService(t *testing.T) {
 	if _, err := client.Write([]byte("closed")); err == nil {
 		t.Fatal("connection not closed")
 	}
-	readBannerWithDialer(context.Background(), netip.MustParseAddr("127.0.0.1"), Port{Service: "https"}, time.Second,
+	readBannerWithDialer(context.Background(), netip.MustParseAddr("127.0.0.1"), Port{Service: "unknown"}, time.Second,
 		func(context.Context, string, string) (net.Conn, error) {
 			t.Fatal("unsupported service dialed")
 			return nil, nil
@@ -183,9 +183,13 @@ func TestBannerDeadlineFailureAndUnsupportedService(t *testing.T) {
 func bannerFixture(n int) *Device {
 	d := &Device{IP: netip.MustParseAddr("127.0.0.1")}
 	for i := n; i > 0; i-- {
-		d.Ports = append(d.Ports, Port{Number: uint16(i), Service: "http"})
+		service := "http"
+		if i%2 == 0 {
+			service = "https"
+		}
+		d.Ports = append(d.Ports, Port{Number: uint16(i), Service: service})
 	}
-	d.Ports = append(d.Ports, Port{Number: 443, Service: "https"})
+	d.Ports = append(d.Ports, Port{Number: 12345, Service: "unknown"})
 	return d
 }
 
@@ -205,7 +209,7 @@ func TestBannerWorkerLimitsAndCoverage(t *testing.T) {
 			defer unblock()
 			var active, peak, calls atomic.Int32
 			read := func(_ context.Context, _ netip.Addr, p Port, timeout time.Duration) string {
-				if p.Service != "http" || timeout != time.Second {
+				if (p.Service != "http" && p.Service != "https") || timeout != time.Second {
 					t.Error("wrong banner request")
 				}
 				n := active.Add(1)
@@ -241,7 +245,7 @@ func TestBannerWorkerLimitsAndCoverage(t *testing.T) {
 			}
 			for _, d := range devices {
 				for _, p := range d.Ports {
-					if (p.Service == "http" && p.Banner != "fixture") || (p.Service == "https" && p.Banner != "") {
+					if (bannerService(p.Service) && p.Banner != "fixture") || (p.Service == "unknown" && p.Banner != "") {
 						t.Fatal(p)
 					}
 				}

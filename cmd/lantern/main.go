@@ -165,7 +165,7 @@ func help() {
     --no-multicast                  Skip mDNS, SSDP, WS-Discovery (quick default)
     --no-descriptions               Skip UPnP/Shelly identity reads
     --details                      Show full device records
-    --banners                      Read SSH/HTTP/service banners
+    --banners                      Read SSH/HTTP/HTTPS/service banners
     --all-hosts                    Scan ports even on silent hosts
     --plain                        Append watch reports without a dashboard
     --interval 10s                 Delay between watch scans

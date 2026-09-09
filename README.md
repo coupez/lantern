@@ -67,9 +67,9 @@ The initial live macOS benchmark scanned **1,022 addresses in 2.39 seconds** in 
 
 ### Banner recognition
 
-Deep scans and `--banners` interpret observed SSH software/comment text and HTTP Server headers with **608 offline Recog patterns** under BSD-2-Clause. Catalog service labels appear in reports and watch; the inspector and JSON retain separate service, OS, and hardware claims with source links and qualifiers. These claims do not overwrite device-reported manufacturer/model fields. CSV appends `service_fingerprints` after `mac_address_role_id`.
+Deep scans and `--banners` interpret observed SSH software/comment text and HTTP/HTTPS Server headers with **608 offline Recog patterns** under BSD-2-Clause. Catalog service labels appear in reports and watch; the inspector and JSON retain separate service, OS, and hardware claims with source links and qualifiers. These claims do not overwrite device-reported manufacturer/model fields. CSV appends `service_fingerprints` after `mac_address_role_id`.
 
-`lantern fingerprint http 'Apache/2.4.65'` works offline. For SSH, pass the software/comment portion after `SSH-<version>-`; `lantern fingerprint sources` prints provenance. No additional connections or authentication are added. Physical-device accuracy remains unverified; see [recognition semantics](docs/recognition.md#banner-fingerprints).
+`lantern fingerprint http 'Apache/2.4.65'` works offline. For SSH, pass the software/comment portion after `SSH-<version>-`; `lantern fingerprint sources` prints provenance. Matching adds no connections beyond banner collection. HTTPS accepts self-signed certificates for unverified service observation within the same timeout; see [collection limits](docs/discovery.md#tcp-probes-and-service-banners). Physical-device accuracy remains unverified; see [recognition semantics](docs/recognition.md#banner-fingerprints).
 
 ### NetBIOS names
 

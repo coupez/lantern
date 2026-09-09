@@ -3,6 +3,7 @@ package scanner
 import (
 	"bufio"
 	"context"
+	"crypto/tls"
 	"github.com/coupez/lantern/pkg/fingerprints"
 	"io"
 	"net"
@@ -26,7 +27,7 @@ func CleanText(s string) string {
 	}, s)
 }
 func bannerService(service string) bool {
-	return service == "ssh" || service == "ftp" || service == "smtp" || service == "http"
+	return service == "ssh" || service == "ftp" || service == "smtp" || service == "http" || service == "https"
 }
 
 type bannerObservation struct {
@@ -111,14 +112,40 @@ func readBannerObservationWithDialer(ctx context.Context, ip netip.Addr, p Port,
 	if err := c.SetDeadline(deadline); err != nil || ctx.Err() != nil {
 		return bannerObservation{}
 	}
-	if p.Service == "http" {
-		_, err = io.WriteString(c, "HEAD / HTTP/1.0\r\nHost: "+net.JoinHostPort(ip.WithZone("").String(), strconv.Itoa(int(p.Number)))+"\r\nConnection: close\r\n\r\n")
+	var exchange io.ReadWriter = c
+	service := p.Service
+	if service == "https" {
+		// Inventory observations intentionally accept self-signed, expired, and
+		// name-mismatched certificates. Neither certificates nor banners establish
+		// authenticated identity. Dial only the selected IP, with no guessed SNI.
+		// Bound total inbound TLS bytes, including certificates and record overhead;
+		// the normal 8 KiB parser limit still applies to decrypted response data.
+		transport := &bannerTLSConn{Conn: c, reader: io.LimitReader(c, 256*1024)}
+		secure := tls.Client(transport, &tls.Config{
+			InsecureSkipVerify: true, // Unauthenticated service observation, never credentials.
+			MinVersion:         tls.VersionTLS12,
+			NextProtos:         []string{"http/1.1"},
+		})
+		if err := secure.HandshakeContext(ctx); err != nil {
+			return bannerObservation{}
+		}
+		exchange, service = secure, "http"
+	}
+	if service == "http" {
+		_, err = io.WriteString(exchange, "HEAD / HTTP/1.0\r\nHost: "+net.JoinHostPort(ip.WithZone("").String(), strconv.Itoa(int(p.Number)))+"\r\nConnection: close\r\n\r\n")
 		if err != nil {
 			return bannerObservation{}
 		}
 	}
-	return observeBannerResponse(c, p.Service)
+	return observeBannerResponse(exchange, service)
 }
+
+type bannerTLSConn struct {
+	net.Conn
+	reader io.Reader
+}
+
+func (c *bannerTLSConn) Read(p []byte) (int, error) { return c.reader.Read(p) }
 
 // TCP reads need not align with lines. Read complete greetings/headers while
 // bounding bytes, line length and header count, and never parse an HTTP body as headers.
