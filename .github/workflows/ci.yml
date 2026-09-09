@@ -27,6 +27,7 @@ jobs:
       - run: python3 scripts/test-snapshot-cli.py
       - run: python3 scripts/test-banner-fingerprints.py
       - run: python3 scripts/test-banner-import.py
+      - run: python3 scripts/test-dhcp-capture.py
       - run: python3 scripts/test-ethernet-fixture.py
       - name: Native Bonjour Matter interoperability on loopback
         if: runner.os == 'macOS'
