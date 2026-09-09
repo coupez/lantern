@@ -30,6 +30,7 @@ lantern scan --json > network.json
 lantern scan --jsonl               # streaming discovery events + final report
 lantern scan --csv > network.csv
 lantern observe --read capture.pcap --jsonl # offline DHCPv4/v6 fingerprint evidence
+lantern snmp 192.0.2.1 --community-env LANTERN_SNMP_COMMUNITY --json
 lantern diff before.json after.json
 lantern evaluate --truth truth.json --scan network.json --bindings bindings.json --json
 lantern lookup 00:00:0c:12:34:56
@@ -81,6 +82,10 @@ Deep IPv4 scans and `lantern inspect IP` include a unicast NetBIOS node-status p
 
 Computer names, workgroups, registration flags, and reported unit IDs remain in the raw advertisements; recognized computer names also enter the name/identity fields. A workgroup is not a host name, and a reported unit ID does not override an observed MAC. Registrations are service hints, not verified open TCP ports or operating-system identification. NetBIOS-disabled systems need the other discovery paths. This protocol supports IPv4 and the default empty NetBIOS scope only.
 
+## Configured device inventory
+
+`lantern snmp IP --community-env NAME --json` reads system fields and bounded ENTITY-MIB chassis inventory from one explicitly configured SNMPv2c device. A unique root chassis can supply a reported model, while agent descriptions and vendor namespaces remain separate. Communities are supplied through the named environment variable; v2c is unencrypted. Ordinary scan/watch profiles do not send SNMP queries. See [setup, evidence and limits](docs/snmp-inventory.md).
+
 ## Check local capabilities
 
 `lantern doctor` checks actual ICMP, multicast, ARP/NDP, neighbor-table, and automatic target-selection access without sending discovery packets. Use `--interface en0` to select a network or `--json` for scripts. Optional failures include a reason and next step; socket access alone does not prove device reachability. See [diagnostics](docs/diagnostics.md).
@@ -95,7 +100,7 @@ Computer names, workgroups, registration flags, and reported unit IDs remain in 
 - Advertisements and banners are device-reported, untrusted information. Advertised ports are separate from verified open TCP ports. Terminal control characters are removed before rendering.
 - Discovery can miss filtered, isolated, sleeping, or slow devices. MAC addresses normally exist only for hosts on the same link. OS fingerprinting and a persistent service are not implemented yet.
 
-Use on networks you own or are authorized to inspect. Lantern makes ordinary discovery requests and connections; it does not log in to devices or execute remote commands.
+Use on networks you own or are authorized to inspect. Lantern makes ordinary discovery requests and connections; ordinary scans do not log in to devices or execute remote commands. The separate SNMP inventory command uses explicitly configured access.
 
 WS-Discovery adds correlated UDP discovery for compatible endpoints, with ONVIF names and hardware-description claims. Advertised endpoint URLs remain metadata, with bounded device-information reads for qualifying same-peer ONVIF services. They do not become verified open ports.
 

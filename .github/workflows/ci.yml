@@ -18,6 +18,8 @@ jobs:
       - run: go test -race ./...
       - name: Companion, Roku, IPP and ONVIF IPv4/IPv6 identity fixtures
         run: LANTERN_NETWORK_TESTS=1 go test -race ./pkg/scanner -run 'TestRoku.*NetworkIntegration|TestIPP.*NetworkIntegration|TestONVIF.*NetworkIntegration|TestMDNSSplitReplyNetworkIntegration' -count=1 -timeout=90s
+      - name: Configured SNMP IPv4/IPv6 inventory fixtures
+        run: LANTERN_NETWORK_TESTS=1 go test -race ./pkg/snmp -count=1 -timeout=60s
       - run: go build -trimpath -o bin/lantern ./cmd/lantern
       - run: ./bin/lantern demo
       - run: python3 scripts/test-event-stream.py
@@ -29,6 +31,9 @@ jobs:
       - run: python3 scripts/test-banner-import.py
       - run: python3 scripts/test-dhcp-capture.py
       - run: python3 scripts/test-identification-evaluation.py
+      - name: Independent Net-SNMP interoperability
+        if: runner.os == 'macOS'
+        run: python3 scripts/test-snmp-interop.py --snmpd /usr/sbin/snmpd
       - run: python3 scripts/test-ethernet-fixture.py
       - name: Native Bonjour Matter interoperability on loopback
         if: runner.os == 'macOS'
