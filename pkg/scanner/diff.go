@@ -13,7 +13,9 @@ import (
 // joining, leaving, changing ownership, or closing a service. Scan-level changes
 // have Type "scan" and an empty IP. Before/After are sets; omitted means empty.
 type Change struct {
-	Type   string   `json:"type"`
+	Type string `json:"type"`
+	// Port is set only for service-level catalog changes.
+	Port   uint16   `json:"port,omitempty"`
 	IP     string   `json:"ip"`
 	Detail string   `json:"detail,omitempty"`
 	Field  string   `json:"field,omitempty"`
@@ -139,6 +141,9 @@ func Diff(before, after Report) []Change {
 			portsBefore, portsAfter := comparablePorts(previous, d, common)
 			add("changed", address, "ports", "TCP ports observed", portsBefore, portsAfter)
 		}
+		if complete.ports && a != nil && b != nil && a.Banners && b.Banners && !before.Cancelled && before.Error == "" {
+			out = appendServiceChanges(out, address, previous, d, common)
+		}
 		if namesComparable {
 			add("changed", address, "names", "names observed", nameValues(previous.Names), nameValues(d.Names))
 		}
@@ -178,6 +183,9 @@ func Diff(before, after Report) []Change {
 				return xi.Compare(yi) < 0
 			}
 			return x.IP < y.IP
+		}
+		if x.Port != y.Port {
+			return x.Port < y.Port
 		}
 		if x.Field != y.Field {
 			return x.Field < y.Field

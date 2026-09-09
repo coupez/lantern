@@ -121,7 +121,7 @@ Watch also labels catalog-only identities: one match appears as `Catalog · <pro
 
 ### Useful watch activity
 
-Watch and snapshot diffs report name/model/vendor/workgroup changes, open-port observations, and transitions from responsive to cached-only evidence. New snapshots record requested scan coverage: changing profiles or scanning fewer ports does not fabricate disappearing services. Interrupted scans do not erase existing observations. Reported discovery failures suppress missing-address claims and comparisons of dependent fields; optional `incomplete_methods` metadata records which methods failed or reached collection limits. Changes are address-based observations, not proof that a physical device joined or went offline. See [snapshot comparison semantics](docs/snapshots.md) for structured fields and legacy-file behavior.
+Use `lantern watch --banners` to include service recognition in monitoring. Watch and snapshot diffs report name/model/vendor/workgroup changes, open-port observations, comparable catalog software versions on individual TCP ports, and transitions from responsive to cached-only evidence. New snapshots record requested scan coverage: changing profiles or scanning fewer ports does not fabricate disappearing services. Interrupted scans do not erase existing observations. Reported discovery failures suppress missing-address claims and comparisons of dependent fields; optional `incomplete_methods` metadata records which methods failed or reached collection limits. Changes are address-based observations, not proof that a physical device joined or went offline. See [snapshot comparison semantics](docs/snapshots.md) for structured fields and legacy-file behavior.
 
 ## Open data and Fing inspection
 

@@ -226,3 +226,25 @@ go test ./pkg/fingerprints -run '^$' -bench 'BenchmarkInitialization|BenchmarkCo
 ```
 
 Log: `research/results/mail-access-benchmarks.log` (ignored development evidence).
+
+
+## Comparing service software observations
+
+The service comparison uses stored fingerprints and performs no new lookup or network request. Normal scans produce matching, ordered, unique port lists; the comparison checks that shape and reads candidate fingerprints directly. Irregular/legacy lists use an index of recognized ports only and reject duplicate-port ambiguity. Both paths honor common requested coverage and catalog-source comparability.
+
+`BenchmarkDiffServiceObservations` compares 16 synthetic devices, each with either 14 ports or all 65,535 TCP ports. Both reports enable banners and contain independent copies of four HTTP fingerprints per device, at ports 80, 443, 8080, and 8443. The changed case updates the Apache version on one port of one device. On Apple M4 Max / macOS ARM64 / Go 1.26.8, medians of three 300 ms samples were:
+
+| Ports per device | Changes | Comparison time | Allocated bytes / allocations |
+| --- | --- | ---: | ---: |
+| 14 | None | 3.796 µs | 3,688 / 55 |
+| 14 | One version | 4.198 µs | 3,912 / 61 |
+| 65,535 | None | 2.301 ms | 3,688 / 55 |
+| 65,535 | One version | 2.268 ms | 3,912 / 61 |
+
+These are in-memory comparisons; report construction and recognition occur before timing. They do not measure network scan throughput, terminal rendering, or physical-device accuracy. Allocation totals remain independent of the full port-list length in this ordered workload; malformed/reordered lists and additional changed fields can require more work.
+
+```sh
+go test ./pkg/scanner -run '^$' -bench '^BenchmarkDiffServiceObservations$' -benchmem -benchtime=300ms -count=3
+```
+
+Logs and medians: `research/results/service-diff-final-benchmarks.log` and `service-diff-benchmark-summary.json` (ignored development evidence).

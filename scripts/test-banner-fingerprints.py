@@ -5,6 +5,10 @@ from contextlib import ExitStack
 import csv
 import io
 import json
+import os
+import selectors
+import signal
+import time
 from pathlib import Path
 import socket
 import ssl
@@ -30,6 +34,41 @@ assert json.loads(run('fingerprint', 'ssh', 'OpenSSH_9.9'))['fields']['service.p
 assert json.loads(run('fingerprint', 'http', 'Eltex TAU-72'))['fields']['os.product'] == 'TAU-72 Firmware'
 assert json.loads(run('fingerprint', 'http', 'LanternUnknownServer_2026')) is None
 assert json.loads(run('fingerprint', 'sources'))['license'] == 'BSD-2-Clause'
+def watch_service_change(base, reply, port):
+    reply[0] = b'HTTP/1.1 200 OK\r\nServer: Apache/2.4.65\r\n\r\n'
+    process = subprocess.Popen([binary, 'watch', *base[1:], '--jsonl', '--interval', '1s'],
+                               stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    pending = b''; reports = []; changes = None
+    try:
+        with selectors.DefaultSelector() as selector:
+            selector.register(process.stdout, selectors.EVENT_READ)
+            deadline = time.monotonic() + 15
+            while changes is None and time.monotonic() < deadline:
+                for key, _ in selector.select(.2):
+                    data = os.read(key.fd, 65536)
+                    assert data, 'watch exited before reporting changes'
+                    pending += data
+                    while b'\n' in pending:
+                        line, pending = pending.split(b'\n', 1)
+                        event = json.loads(line)
+                        if event.get('report') and event['type'] in ('done', 'report'):
+                            reports.append(event['report'])
+                            reply[0] = b'HTTP/1.1 200 OK\r\nServer: Apache/2.4.66\r\n\r\n'
+                        if event['type'] == 'changes':
+                            changes = event['changes']
+            assert changes is not None and len(reports) == 2, (changes, len(reports))
+            assert len(changes) == 1, changes
+            change = changes[0]
+            assert change['port'] == port and change['field'] == 'service.version', change
+            assert change['before'] == ['2.4.65'] and change['after'] == ['2.4.66'], change
+            process.send_signal(signal.SIGINT)
+            _, error = process.communicate(timeout=5)
+            assert process.returncode == 0 and not error, (process.returncode, error)
+            return reports, changes
+    finally:
+        if process.poll() is None:
+            process.kill(); process.communicate(timeout=5)
+
 for service in ['http', 'https']:
     for family, host in [(socket.AF_INET, '127.0.0.1'), (socket.AF_INET6, '::1')]:
         with tempfile.TemporaryDirectory(prefix='lantern-banner-') as directory, socket.socket(family) as listener:
@@ -122,9 +161,17 @@ for service in ['http', 'https']:
                 del legacy['devices'][0]['ports'][0]['fingerprint']
                 old = Path(directory)/'legacy.json'; old.write_text(json.dumps(legacy))
                 assert json.loads(run('diff', str(old), str(snapshot))) == []
+                watched, changes = watch_service_change(base, reply, port)
+                left, right = Path(directory)/'watch-before.json', Path(directory)/'watch-after.json'
+                left.write_text(json.dumps(watched[0])); right.write_text(json.dumps(watched[1]))
+                assert json.loads(run('diff', str(left), str(right))) == changes
+                updated_catalog = copy.deepcopy(watched[1])
+                updated_catalog['devices'][0]['ports'][0]['fingerprint']['fields']['service.version'] = 'catalog reinterpretation'
+                left.write_text(json.dumps(updated_catalog))
+                assert json.loads(run('diff', str(left), str(right))) == []
             finally:
                 stop.set()
                 worker.join(5)
                 assert not worker.is_alive() and not failures, failures
-        print(f'PASS {host}: actual {service.upper()} field recognition, JSONL/snapshot ownership, CSV/details, disable flag, tainted-input exclusion, legacy diff')
+        print(f'PASS {host}: actual {service.upper()} field recognition, JSONL/snapshot ownership, CSV/details, disable flag, tainted-input exclusion, legacy diff, live watch service upgrade and catalog-only suppression')
 print('PASS offline SSH/HTTP lookup and source provenance')
