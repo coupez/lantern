@@ -5,7 +5,20 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 )
+
+const companionReference = "https://github.com/postlund/pyatv/blob/b277a4c8222ecdcbaab8a24e3e713ca44765adb4/pyatv/protocols/companion/__init__.py"
+
+// identityText rejects values whose display normalization would manufacture a
+// different identity. Raw observations remain available in advertisements.
+func identityText(raw string) string {
+	value := strings.TrimSpace(raw)
+	if !utf8.ValidString(value) || CleanText(value) != value || len([]rune(value)) > 256 {
+		return ""
+	}
+	return value
+}
 
 // IdentityClaim records a reported field, protocol interpretation, or catalog match.
 // It is not an independently verified hardware identity.
@@ -36,6 +49,9 @@ type Identity struct {
 func identify(ads []Advertisement) *Identity {
 	claims := []IdentityClaim{}
 	addValue := func(field, key, value string, a Advertisement) {
+		if a.Protocol == "roku" || (a.Protocol == "mdns" && strings.EqualFold(a.Service, "_companion-link._tcp")) {
+			value = identityText(value)
+		}
 		value = strings.TrimSpace(CleanText(value))
 		if value == "" {
 			return
@@ -44,7 +60,7 @@ func identify(ads []Advertisement) *Identity {
 			value = string([]rune(value)[:256])
 		}
 		source := a.Protocol + ":" + a.Instance
-		if a.Protocol == "upnp" || a.Protocol == "shelly" {
+		if a.Protocol == "upnp" || a.Protocol == "shelly" || a.Protocol == "roku" {
 			source = a.Protocol + ":" + a.Properties["location"] + "#" + a.Instance
 		}
 		reference := ""
@@ -53,6 +69,12 @@ func identify(ads []Advertisement) *Identity {
 		}
 		if a.Protocol == "mdns" && strings.EqualFold(a.Service, "_shelly._tcp") {
 			reference = shellyMDNSReference
+		}
+		if a.Protocol == "mdns" && strings.EqualFold(a.Service, "_companion-link._tcp") {
+			reference = companionReference
+		}
+		if a.Protocol == "roku" {
+			reference = rokuInfoReference
 		}
 		if a.Protocol == "shelly" {
 			reference = shellyInfoReference
@@ -81,6 +103,22 @@ func identify(ads []Advertisement) *Identity {
 					addValue(field, scope, value, a)
 				}
 			}
+		case "roku":
+			if a.Service != "device-info" {
+				continue
+			}
+			add("name", "user-device-name", a)
+			add("name", "friendly-device-name", a)
+			add("manufacturer", "vendor-name", a)
+			if identityText(a.Properties["model-name"]) != "" {
+				add("model", "model-name", a)
+			} else {
+				add("model", "model-number", a)
+			}
+			add("model_number", "model-number", a)
+			add("firmware_version", "software-version", a)
+			add("firmware_build", "software-build", a)
+			claims = append(claims, IdentityClaim{Field: "firmware", Value: "Roku OS", Source: "roku:" + a.Properties["location"] + "#" + a.Instance, Key: "service", Basis: "protocol", Reference: rokuInfoReference, Identifier: "device-info"})
 		case "shelly":
 			if a.Service != "device-info" {
 				continue
@@ -147,6 +185,9 @@ func identify(ads []Advertisement) *Identity {
 				if maker, catalog := castManufacturer(a.Properties["md"]); maker != "" {
 					claims = append(claims, IdentityClaim{Field: "manufacturer", Value: maker, Source: "mdns:" + a.Instance, Key: "md", Basis: "catalog", Catalog: catalog, Identifier: strings.TrimSpace(a.Properties["md"])})
 				}
+			case "_companion-link._tcp":
+				add("model", "rpmd", a)
+				catalogModel("rpmd", a)
 			case "_device-info._tcp", "_airplay._tcp":
 				add("model", "model", a)
 				catalogModel("model", a)
@@ -171,11 +212,11 @@ func identify(ads []Advertisement) *Identity {
 			return 4
 		}
 		switch c.Key {
-		case "manufacturer", "friendlyName", "friendly_name", "name", "modelName", "usb_mfg", "usb_mdl":
+		case "manufacturer", "friendlyName", "friendly_name", "name", "modelName", "usb_mfg", "usb_mdl", "vendor-name", "model-name", "user-device-name":
 			return 0
-		case "model", "md", "am":
+		case "model", "md", "am", "model-number", "friendly-device-name":
 			return 1
-		case "ty":
+		case "ty", "rpmd":
 			return 2
 		default:
 			return 3
@@ -214,10 +255,6 @@ func identify(ads []Advertisement) *Identity {
 		}
 		result.Claims = append(result.Claims, c)
 		switch c.Field {
-		case "name":
-			if result.Name == "" {
-				result.Name = c.Value
-			}
 		case "firmware":
 			if result.Firmware == "" {
 				result.Firmware, selectedFirmware = c.Value, c
@@ -239,11 +276,17 @@ func identify(ads []Advertisement) *Identity {
 		}
 	}
 	for _, c := range result.Claims {
+		// A competing Roku endpoint cannot contribute a display name/vendor to
+		// another model. Keep its original claim available for inspection.
+		rokuLinked := !strings.HasPrefix(c.Source, "roku:") || c.Source == selectedModel.Source
+		if c.Field == "name" && result.Name == "" && rokuLinked {
+			result.Name = c.Value
+		}
 		if c.Field == "firmware_version" && c.Source == selectedFirmware.Source && result.FirmwareVersion == "" {
 			result.FirmwareVersion = c.Value
 		}
 		linked := c.Source == selectedModel.Source && c.Key == selectedModel.Key && strings.EqualFold(c.Identifier, result.Model)
-		if c.Field == "manufacturer" && result.Manufacturer == "" && (c.Basis != "catalog" || linked) {
+		if c.Field == "manufacturer" && result.Manufacturer == "" && rokuLinked && (c.Basis != "catalog" || linked) {
 			result.Manufacturer = c.Value
 		}
 		if c.Field == "model_name" && c.Basis == "catalog" && c.Source == selectedModel.Source && c.Key == selectedModel.Key && strings.EqualFold(c.Identifier, modelIdentifier) && !contains(result.ModelNames, c.Value) {

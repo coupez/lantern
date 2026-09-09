@@ -96,7 +96,7 @@ type Options struct {
 	// NDP enables direct IPv6 neighbor solicitation on the local Ethernet link.
 	NDP     bool
 	Banners bool
-	// Descriptions enables bounded UPnP and Shelly identity document reads.
+	// Descriptions enables bounded UPnP, Shelly and Roku identity document reads.
 	Descriptions bool
 	Multicast    bool
 	AllHosts     bool

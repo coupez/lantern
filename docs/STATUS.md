@@ -2,6 +2,8 @@
 
 The workspace started empty. A runnable CLI and reusable discovery engine now exist. The full Fing-alternative goal remains active.
 
+The expanded [device-identification roadmap](device-identification-roadmap.md) records the current exploration priorities and measurement criteria.
+
 ## Implemented
 
 - Go CLI with styled adaptive-width output, live discoveries/progress, inspect view, quick/standard/deep profiles, automatic default-route selection, and explicit target/interface selection.
@@ -32,6 +34,7 @@ The workspace started empty. A runnable CLI and reusable discovery engine now ex
 - HTTPS banner collection on labeled ports, including self-signed endpoints, within shared deadlines/concurrency and a 256 KiB TLS wire limit. IPv4/IPv6 CLI fixtures cover observations and output; certificate identity remains unverified.
 - Banner patterns compile on demand after conservative required-text prechecks, with one shared compiled expression per rule. Cold concurrent lookup and source-example/differential verification preserve ordered matching.
 - 946 BSD-2-Clause Recog SSH/HTTP/FTP/SMTP/IMAP/POP3 patterns, with reproducible pinned import, standalone core/CLI lookup, complete bounded greeting replies and field-specific line handling, scoped catalog fields, report/watch/inspector display, JSON/CSV/snapshot persistence, and independent event ownership. Physical-device accuracy remains pending.
+- Companion model extraction and Roku ECP device-information reads add discovery-triggered identity evidence; source/model isolation and bounded IPv4/IPv6 fixtures are verified. Physical target coverage remains unverified.
 - mDNS service-type enumeration and follow-up queries; bounded UPnP description reads with embedded-device matching; source-attributed names/models; rejection of duplicate or nested-markup UPnP identity fields; 40 MIT-licensed Cast model/manufacturer mappings.
 - ESPHome discovery and firmware recognition with direct DNS-SD queries, friendly names, source-linked build/project claims, firmware exports/search/diffs, and separate IPv4/IPv6 socket fixtures. Physical ESPHome-device coverage remains pending.
 - Shelly discovery through direct DNS-SD queries and bounded read-only identity requests, with model/name/firmware provenance and shared UPnP request/time limits. Generation-1 and physical Shelly-device coverage remain pending.
@@ -52,6 +55,6 @@ The workspace started empty. A runnable CLI and reusable discovery engine now ex
 2. Improve discovery coverage and speed further: privileged macOS ARP/NDP runtime verification, broader IPv6 real-device coverage, broader pacing/retry validation under sustained network pressure, and benchmark/accuracy comparisons across real device networks. The current quick scan is fast but can miss filtered/sleeping devices.
 3. Broaden physical Linux/macOS hardware coverage, including native Intel/AMD execution beyond the passing ARM64 and translated x86-64 runtime checks; broaden terminal-emulator and accessibility coverage beyond the passing narrow/wide layout and macOS/Linux pseudo-terminal checks; harden all exported core options and large/full-port scans, and extend cancel/watch/error integration coverage.
 4. Investigate any further recoverable Fing mapping data if useful. An absent standalone resource is not proof that no mapping exists in compiled or runtime-fetched form. Do not copy proprietary resources into an open-source release without an applicable redistribution basis.
-5. Public release publication. GitHub checks on 2026-09-09 confirmed `coupez/lantern` is private. Draft PR #1 now points to `c3ab558`, with successful CI runs `34280902403` and `34280901901`. The unpublished `v0.1.0-rc.1` release still targets `3e72244`; all five rc.1 assets previously passed authenticated download/checksum verification. Follow-up fixes after that commit are not included in those staged archives. Canonical installation from private GitHub with authentication, core imports from another module, staged installation, and self-contained local archives are verified; unauthenticated public retrieval remains unverified until repository/release visibility is resolved.
+5. Continue release maintenance. The repository is public, PR #1 is merged, and [rc.7](https://github.com/coupez/lantern/releases/tag/v0.1.0-rc.7) is published. All four public archives/checksums and installation through the public Go proxy were verified. Subsequent source changes are not included in rc.7 archives.
 
 The persistent computer service and graphical app are explicitly out of scope for this phase. Core APIs are separated so both can be built later.

@@ -193,7 +193,7 @@ func mdnsSweepOn(ctx context.Context, target netip.Prefix, timeout time.Duration
 	return collectMDNS(ctx, c, destination, target, deadline)
 }
 
-var mdnsKinds = []string{"_services._dns-sd._udp", "_workstation._tcp", "_http._tcp", "_https._tcp", "_ssh._tcp", "_smb._tcp", "_ipp._tcp", "_ipps._tcp", "_printer._tcp", "_pdl-datastream._tcp", "_airplay._tcp", "_raop._tcp", "_googlecast._tcp", "_hap._tcp", "_matterc._udp", "_matterd._udp", "_matter._tcp", "_esphomelib._tcp", "_shelly._tcp", "_home-assistant._tcp", "_spotify-connect._tcp", "_device-info._tcp"}
+var mdnsKinds = []string{"_services._dns-sd._udp", "_workstation._tcp", "_http._tcp", "_https._tcp", "_ssh._tcp", "_smb._tcp", "_ipp._tcp", "_ipps._tcp", "_printer._tcp", "_pdl-datastream._tcp", "_airplay._tcp", "_raop._tcp", "_googlecast._tcp", "_hap._tcp", "_matterc._udp", "_matterd._udp", "_matter._tcp", "_esphomelib._tcp", "_shelly._tcp", "_home-assistant._tcp", "_spotify-connect._tcp", "_device-info._tcp", "_companion-link._tcp"}
 
 // serviceType extracts the final service/protocol/domain labels, independently
 // of dots or service-looking text in a human-readable instance name.
@@ -424,7 +424,12 @@ func parseSSDP(b []byte) (Advertisement, bool) {
 		k = strings.ToLower(strings.TrimSpace(k))
 		switch k {
 		case "server", "location", "st", "usn":
-			props[k] = CleanText(strings.TrimSpace(v))
+			value := strings.TrimSpace(v)
+			// Identity-read selectors must not become valid by deleting controls.
+			if (k == "st" || k == "location") && CleanText(value) != value {
+				return Advertisement{}, false
+			}
+			props[k] = CleanText(value)
 		}
 	}
 	if len(props) == 0 {
@@ -470,9 +475,14 @@ func collectSSDP(ctx context.Context, c discoveryUDPConn, destination *net.UDPAd
 		return hits, discoveryCompletion(ctx, "SSDP", err, packets, 0)
 	}
 	host := net.JoinHostPort(destination.IP.String(), strconv.Itoa(destination.Port))
-	query := "M-SEARCH * HTTP/1.1\r\nHOST: " + host + "\r\nMAN: \"ssdp:discover\"\r\nMX: 1\r\nST: ssdp:all\r\n\r\n"
-	if err := writeDiscoveryDatagram(c, []byte(query), destination); err != nil {
-		return finish(fmt.Errorf("SSDP query: %w", err))
+	for _, service := range []string{"ssdp:all", "roku:ecp"} {
+		if ctx.Err() != nil {
+			return finish(nil)
+		}
+		query := "M-SEARCH * HTTP/1.1\r\nHOST: " + host + "\r\nMAN: \"ssdp:discover\"\r\nMX: 1\r\nST: " + service + "\r\n\r\n"
+		if err := writeDiscoveryDatagram(c, []byte(query), destination); err != nil {
+			return finish(fmt.Errorf("SSDP query: %w", err))
+		}
 	}
 	b := make([]byte, 8192)
 	for packets < maxDiscoveryPackets && ctx.Err() == nil {
