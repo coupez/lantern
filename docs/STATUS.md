@@ -49,6 +49,10 @@ The expanded [device-identification roadmap](device-identification-roadmap.md) r
 - Official Fing 4.0.5 and 3.10.1 downloaded and inspected. No standalone MAC registry recovered; exact findings are documented.
 - Additional native Fing disassembly confirms a configurable file-loading OUI initializer and a remote-client path for the inspected catalog lookup. No complete recognition database was recovered; hash-checked evidence and limits are recorded.
 
+- Offline DHCPv4/v6 PCAP/PCAPNG import is available through `observe`, retaining raw option order, capture provenance and partial summaries without a bundled classifier.
+- Direct local Mac kernel-model collection is implemented for selected local-interface addresses, with linked AppleDB candidates and preserved network conflicts. It does not identify other machines through their kernel.
+- IPP/IPPS Get-Printer-Attributes collection is implemented for discovered Bonjour endpoints, using bounded response parsing and endpoint-scoped model claims. Only synthetic fixtures establish its current validation; physical printer/queue coverage is not measured.
+
 ## Still required before calling the broad goal finished
 
 1. Expand identification: broader device/model catalogs, additional protocol fingerprints, and real-device coverage of the implemented mDNS/UPnP model paths. No claim of mapping everything.

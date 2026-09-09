@@ -191,6 +191,20 @@ func enrichDescriptions(ctx context.Context, d *Device, timeout time.Duration) {
 	cache := map[string]cached{}
 	original := append([]Advertisement{}, d.Advertisements...)
 	for _, ad := range original {
+		if location := ippDescriptionURL(d.IP, ad); location != "" {
+			key := "ipp:" + location
+			if _, ok := cache[key]; ok || len(cache) >= 4 || ctx.Err() != nil {
+				continue
+			}
+			fields, err := fetchIPPDescription(ctx, d.IP, location)
+			cache[key] = cached{err: err}
+			if err == nil {
+				retainIPPDeviceID(fields)
+				fields["location"] = location
+				d.Advertisements = append(d.Advertisements, Advertisement{Protocol: "ipp", Service: "printer-attributes", Instance: ad.Instance, Port: ad.Port, Properties: fields})
+			}
+			continue
+		}
 		if ad.Protocol == "ssdp" && strings.EqualFold(ad.Service, "roku:ecp") {
 			location := rokuDescriptionURL(d.IP, ad)
 			key := "roku:" + location
