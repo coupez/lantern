@@ -31,6 +31,7 @@ lantern scan --jsonl               # streaming discovery events + final report
 lantern scan --csv > network.csv
 lantern observe --read capture.pcap --jsonl # offline DHCPv4/v6 fingerprint evidence
 lantern snmp 192.0.2.1 --community-env LANTERN_SNMP_COMMUNITY --json
+lantern android --transport-id 42 --json # use the selected authorized ADB transport
 lantern diff before.json after.json
 lantern evaluate --truth truth.json --scan network.json --bindings bindings.json --json
 lantern lookup 00:00:0c:12:34:56
@@ -85,6 +86,8 @@ Computer names, workgroups, registration flags, and reported unit IDs remain in 
 ## Configured device inventory
 
 `lantern snmp IP --community-env NAME --json` reads system fields and bounded ENTITY-MIB chassis inventory from one explicitly configured SNMPv2c device. A unique root chassis can supply a reported model, while agent descriptions and vendor namespaces remain separate. Communities are supplied through the named environment variable; v2c is unencrypted. Ordinary scan/watch profiles do not send SNMP queries. See [setup, evidence and limits](docs/snmp-inventory.md).
+
+`lantern android --transport-id ID --json` reads four model-related properties from an explicitly selected, already-authorized device through an existing local ADB server. It preserves manufacturer/model, device codename and raw build fingerprint as separate fields with source keys. It neither starts ADB nor infers a LAN address; see [Android setup and evidence boundaries](docs/android-inventory.md).
 
 ## Check local capabilities
 

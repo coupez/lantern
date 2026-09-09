@@ -8,6 +8,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/coupez/lantern/internal/ui"
+	"github.com/coupez/lantern/pkg/android"
 	"github.com/coupez/lantern/pkg/fingerprints"
 	"github.com/coupez/lantern/pkg/models"
 	"github.com/coupez/lantern/pkg/scanner"
@@ -49,6 +50,10 @@ func run(args []string) error {
 		return nil
 	case "evaluate":
 		return evaluateCommand(args, os.Stdout)
+	case "android":
+		ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		defer cancel()
+		return androidCommand(ctx, args, os.Stdout, android.Read)
 	case "snmp":
 		ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 		defer cancel()
@@ -159,6 +164,7 @@ func help() {
   lantern observe --read FILE    Import DHCP evidence from PCAP/PCAPNG offline
   lantern evaluate --truth FILE  Score saved observations against device labels
   lantern snmp IP --community-env NAME  Read configured SNMP device inventory
+  lantern android --transport-id ID    Read owner-authorized Android inventory
   lantern interfaces              List available IPv4/IPv6 networks
   lantern lookup MAC              Identify a MAC vendor offline
   lantern fingerprint [TYPE TEXT] Offline service recognition

@@ -20,6 +20,8 @@ jobs:
         run: LANTERN_NETWORK_TESTS=1 go test -race ./pkg/scanner -run 'TestRoku.*NetworkIntegration|TestIPP.*NetworkIntegration|TestONVIF.*NetworkIntegration|TestMDNSSplitReplyNetworkIntegration' -count=1 -timeout=90s
       - name: Configured SNMP IPv4/IPv6 inventory fixtures
         run: LANTERN_NETWORK_TESTS=1 go test -race ./pkg/snmp -count=1 -timeout=60s
+      - name: Owner-authorized Android IPv4/IPv6 inventory fixtures
+        run: LANTERN_NETWORK_TESTS=1 go test -race ./pkg/android -count=1 -timeout=60s
       - run: go build -trimpath -o bin/lantern ./cmd/lantern
       - run: ./bin/lantern demo
       - run: python3 scripts/test-event-stream.py
