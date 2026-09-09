@@ -162,3 +162,5 @@ To reproduce Linux runtime verification, run `make linux-test` with Docker avail
 The network integration test uses controlled IPv4/IPv6 localhost servers to verify ICMP, port detection, SSH/HTTP banners, DNS-SD follow-ups, UPnP description boundaries, and NetBIOS node status. The Linux container also checks interoperability with Samba’s actual name server. Regular tests don't send scan traffic. See [status and remaining work](docs/STATUS.md).
 
 [Platform testing](docs/platform-testing.md) documents architecture assertions and how to execute both Linux release archives and the Intel Mac archive, including the CLI socket/terminal fixtures.
+
+On macOS, Lantern also identifies its own selected interface addresses from the kernel's hardware model, resolving the code through AppleDB. The exact local source and any conflicting network claims remain visible in `--details` and JSON. See [local Mac inventory](docs/recognition.md#local-mac-hardware-inventory).

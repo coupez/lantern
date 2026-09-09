@@ -20,7 +20,7 @@ func identityText(raw string) string {
 	return value
 }
 
-// IdentityClaim records a reported field, protocol interpretation, or catalog match.
+// IdentityClaim records a reported/local field, protocol interpretation, or catalog match.
 // It is not an independently verified hardware identity.
 type IdentityClaim struct {
 	Field      string `json:"field"`
@@ -40,14 +40,18 @@ type Identity struct {
 	Model           string `json:"model,omitempty"`
 	Firmware        string `json:"firmware,omitempty"`
 	FirmwareVersion string `json:"firmware_version,omitempty"`
-	// ModelNames contains catalog candidates for the selected advertised model,
+	// ModelNames contains catalog candidates for the selected advertised/local model,
 	// or a Matter vendor/product pair when no explicit model was advertised.
 	ModelNames []string        `json:"model_names,omitempty"`
 	Claims     []IdentityClaim `json:"claims,omitempty"`
 }
 
 func identify(ads []Advertisement) *Identity {
-	claims := []IdentityClaim{}
+	return identifyWithLocalModel(ads, "")
+}
+
+func identifyWithLocalModel(ads []Advertisement, localModel string) *Identity {
+	claims := localModelClaims(localModel)
 	addValue := func(field, key, value string, a Advertisement) {
 		if a.Protocol == "roku" || (a.Protocol == "mdns" && strings.EqualFold(a.Service, "_companion-link._tcp")) {
 			value = identityText(value)
@@ -202,6 +206,9 @@ func identify(ads []Advertisement) *Identity {
 	}
 	// Standardized, explicit fields precede human-readable printer descriptions.
 	rank := func(c IdentityClaim) int {
+		if c.Basis == "local-system" {
+			return -1
+		}
 		if strings.HasPrefix(c.Source, "netbios:") {
 			if strings.HasSuffix(c.Source, "<00>") {
 				return 4
@@ -286,7 +293,8 @@ func identify(ads []Advertisement) *Identity {
 			result.FirmwareVersion = c.Value
 		}
 		linked := c.Source == selectedModel.Source && c.Key == selectedModel.Key && strings.EqualFold(c.Identifier, result.Model)
-		if c.Field == "manufacturer" && result.Manufacturer == "" && rokuLinked && (c.Basis != "catalog" || linked) {
+		localLinked := selectedModel.Basis != "local-system" || c.Source == selectedModel.Source
+		if c.Field == "manufacturer" && result.Manufacturer == "" && localLinked && rokuLinked && (c.Basis != "catalog" || linked) {
 			result.Manufacturer = c.Value
 		}
 		if c.Field == "model_name" && c.Basis == "catalog" && c.Source == selectedModel.Source && c.Key == selectedModel.Key && strings.EqualFold(c.Identifier, modelIdentifier) && !contains(result.ModelNames, c.Value) {
