@@ -2,6 +2,8 @@
 
 The requested Mac downloads were performed. Neither application was run or installed. Both disk images were mounted read-only, and files were inspected locally.
 
+The follow-up [recognition analysis](fing-recognition-analysis.md) traces native remote calls, embedded message schemas, MAC clustering, and the distinction between advertised and credentialed Apple identification.
+
 ## Native Fing 4.0.5
 
 - Official download landing page: https://www.fing.com/desktop/download-mac/

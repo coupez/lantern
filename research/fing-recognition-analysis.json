@@ -1,0 +1,328 @@
+{
+  "analysis_date": "2026-09-09",
+  "report": "docs/fing-recognition-analysis.md",
+  "scope": "Static inspection only; no Fing execution or recognition service requests",
+  "descriptor_count": 27,
+  "message_count": 564,
+  "binaries": {
+    "liboverlook.dylib": "409b671ddd9db91eaf8410cb2122361915326a53cdbe18455477db7e6debe967",
+    "fingagent.bin": "865649aa860837bf93b0bd3126d042d508f0d3846b5fdc7ca519e7299fd35e52"
+  },
+  "descriptors": [
+    {
+      "binary": "liboverlook.dylib",
+      "file": "net.proto",
+      "offset": "0x466be4",
+      "bytes": 18545,
+      "sha256": "9eca8c57d99b74d4fe47a0ffa33f56f8661ddd08603cdee985ef483a174bf256",
+      "message_count": 67
+    },
+    {
+      "binary": "liboverlook.dylib",
+      "file": "geoip.proto",
+      "offset": "0x493a11",
+      "bytes": 697,
+      "sha256": "a44ebda38a974524200138d1cc02b0506d31461a0cd95e425fb344d0261438e7",
+      "message_count": 1
+    },
+    {
+      "binary": "fingagent.bin",
+      "file": "dropdetect.proto",
+      "offset": "0x59d288",
+      "bytes": 7879,
+      "sha256": "0e7212d7c6d2e57df86efe013ad9156324f24cb1cb7ddfe3fff797159f3a1933",
+      "message_count": 36
+    },
+    {
+      "binary": "fingagent.bin",
+      "file": "hsp.proto",
+      "offset": "0x5a34a8",
+      "bytes": 35499,
+      "sha256": "8e8767852a886ee0d32d264d3d31a027ab311be595c2e47bbdc49981451a6202",
+      "message_count": 154
+    },
+    {
+      "binary": "fingagent.bin",
+      "file": "vuln.proto",
+      "offset": "0x5b2e04",
+      "bytes": 22059,
+      "sha256": "66ba064db1ba16eeffff206692c5b9f08565055257146c1a1902f902fbdeac2a",
+      "message_count": 110
+    },
+    {
+      "binary": "fingagent.bin",
+      "file": "news.proto",
+      "offset": "0x5d2ace",
+      "bytes": 345,
+      "sha256": "ff81fe1d21306cb3aa70dad49544d95249ccb4603a2de6d15a2ab3c9fb7ff212",
+      "message_count": 2
+    },
+    {
+      "binary": "fingagent.bin",
+      "file": "fads.proto",
+      "offset": "0x5d2d42",
+      "bytes": 4103,
+      "sha256": "5880a8a9ce9170a07be8350d1e5d7ce1e0727896e392498197aba3ce3925d7e8",
+      "message_count": 25
+    },
+    {
+      "binary": "fingagent.bin",
+      "file": "contacts.proto",
+      "offset": "0x5d3dc8",
+      "bytes": 502,
+      "sha256": "a77b22a88b30bbe1be11c4f147b62a0af1c8b82cee2c171ea5de687443faab9a",
+      "message_count": 2
+    },
+    {
+      "binary": "fingagent.bin",
+      "file": "hackerthreatcheck.proto",
+      "offset": "0x5d404f",
+      "bytes": 2734,
+      "sha256": "74680998aba994b77c865fad1a8f753cf09db21b0b5010684bacb887345d4060",
+      "message_count": 13
+    },
+    {
+      "binary": "fingagent.bin",
+      "file": "software.proto",
+      "offset": "0x5d4b7c",
+      "bytes": 1652,
+      "sha256": "7ac83ecfe814331a347026e20d672a3532ead029c38bb19820d2004dd662f028",
+      "message_count": 6
+    },
+    {
+      "binary": "fingagent.bin",
+      "file": "eventlog.proto",
+      "offset": "0x5d526f",
+      "bytes": 6005,
+      "sha256": "76a1fc3a1922461b3fe209adf562ce80560a5f2d54b1471dd831bdf4bfa280ad",
+      "message_count": 21
+    },
+    {
+      "binary": "fingagent.bin",
+      "file": "content.proto",
+      "offset": "0x5d6a61",
+      "bytes": 4021,
+      "sha256": "584b2b55b9a849fc1c86501d957b5e326d1bf7a6bb9e5ef16be8b8be02034a2b",
+      "message_count": 19
+    },
+    {
+      "binary": "fingagent.bin",
+      "file": "sas.proto",
+      "offset": "0x5d7a8b",
+      "bytes": 1370,
+      "sha256": "fec43d331416f7654f4d0425250baeffc7b532c3680dec9eefdcca43df2b1502",
+      "message_count": 6
+    },
+    {
+      "binary": "fingagent.bin",
+      "file": "isp.proto",
+      "offset": "0x5d80ce",
+      "bytes": 3241,
+      "sha256": "cd8823534b0b64f9910adf6a1841efc327f79136208862e0146486688cefc860",
+      "message_count": 14
+    },
+    {
+      "binary": "fingagent.bin",
+      "file": "netdiscovery.proto",
+      "offset": "0x5d8dfe",
+      "bytes": 5876,
+      "sha256": "9ec6a245aa544d9b326d6afbc0c863acb7982ea4c6d76bb30afb70619ec9feeb",
+      "message_count": 5
+    },
+    {
+      "binary": "fingagent.bin",
+      "file": "rating.proto",
+      "offset": "0x5da56d",
+      "bytes": 717,
+      "sha256": "3007669c6284a371f29b1e8766aefe18b9ec84ea6b7483933eb814d1ea4d31f7",
+      "message_count": 5
+    },
+    {
+      "binary": "fingagent.bin",
+      "file": "building.proto",
+      "offset": "0x5da8b9",
+      "bytes": 275,
+      "sha256": "467641779e7709c06ffc3cadd1c2d5057f9265d1936f00645e26f6282d6569c9",
+      "message_count": 2
+    },
+    {
+      "binary": "fingagent.bin",
+      "file": "speedtest.proto",
+      "offset": "0x5daa4d",
+      "bytes": 928,
+      "sha256": "acf3ada662c5b78a9925d4f6f378d194e9fa2d3653ceb0860ae655e9404fb47a",
+      "message_count": 2
+    },
+    {
+      "binary": "fingagent.bin",
+      "file": "userprofile.proto",
+      "offset": "0x5dae72",
+      "bytes": 2907,
+      "sha256": "204dc836ad80781f623315264e7abc132a4a576cd3d083a4987f919737a892a9",
+      "message_count": 12
+    },
+    {
+      "binary": "fingagent.bin",
+      "file": "apiresponse.proto",
+      "offset": "0x5dba52",
+      "bytes": 521,
+      "sha256": "943754f3997448910788ad0e9039873c07bdbd68ac99920bed7e48fdbf30d24e",
+      "message_count": 1
+    },
+    {
+      "binary": "fingagent.bin",
+      "file": "dis.proto",
+      "offset": "0x5dbcd0",
+      "bytes": 8989,
+      "sha256": "33a1415fc15f6b81b659dbf327581df16699e1007f9e647d07b0ea3fd7ae73cf",
+      "message_count": 24
+    },
+    {
+      "binary": "fingagent.bin",
+      "file": "schedule.proto",
+      "offset": "0x5de06c",
+      "bytes": 659,
+      "sha256": "b7c0131b5abebaf9e1228b0f4058a94d89ea397354c6aeb409109a1cba1f9c98",
+      "message_count": 5
+    },
+    {
+      "binary": "fingagent.bin",
+      "file": "dnsfilter.proto",
+      "offset": "0x5de380",
+      "bytes": 1857,
+      "sha256": "a32016f6ad02d151e71a7cb706802dfd836c5f3ded2c485e7f2332dfc526f76a",
+      "message_count": 10
+    },
+    {
+      "binary": "fingagent.bin",
+      "file": "healthcheck.proto",
+      "offset": "0x5deb46",
+      "bytes": 3478,
+      "sha256": "b64f34db5e851fcbc5cfbd87fc931d157d48ed7ae59e10850a1a4f40699fa098",
+      "message_count": 6
+    },
+    {
+      "binary": "fingagent.bin",
+      "file": "help.proto",
+      "offset": "0x5df953",
+      "bytes": 743,
+      "sha256": "d32917dfdb88d52659b2447a589edff6a2391cce95f1f988ddc8729831bfc719",
+      "message_count": 3
+    },
+    {
+      "binary": "fingagent.bin",
+      "file": "desktop.proto",
+      "offset": "0x5dfcb7",
+      "bytes": 3069,
+      "sha256": "8908a6466af875bf37cb83530c2f9a247741bd2f290537e04f034f936bcc5991",
+      "message_count": 8
+    },
+    {
+      "binary": "fingagent.bin",
+      "file": "monitor.proto",
+      "offset": "0x5e09a7",
+      "bytes": 994,
+      "sha256": "37088ee488bdc3d5935f73eb090a32f6be5662815b1814d3366efbb702be6d6f",
+      "message_count": 5
+    }
+  ],
+  "functions": [
+    {
+      "binary": "agent",
+      "function": "overlook::box::RemoteFingBox::identifyDevices",
+      "address": "0x1001b52cc",
+      "end": "0x1001b5a54"
+    },
+    {
+      "binary": "agent",
+      "function": "overlook::box::RemoteFingBox::disLookup",
+      "address": "0x10019825c",
+      "end": "0x100198838"
+    },
+    {
+      "binary": "agent",
+      "function": "overlook::fingagent::agentsnapshot::AgentSnapshot::DiscoveryNetworkEnrichment",
+      "address": "0x1001ff984",
+      "end": "0x1001ffd64"
+    },
+    {
+      "binary": "agent",
+      "function": "overlook::fingagent::recog::RecogCatalog::recogNetNode",
+      "address": "0x100195804",
+      "end": "0x1001962a8"
+    },
+    {
+      "binary": "agent",
+      "function": "overlook::fingagent::recog::RecogCatalog::recogCatalogLookup",
+      "address": "0x100187fb0",
+      "end": "0x1001887b4"
+    },
+    {
+      "binary": "agent",
+      "function": "overlook::fingagent::wifiscan::WiFiScanService::identifyDevices",
+      "address": "0x1001b4ac4",
+      "end": "0x1001b52cc"
+    },
+    {
+      "binary": "agent",
+      "function": "overlook::fingagent::discovery::DiscoveredInfo::enrichment",
+      "address": "0x10011ee4c",
+      "end": "0x10011f174"
+    },
+    {
+      "binary": "agent",
+      "function": "overlook::fingagent::discovery::DiscoveredInfo::enrichNetwork",
+      "address": "0x1000f05bc",
+      "end": "0x1000f1174"
+    },
+    {
+      "binary": "agent",
+      "function": "overlook::fingagent::discovery::DiscoveredInfo::processCompletedDiscovery",
+      "address": "0x1001070b8",
+      "end": "0x10010877c"
+    },
+    {
+      "binary": "library",
+      "function": "overlook::net::bonjour::BonjourInfo::addServiceInfo",
+      "address": "0xbb028",
+      "end": "0xbb1ec"
+    },
+    {
+      "binary": "library",
+      "function": "overlook::net::bonjour::BonjourResolver::addServiceInfo",
+      "address": "0xba8c8",
+      "end": "0xbb028"
+    },
+    {
+      "binary": "library",
+      "function": "overlook::net::bonjour::BonjourResolver::handleAddNodeServiceInfo",
+      "address": "0xbc350",
+      "end": "0xbcd20"
+    },
+    {
+      "binary": "library",
+      "function": "overlook::net::bonjour::BonjourResolver::handleGratuitousDeviceInfo",
+      "address": "0xbd148",
+      "end": "0xbd48c"
+    },
+    {
+      "binary": "library",
+      "function": "overlook::net::bonjour::BonjourResolver::resolve",
+      "address": "0xb9b18",
+      "end": "0xb9f28"
+    }
+  ],
+  "local_artifacts": {
+    "research/extracted/recognition-audit/read-descriptors.py": "9597d918e26995f734e4cb0ff668581dc624a5c49fa585f483b57af3f2b4c593",
+    "research/extracted/recognition-audit/descriptors.json": "c28c2ddd7e02908f3d91f97e62873c219179a02c8df84a485495e1d358970862",
+    "research/extracted/recognition-audit/call-summary.py": "f67f2401728e0ea84b8175fad2b3a1a00d1b9ad3c0d73952b97d7681f1ce491f",
+    "research/extracted/recognition-audit/call-summary.json": "03ba078bc715ea1b72371fbf74065868a53108d9825348d891b49e4cef43d9d1",
+    "research/extracted/recognition-audit/agent-symbols.txt": "6fe9b54d1a6ce6581098ec6137d1c8b2712bf27915ab5a6dc38b61a65beb1d65",
+    "research/extracted/recognition-audit/library-symbols.txt": "623b27a5cc2e5ddf1de5574ef451ef68f52ba714370c32e2381a6fd3f63b3efa"
+  },
+  "limitations": [
+    "Selected direct calls only; indirect dispatch and all paths not reconstructed",
+    "Schema fields do not establish collector availability in a particular edition",
+    "No proprietary fingerprint corpus, server classifier, weights or accuracy evaluation recovered"
+  ]
+}

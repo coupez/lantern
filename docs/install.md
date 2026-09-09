@@ -1,6 +1,6 @@
 # Install Lantern
 
-Lantern supports source builds and self-contained macOS/Linux archives. Published builds, when available, appear on [GitHub releases](https://github.com/coupez/lantern/releases). Source installation requires repository access; a private repository requires authentication. Authenticated installation of an integration revision has been verified.
+Lantern supports source builds and self-contained macOS/Linux archives. Download [v0.1.0-rc.7](https://github.com/coupez/lantern/releases/tag/v0.1.0-rc.7) from the public repository. All four published archives and the checksum file were downloaded without authentication and matched the locally verified release artifacts.
 
 ## Build from a checkout
 
@@ -22,15 +22,13 @@ The default destination is `$HOME/.local/bin/lantern`. Add `$HOME/.local/bin` to
 
 ## Versioned Go installation
 
-The module path is `github.com/coupez/lantern`. An earlier CLI integration is available on `integration/cli-release-candidate`, with [draft PR #1](https://github.com/coupez/lantern/pull/1) tracking its review. Local branches contain additional changes awaiting upload authorization; installing the remote branch does not include those changes. Install that remote branch without a checkout:
+The module path is `github.com/coupez/lantern`. Install the published prerelease without a checkout:
 
 ```sh
-GOPRIVATE=github.com/coupez/lantern go install github.com/coupez/lantern/cmd/lantern@integration/cli-release-candidate
+go install github.com/coupez/lantern/cmd/lantern@v0.1.0-rc.7
 ```
 
-While the repository is private, Git must already have permission and authentication to read it. `GOPRIVATE` prevents private-module requests from going to public Go proxies; it does not grant access. A public repository can omit this environment variable. Replace the branch with a tag or commit to select a specific revision. `@latest` may select the older main branch until the integration is merged or tagged. A versioned install reports its module version through `lantern version`.
-
-Revision `43cab67f3491ab74b07301bafc208d0af2b0c92a` was fetched and installed from GitHub in an empty temporary module cache on macOS ARM64. Automatic toolchain selection downloaded Go 1.26.8 and all dependencies, and the installed executable passed version, offline catalog, and demo checks. If `GOTOOLCHAIN=local` is set, the installed Go must already be at least 1.26.8; the bootstrap Go 1.26.3 correctly refused this build when automatic selection was disabled.
+This command was verified through the public Go proxy in an empty temporary module cache on macOS ARM64, including version, model lookup and offline demo checks. Use the explicit tag to select this prerelease. Source installation requires Go 1.26.8 or newer, or automatic toolchain selection; `GOTOOLCHAIN=local` disables automatic selection. A versioned install reports its module version through `lantern version`.
 
 Go installs commands into `GOBIN` when set, otherwise into the first `GOPATH` entry's `bin` directory (normally `$HOME/go/bin`). Put that directory on `PATH` to invoke `lantern` directly.
 
@@ -38,7 +36,7 @@ Go installs commands into `GOBIN` when set, otherwise into the first `GOPATH` en
 
 Local archives are generated with `make release VERSION=dev` (choose a release version when preparing a candidate). They support macOS and Linux on ARM64 and x86-64; choose `darwin-arm64` for Apple Silicon, `darwin-amd64` for Intel Macs, and the corresponding Linux architecture.
 
-When release downloads become available, place the archive and its checksum file in the same directory. Archive names use `lantern-VERSION-OS-ARCH.tar.gz`. Verify the archives listed in the checksum file using `shasum -a 256 -c lantern-VERSION-checksums.txt` (or `sha256sum -c` on Linux). That command expects all listed archives to be present; for a single downloaded archive, compare its `shasum -a 256 ARCHIVE` output with the matching line in the checksum file.
+Download the archive and checksum file from the release page. Place the archive and its checksum file in the same directory. Archive names use `lantern-VERSION-OS-ARCH.tar.gz`. Verify the archives listed in the checksum file using `shasum -a 256 -c lantern-VERSION-checksums.txt` (or `sha256sum -c` on Linux). That command expects all listed archives to be present; for a single downloaded archive, compare its `shasum -a 256 ARCHIVE` output with the matching line in the checksum file.
 
 Extract into an empty directory, then run or copy the executable:
 

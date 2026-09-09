@@ -13,7 +13,7 @@ make build                 # from a source checkout
 
 Go 1.26.8 or newer is required to build. Go can download the project-required toolchain automatically. The resulting executable contains the vendor and service databases and runs offline. Default macOS scanning works without root. Linux requires `ip` from iproute2 for neighbor discovery; ICMP permissions depend on the host's ping socket configuration.
 
-Install from a checkout with `make install` (defaults to `$HOME/.local/bin`). The GitHub repository is currently private and public release downloads are not yet available. [Installation and archive instructions](docs/install.md) cover custom prefixes, Go module installation, checksums, and runtime requirements.
+Install from a checkout with `make install` (defaults to `$HOME/.local/bin`). The repository is public; [rc.7 downloads](https://github.com/coupez/lantern/releases/tag/v0.1.0-rc.7) are available for macOS and Linux on ARM64 and x86-64. [Installation and archive instructions](docs/install.md) cover custom prefixes, Go module installation, checksums, and runtime requirements.
 
 ## Everyday commands
 
