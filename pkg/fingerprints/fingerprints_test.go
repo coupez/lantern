@@ -129,7 +129,7 @@ func BenchmarkLookup(b *testing.B) {
 	}
 }
 
-// Repeated initialization measures catalog decoding and compilation, excluding
+// Repeated initialization measures catalog decoding and preparation, excluding
 // process startup. Benchmarks are serial and do not race normal lookups.
 func BenchmarkInitialization(b *testing.B) {
 	b.ReportAllocs()

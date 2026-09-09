@@ -136,7 +136,7 @@ Raw measurements and calculated medians: `research/results/fingerprint-required-
 
 ## FTP and SMTP catalog expansion
 
-Adding 151 FTP and 139 SMTP patterns increases the catalog from 608 to 898 rules. The compressed runtime index grows from 29,739 to 46,182 bytes. On Apple M4 Max / macOS ARM64 / Go 1.26.8, medians of three 300 ms samples measured:
+At `a2cf05a`, adding 151 FTP and 139 SMTP patterns increased the catalog from 608 to 898 rules. The compressed runtime index grows from 29,739 to 46,182 bytes. On Apple M4 Max / macOS ARM64 / Go 1.26.8, medians of three 300 ms samples measured:
 
 | Warm lookup input | Median | Allocations per operation |
 | --- | ---: | ---: |
@@ -150,10 +150,61 @@ Adding 151 FTP and 139 SMTP patterns increases the catalog from 608 to 898 rules
 | SSH `OpenSSH_9.9p1 Ubuntu-3ubuntu1` | 2.894 µs | 40 |
 | Late HTTP match `Example KNX-IP Interface` | 3.428 µs | 13 |
 
-Repeated complete catalog initialization measured **15.592 ms**, **56,008,237 allocated bytes**, and **368,859 allocations** per initialization. These are transient allocation totals, not retained heap size. This is a material increase from the earlier 608-pattern measurement of 5.823 ms and 9,597,417 allocated bytes; every catalog is initialized together on first use. The expanded expressions include multiline greeting patterns. Warm lookups visit only the requested field's catalog. Multiline greeting matching also constructs logical LF text and a byte-offset map to preserve original CRLF captures.
+Repeated complete catalog initialization measured **15.592 ms**, **56,008,237 allocated bytes**, and **368,859 allocations** per initialization. These are transient allocation totals, not retained heap size. This is a material increase from the earlier 608-pattern measurement of 5.823 ms and 9,597,417 allocated bytes; that revision compiled every catalog together on first use. The subsequent on-demand compilation change is measured below. The expanded expressions include multiline greeting patterns. Warm lookups visit only the requested field's catalog. Multiline greeting matching also constructs logical LF text and a byte-offset map to preserve original CRLF captures.
 
 These measurements exclude process startup, sockets, parsing replies, terminal output, and first-use initialization for the warm rows. They do not measure scan throughput or recognition accuracy. Earlier measurements use separate runs and are contextual, not a controlled before/after comparison for this expansion. The raw final log is `research/results/greeting-matcher-final-benchmarks.log` (ignored development evidence).
 
 ```sh
 go test ./pkg/fingerprints -run '^$' -bench 'BenchmarkInitialization|BenchmarkRequiredTextWorkloads' -benchmem -benchtime=300ms -count=3
 ```
+
+
+## Compile banner patterns on demand
+
+An allocation profile of the 898-pattern initializer at `a2cf05a` identified regex program construction and repeat expansion as the largest allocation sources. The core now validates all syntax/capture references and derives required-text prechecks at first use, then compiles a rule only when a lookup reaches it and its precheck passes. A pointer-owned `sync.Once` cache publishes one immutable expression to concurrent callers, including copied internal rule values. Expressions, catalog ordering, captures, and data artifacts are unchanged.
+
+On Apple M4 Max / macOS ARM64 / Go 1.26.8, medians of three 300 ms samples compare the same cold lookup fixtures against `a2cf05a`. Each iteration resets the entire index before calling the public matcher; these rows include preparation, necessary compilation, matching, and returned metadata, but exclude process startup:
+
+| Cold lookup | Before | After | Allocated bytes before → after |
+| --- | ---: | ---: | ---: |
+| http | 18.518 ms | 4.944 ms | 56,903,957 → 4,554,638 |
+| ssh | 18.484 ms | 4.973 ms | 56,905,193 → 4,698,238 |
+| ftp | 18.450 ms | 4.963 ms | 56,901,760 → 4,619,921 |
+| smtp | 18.476 ms | 5.749 ms | 56,986,817 → 6,919,571 |
+| unknown-http | 18.542 ms | 4.986 ms | 56,985,910 → 5,219,410 |
+
+The cold fixtures are Apache `Apache/2.4.65`, SSH `OpenSSH_9.9p1 Ubuntu-3ubuntu1`, FTP `SYNOLOGY FTP server ready.`, SMTP `foo.bar ESMTP Postfix (3.1.4)`, and unknown HTTP `LanternUnknown/2026`. Repeated index preparation alone falls from **15.634 ms / 56,008,195 allocated bytes** to **4.676 ms / 3,621,505 bytes**. The latter intentionally excludes deferred compilation, so the complete cold-lookup rows are the comparable operation. Allocation totals are not retained heap size. Rules without a proven required literal still compile when reached, and new candidate rules incur their compilation cost on first encounter. A workload that eventually visits all rules still pays their compilation costs.
+
+Warm lookup medians use the existing fixtures, with unchanged successful-match allocation counts. Small overhead remains on some successful paths; this is a startup and allocation improvement, not a uniform warm lookup speedup:
+
+| Warm workload | Before | After |
+| --- | ---: | ---: |
+| short-unknown | 2.165 µs | 2.180 µs |
+| long-unknown | 10.704 µs | 10.661 µs |
+| literal-without-match | 60.186 µs | 59.852 µs |
+| apache | 1.143 µs | 1.226 µs |
+| openssh | 2.882 µs | 3.097 µs |
+| late-http-match | 3.432 µs | 3.423 µs |
+| ftp | 3.166 µs | 3.235 µs |
+| ftp-multiline | 5.695 µs | 5.946 µs |
+| smtp | 4.684 µs | 4.700 µs |
+
+A separate native CLI benchmark launches a fresh process for every sample and requires byte-identical stdout with empty stderr. Both binaries use Go 1.26.8, `-buildvcs=false -trimpath`, and `-ldflags="-s -w"`. Thirty measured pairs per case alternate binary order, after three excluded warm-up pairs. This includes process launch, CLI startup, lookup, and captured output; filesystem/code pages are warm:
+
+| CLI fingerprint command | Before | After |
+| --- | ---: | ---: |
+| count | 23.745 ms | 9.557 ms |
+| http | 23.011 ms | 9.714 ms |
+| ssh | 23.001 ms | 9.716 ms |
+| ftp | 22.865 ms | 9.568 ms |
+| smtp | 22.963 ms | 10.535 ms |
+| unknown-http | 23.133 ms | 9.804 ms |
+
+No timings include network scans, protocol exchanges, or terminal rendering, and no overall scan-throughput claim follows. The benchmark script records executable hashes and every sample. These are local ARM64 measurements, not native Intel/AMD results.
+
+```sh
+go test ./pkg/fingerprints -run '^$' -bench 'BenchmarkColdLookup|BenchmarkInitialization|BenchmarkRequiredTextWorkloads' -benchmem -benchtime=300ms -count=3
+python3 scripts/benchmark-banner-startup.py /path/to/before /path/to/after
+```
+
+Ignored local evidence: `research/results/fingerprint-init-alloc-profile.txt`, `fingerprint-lazy-baseline.log`, `fingerprint-lazy-final-benchmarks.log`, `fingerprint-lazy-final-summary.json`, and `fingerprint-lazy-cli-benchmarks.json`.

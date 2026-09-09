@@ -85,9 +85,22 @@ type rule struct {
 	Line      int         `json:"line"`
 	Certainty string      `json:"certainty"`
 	Params    []parameter `json:"params"`
-	re        *regexp.Regexp
+	compiled  *compiledPattern
 	required  string
 }
+
+// Kept behind a pointer because rule values may be copied. All copies share the
+// same once guard and immutable compiled expression.
+type compiledPattern struct {
+	once sync.Once
+	re   *regexp.Regexp
+}
+
+func (c *compiledPattern) get(pattern string) *regexp.Regexp {
+	c.once.Do(func() { c.re = regexp.MustCompile(pattern) })
+	return c.re
+}
+
 type catalog struct {
 	Field      string `json:"field"`
 	Protocol   string `json:"protocol"`
@@ -116,17 +129,21 @@ func initialize() {
 	for i := range catalogs {
 		for j := range catalogs[i].Rules {
 			r := &catalogs[i].Rules[j]
-			r.re = regexp.MustCompile(r.Pattern)
 			tree, err := syntax.Parse(r.Pattern, syntax.Perl)
 			if err != nil {
 				panic(err)
 			}
 			r.required = requiredText(tree)
+			captures := tree.MaxCap()
 			for _, p := range r.Params {
-				if p.Pos < 0 || p.Pos > r.re.NumSubexp() {
+				if p.Pos < 0 || p.Pos > captures {
 					panic("invalid embedded fingerprint capture")
 				}
 			}
+			// Validate syntax/captures now, but defer expansion and compilation until
+			// a lookup passes this rule's precheck. Publish one immutable regexp to
+			// all concurrent callers; the AST is not retained.
+			r.compiled = new(compiledPattern)
 		}
 	}
 }
@@ -188,7 +205,7 @@ func Lookup(field, input string) *Match {
 			if r.required != "" && !strings.Contains(matchedInput, r.required) {
 				continue
 			}
-			captures := r.re.FindStringSubmatchIndex(matchedInput)
+			captures := r.compiled.get(r.Pattern).FindStringSubmatchIndex(matchedInput)
 			if captures == nil {
 				continue
 			}

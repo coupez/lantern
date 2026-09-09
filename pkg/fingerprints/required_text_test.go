@@ -42,7 +42,7 @@ func unfilteredLookup(field, input string) *Match {
 			continue
 		}
 		for _, r := range c.Rules {
-			captures := r.re.FindStringSubmatchIndex(logical)
+			captures := r.compiled.get(r.Pattern).FindStringSubmatchIndex(logical)
 			if captures == nil {
 				continue
 			}
