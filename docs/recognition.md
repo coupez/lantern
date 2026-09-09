@@ -166,7 +166,7 @@ Correlated WS-Discovery ProbeMatches retain endpoint references, expanded QName 
 
 Exact `onvif://www.onvif.org/name/…` and `/hardware/…` scopes supply source-attributed `name` and `hardware` claims, with percent-decoding applied once to the path value. Multiple distinct claims remain visible. The hardware description does not automatically become a model number, manufacturer, MAC mapping, or catalog lookup. Names can populate the device name and search results. Other scope schemes/authorities/categories are preserved as metadata without an inferred identity. Query strings, fragments, user information, and decoded control text are not recognized as ONVIF scope claims.
 
-These semantics follow section 7 of the [ONVIF Core Specification 19.12](https://www.onvif.org/specs/core/ONVIF-Core-Specification-v1912.pdf). They are device-reported discovery claims, not proof of physical hardware or ONVIF certification. Discovery sends no authentication or device-control requests; endpoint URLs are not fetched.
+These semantics follow section 7 of the [ONVIF Core Specification 19.12](https://www.onvif.org/specs/core/ONVIF-Core-Specification-v1912.pdf). They are device-reported discovery claims, not proof of physical hardware or ONVIF certification. Discovery sends no authentication or device-control requests. The subsequent description phase can fetch device information from qualifying same-peer ONVIF endpoints as described below.
 
 ## Companion model recognition
 
@@ -209,3 +209,20 @@ The IEEE 1284 device-ID `MFG`/`MANUFACTURER` and `MDL`/`MODEL` fields supply man
 The parser bounds responses to 256 KiB, fields to 2,048 bytes, records to 1,024 and nested collections to eight levels. It checks response status, request ID, attribute groups, charset, lengths and selected-field syntax; unknown/no-value fields cannot manufacture a model. The collector shares the existing deadline and four-request description budget with UPnP, Shelly and Roku. Resource paths are validated conservatively, so ambiguous, malformed or deeply encoded paths are skipped. Unsupported/failed endpoints retain their existing Bonjour evidence.
 
 Sources: [IPP Get-Printer-Attributes](https://www.rfc-editor.org/rfc/rfc8011.html#section-4.2.5), [reported make/model semantics](https://www.rfc-editor.org/rfc/rfc8011.html#section-5.4.9), [IPP encoding](https://www.rfc-editor.org/rfc/rfc8010.html), [IPPS URI scheme](https://www.rfc-editor.org/rfc/rfc7472.html), and [PWG implementation guide](https://www.pwg.org/ipp/ippguide.html). No printer-model catalog rows are added.
+
+
+## ONVIF device information
+
+Standard/deep scans with descriptions enabled use qualifying WS-Discovery replies to request `GetDeviceInformation`. Eligibility requires the exact expanded type `{http://www.onvif.org/ver10/device/wsdl}Device` or legacy `{http://www.onvif.org/ver10/network/wsdl}NetworkVideoTransmitter`. A scope or namespace-prefix spelling alone is insufficient. Generic ONVIF device membership does not automatically classify the physical host as a camera.
+
+The collector selects up to four unique valid XAddrs from at most 32 advertised candidates. Each must name the responding literal IP, with a compatible IPv6 zone. It preserves the advertised path and port and performs no DNS lookup, proxying, redirect following, credential exchange, guessed-path probes or SOAP-version fallback. Query/fragment/credential-bearing endpoints and unsafe path forms are rejected. Requests share the existing four-target per-device description budget and deadline with UPnP, Shelly, Roku and IPP.
+
+The SOAP 1.2 POST contains only the empty GetDeviceInformation request. HTTP failures, authorization challenges and SOAP faults preserve the original discovery observation. ONVIF assigns this operation access class READ_SYSTEM; a read-only request may still require authorization. This collector has no credentialed retry path. HTTPS uses TLS 1.2 or newer with certificate verification disabled; successful observations explicitly record `transport: tls-unverified` and `authentication: none`. Neither the transport nor a model claim authenticates hardware.
+
+The reusable `pkg/onvif` codec requires a SOAP 1.2 Envelope, optional Header, one Body and one direct GetDeviceInformationResponse. Its five required direct string fields must each occur once; empty strings are accepted. Only `Manufacturer`, `Model` and `FirmwareVersion` are retained. `SerialNumber` and `HardwareId` do not enter derived observations or identity claims. Unknown extension elements are skipped within the same bounds; malformed/nested/duplicate fields, faults, directives and trailing documents reject the response.
+
+Responses are limited to 32 KiB, XML depth 16, 1,024 elements and 2 KiB per required field; HTTP response headers are limited to 16 KiB. MIME type must be `application/soap+xml` with UTF-8 or no declared charset. Selected values retain raw outer spacing in the derived observation; controls/format characters inside the trimmed value are rejected before identity display.
+
+Manufacturer/model/firmware claims carry the exact endpoint source. Competing endpoints stay visible, and a selected model cannot borrow manufacturer or version from another ONVIF endpoint. A version can appear without an invented firmware product name. Direct local Mac model evidence retains priority. Advertised endpoints do not become verified TCP ports, and these observations add no catalog rows.
+
+Sources: [ONVIF Core 23.12, including discovery, security and GetDeviceInformation](https://www.onvif.org/specs/2312/ONVIF-Core-Spec-v2312.pdf), [Device Feature Discovery 21.12](https://www.onvif.org/wp-content/uploads/2022/07/ONVIF_Device_Feature_Discovery_Specification_21.12.pdf), and [device-management WSDL](https://www.onvif.org/ver10/device/wsdl/devicemgmt.wsdl). Controlled fixtures validate the current collector; physical-camera/recorder interoperability and credentialed inventory remain unverified.
