@@ -8,9 +8,11 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"encoding/xml"
+	"flag"
 	"fmt"
 	"os"
 	"regexp"
+	"strings"
 )
 
 type database struct {
@@ -18,6 +20,7 @@ type database struct {
 }
 type fingerprint struct {
 	Pattern  string    `xml:"pattern,attr"`
+	Flags    string    `xml:"flags,attr"`
 	Examples []example `xml:"example"`
 	Params   []param   `xml:"param"`
 }
@@ -41,7 +44,26 @@ type result struct {
 	Issues            []string `json:"issues"`
 }
 
-func inspect(path string) result {
+// Ruby uses line anchors by default; its MULTILINE option makes dot match LF.
+// This models the documented flag subset, not full Ruby/Go regexp equivalence.
+func withRubyFlags(pattern, flags string) (string, error) {
+	options := "m"
+	if flags != "" {
+		for _, name := range strings.Split(flags, ",") {
+			switch name {
+			case "REG_ICASE", "IGNORECASE":
+				options += "i"
+			case "REG_MULTILINE", "REG_DOT_NEWLINE", "REG_LINE_ANY_CRLF":
+				options += "s"
+			default:
+				return "", fmt.Errorf("unsupported flag %q", name)
+			}
+		}
+	}
+	return "(?" + options + ")" + pattern, nil
+}
+
+func inspect(path string, rubyFlags bool) result {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		panic(err)
@@ -53,7 +75,15 @@ func inspect(path string) result {
 	out := result{SHA256: fmt.Sprintf("%x", sha256.Sum256(data)), Patterns: len(db.Patterns), Issues: []string{}}
 	compiled := make([]*regexp.Regexp, len(db.Patterns))
 	for i, f := range db.Patterns {
-		compiled[i], err = regexp.Compile(f.Pattern)
+		pattern := f.Pattern
+		if rubyFlags {
+			pattern, err = withRubyFlags(pattern, f.Flags)
+			if err != nil {
+				out.Issues = append(out.Issues, fmt.Sprintf("pattern %d: %v", i, err))
+				continue
+			}
+		}
+		compiled[i], err = regexp.Compile(pattern)
 		if err != nil {
 			out.Issues = append(out.Issues, fmt.Sprintf("pattern %d fails Go compilation", i))
 		}
@@ -103,9 +133,11 @@ func inspect(path string) result {
 	return out
 }
 func main() {
+	rubyFlags := flag.Bool("ruby-flags", false, "model Recog-Ruby XML flags and line anchors")
+	flag.Parse()
 	results := []result{}
-	for _, path := range os.Args[1:] {
-		results = append(results, inspect(path))
+	for _, path := range flag.Args() {
+		results = append(results, inspect(path, *rubyFlags))
 	}
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", "  ")
