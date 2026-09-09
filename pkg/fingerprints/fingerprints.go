@@ -11,6 +11,7 @@ import (
 	"io"
 	"maps"
 	"regexp"
+	"regexp/syntax"
 	"strings"
 	"sync"
 	"unicode"
@@ -83,6 +84,7 @@ type rule struct {
 	Certainty string      `json:"certainty"`
 	Params    []parameter `json:"params"`
 	re        *regexp.Regexp
+	required  string
 }
 type catalog struct {
 	Field      string `json:"field"`
@@ -113,6 +115,11 @@ func initialize() {
 		for j := range catalogs[i].Rules {
 			r := &catalogs[i].Rules[j]
 			r.re = regexp.MustCompile(r.Pattern)
+			tree, err := syntax.Parse(r.Pattern, syntax.Perl)
+			if err != nil {
+				panic(err)
+			}
+			r.required = requiredText(tree)
 			for _, p := range r.Params {
 				if p.Pos < 0 || p.Pos > r.re.NumSubexp() {
 					panic("invalid embedded fingerprint capture")
@@ -139,6 +146,9 @@ func Lookup(field, input string) *Match {
 		return nil
 	}
 	for _, r := range input {
+		if r >= ' ' && r <= '~' {
+			continue
+		}
 		if unicode.IsControl(r) || unicode.In(r, unicode.Cf) {
 			return nil
 		}
@@ -148,14 +158,18 @@ func Lookup(field, input string) *Match {
 		if c.Field != field {
 			continue
 		}
-		for _, r := range c.Rules {
+		for i := range c.Rules {
+			r := &c.Rules[i]
+			if r.required != "" && !strings.Contains(input, r.required) {
+				continue
+			}
 			captures := r.re.FindStringSubmatchIndex(input)
 			if captures == nil {
 				continue
 			}
 			return &Match{Name: r.Name, Field: field, Input: input, Catalog: "Rapid7 Recog",
 				Reference: fmt.Sprintf("%s#L%d", c.Source, r.Line), Certainty: r.Certainty,
-				Preference: c.Preference, Fields: evaluate(r, captures, input, c.Protocol)}
+				Preference: c.Preference, Fields: evaluate(*r, captures, input, c.Protocol)}
 		}
 	}
 	return nil

@@ -128,3 +128,32 @@ func BenchmarkLookup(b *testing.B) {
 		})
 	}
 }
+
+// Repeated initialization measures catalog decoding and compilation, excluding
+// process startup. Benchmarks are serial and do not race normal lookups.
+func BenchmarkInitialization(b *testing.B) {
+	b.ReportAllocs()
+	for range b.N {
+		initialize()
+	}
+}
+
+func BenchmarkRequiredTextWorkloads(b *testing.B) {
+	Count()
+	cases := []struct{ name, field, input string }{
+		{"short-unknown", HTTPServer, "LanternUnknown/2026"},
+		{"long-unknown", HTTPServer, strings.Repeat("x", 2048)},
+		{"literal-without-match", HTTPServer, strings.Repeat("x", 2000) + "-EmWeb/"},
+		{"apache", HTTPServer, "Apache/2.4.65"},
+		{"openssh", SSHBanner, "OpenSSH_9.9p1 Ubuntu-3ubuntu1"},
+		{"late-http-match", HTTPServer, "Example KNX-IP Interface"},
+	}
+	for _, tc := range cases {
+		b.Run(tc.name, func(b *testing.B) {
+			b.ReportAllocs()
+			for range b.N {
+				Lookup(tc.field, tc.input)
+			}
+		})
+	}
+}

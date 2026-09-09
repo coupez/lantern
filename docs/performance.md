@@ -106,3 +106,29 @@ On Apple M4 Max / macOS ARM64 / Go 1.26.8, medians of three warm `BenchmarkLooku
 | Unmatched HTTP Server, 2,048 `x` bytes | 135.711 µs | 0 / 0 |
 
 The matcher preserves source order and returns independently owned scoped fields with expanded catalog templates. Input length is bounded to 2,048 bytes. These warm measurements exclude initial lazy decompression/JSON parsing/compilation and all network/terminal work; they do not measure overall scan time or accuracy. Unmatched long inputs require more regex work than early matching rules. Reproduce with `go test ./pkg/fingerprints -run '^$' -bench BenchmarkLookup -benchmem -count=3`. Log: `research/results/banner-fingerprints-benchmark.log` (ignored).
+
+
+## Required-text prechecks for banner matching
+
+A CPU profile of the maximum-length unknown HTTP Server workload showed regex execution dominating matching time. A few unanchored or leading-wildcard patterns account for much of that work. Each rule now has a conservative literal-text precheck derived from Go's parsed regex tree during initial catalog setup. Missing required text skips that regex; candidate rules still execute the original expression in source order. Printable ASCII input validation also takes a short path, and the rule loop avoids copying complete rule records.
+
+On the same Apple M4 Max / macOS ARM64 / Go 1.26.8 environment, medians of three 500 ms samples compared `6e02654` with the optimized implementation using the same benchmark fixture:
+
+| Warm lookup input | Before | After | Ratio |
+| --- | ---: | ---: | ---: |
+| Unknown HTTP `LanternUnknown/2026` | 9.094 µs | 2.135 µs | 4.26× |
+| Unknown HTTP, 2,048 `x` bytes | 136.281 µs | 10.593 µs | 12.87× |
+| Nonmatch, 2,000 `x` bytes followed by `-EmWeb/` | 130.733 µs | 60.013 µs | 2.18× |
+| HTTP `Apache/2.4.65` | 1.388 µs | 1.202 µs | 1.15× |
+| SSH `OpenSSH_9.9p1 Ubuntu-3ubuntu1` | 3.640 µs | 3.023 µs | 1.20× |
+| Late HTTP match `Example KNX-IP Interface` | 11.399 µs | 3.463 µs | 3.29× |
+
+The third workload contains a required literal but still does not match its rule, so the precheck cannot eliminate its regex execution. Presence of a literal never establishes a catalog match. These are in-memory lookup measurements with unchanged inputs, outputs, and catalog data; they are not overall network-scan speedups or accuracy measurements. Neither comparison run used CPU profiling.
+
+There is an initialization tradeoff: repeated full catalog initialization rose from **5.117 ms to 5.823 ms**, with total allocated bytes per initialization increasing from **8,424,526 to 9,597,417**. This measures decompression, JSON parsing, compilation, and precheck derivation, excluding process startup. Initialization occurs once when the catalog is first used; ASTs are not retained after derivation. Warm successful-match allocation counts remain 18 for Apache, 40 for the SSH example, and 13 for the late HTTP match. The three negative workloads report zero allocations per operation at benchmark precision.
+
+```sh
+go test ./pkg/fingerprints -run '^$' -bench 'Benchmark(RequiredTextWorkloads|Initialization)$' -benchmem -benchtime=500ms -count=3
+```
+
+Raw measurements and calculated medians: `research/results/fingerprint-required-{baseline.log,final-benchmark.log,summary.json}` (ignored). The separate CPU profile and per-rule timing experiment are diagnostic evidence only and are not used for the ratios above.
