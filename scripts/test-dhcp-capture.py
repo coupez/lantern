@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """Exercise the real CLI with independently encoded, synthetic capture files."""
 import base64
+import hashlib
 import json
 from pathlib import Path
 import struct
 import subprocess
+import sys
 import tempfile
 import unittest
 
@@ -68,6 +70,30 @@ def section(endian, link, packet):
 
 
 class CaptureCLI(unittest.TestCase):
+    def test_fingerbank_preview_from_real_capture_decoder(self):
+        data = section('<', 1, frame4()) + section('>', 229, frame6())
+        imported = self.run_capture(data, '--json')
+        self.assertEqual(imported.returncode, 0, imported.stderr)
+        with tempfile.TemporaryDirectory(prefix='lantern-fingerbank-test-') as d:
+            path = Path(d) / 'observe.json'
+            path.write_bytes(imported.stdout.encode())
+            p = subprocess.run([str(BIN), 'fingerbank', '--read', str(path)],
+                               capture_output=True, text=True, timeout=10)
+            self.assertEqual(p.returncode, 0, p.stderr)
+            result = json.loads(p.stdout)
+            self.assertEqual(result['mode'], 'preview')
+            self.assertEqual(result['source_sha256'], hashlib.sha256(path.read_bytes()).hexdigest())
+            self.assertFalse(result['observations'][0]['eligible'])  # Server Offer.
+            row = result['observations'][1]
+            self.assertTrue(row['eligible'])
+            self.assertEqual((row['packet'], row['section'], row['interface'], row['link_type']), (2, 1, 0, 229))
+            self.assertEqual(row['payload'], {'dhcp6_fingerprint': '23,24'})
+            payload = json.dumps(row['payload'], separators=(',', ':')).encode()
+            self.assertEqual(row['payload_sha256'], hashlib.sha256(payload).hexdigest())
+            self.assertNotIn('source_ip', p.stdout)
+            self.assertNotIn('client_hardware_address', p.stdout)
+            self.assertNotIn('provider', row)
+
     def run_capture(self, data, *flags):
         with tempfile.TemporaryDirectory(prefix='lantern-dhcp-test-') as d:
             path = Path(d) / 'capture.pcap'
@@ -125,4 +151,6 @@ class CaptureCLI(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    if len(sys.argv) > 1 and not sys.argv[1].startswith('-'):
+        BIN = Path(sys.argv.pop(1)).resolve()
     unittest.main()

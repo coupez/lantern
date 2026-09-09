@@ -551,3 +551,25 @@ The offline `enrich` command, reusable source converters and `inventory.Apply` p
 The compiled `scripts/test-inventory-enrichment.py` fixture passes on both systems. It verifies source/manifest SHA-256 hashes, relative source paths, JSON/save equivalence, unchanged network fields/liveness, idempotence, empty network diffs and detailed provenance. Default evaluation retains the original scores; explicit inventory-assisted evaluation preserves four observed and three responsive labeled cases, adds the synthetic phone model, retains the router model conflict as ambiguous and omits scan-only duration. These are synthetic behavioral checks, not a physical accuracy improvement or a Fing comparison. No catalog rows were added. The source change does not replace rc.7 archives.
 
 Temporary `ci-inventory` archives for Darwin/Linux ARM64/AMD64 also pass checksum, architecture, licensing, provenance and offline-link validation. The host-compatible Darwin ARM64 archive executes `enrich` using its packaged relative-path manifest and Android/SNMP examples. The other three archive checks inspect contents and binary architecture; they do not claim cross-platform execution. These test archives were not uploaded.
+
+## Optional Fingerbank DHCP classification
+
+The separate `fingerbank` command previews raw-option-derived request payloads
+locally, then permits one explicitly selected packet per cloud submission.
+Native macOS arm64 `go vet ./...` and `go test -race ./...` pass with Go 1.26.8.
+An isolated Linux container with networking disabled passes focused core/CLI vet
+and race checks. On both platforms, all five compiled capture fixtures pass,
+including a real decoder-to-preview pipeline with a rejected server reply,
+ordered DHCPv6 request, source/payload hashes and section/interface provenance.
+
+Injected HTTP transport tests cover request framing and header-only credentials,
+matched/unknown/error responses, redirects, response bounds, duplicate and
+Unicode-equivalent JSON members, required score presence, credential echoes and
+cancellation. Extraction tests cover raw-option precedence over hints, request
+direction, relayed inner message type, ordered option fragments, malformed
+vendor fields and cross-version rejection. CLI tests verify no credential read
+or requester call during preview or invalid submission, one selected request,
+and preserved provenance on failure. These are synthetic behavioral tests, not
+a live Fingerbank account test or measured device-model precision. No user
+capture was submitted, catalog rows added or rc.7 archives replaced. See
+[request semantics and provider references](fingerbank-lookup.md).

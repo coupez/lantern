@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"github.com/coupez/lantern/internal/ui"
 	"github.com/coupez/lantern/pkg/android"
+	"github.com/coupez/lantern/pkg/fingerbank"
 	"github.com/coupez/lantern/pkg/fingerprints"
 	"github.com/coupez/lantern/pkg/models"
 	"github.com/coupez/lantern/pkg/scanner"
@@ -52,6 +53,10 @@ func run(args []string) error {
 		return enrichCommand(args, os.Stdout)
 	case "evaluate":
 		return evaluateCommand(args, os.Stdout)
+	case "fingerbank":
+		ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		defer cancel()
+		return fingerbankCommand(ctx, args, os.Stdout, os.LookupEnv, fingerbank.Lookup)
 	case "android":
 		ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 		defer cancel()
@@ -164,6 +169,7 @@ func help() {
   lantern inspect IP              Detailed device and service inspection
   lantern watch [CIDR]            Live dashboard and network changes
   lantern observe --read FILE    Import DHCP evidence from PCAP/PCAPNG offline
+  lantern fingerbank --read FILE Preview optional cloud DHCP classification
   lantern enrich --scan FILE --inventory FILE  Attach explicitly bound inventory
   lantern evaluate --truth FILE  Score saved observations against device labels
   lantern snmp IP --community-env NAME  Read configured SNMP device inventory
