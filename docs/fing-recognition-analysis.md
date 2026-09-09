@@ -4,7 +4,9 @@ Analysis date: 2026-09-09. Scope: the previously downloaded macOS Fing 4.0.5 nat
 
 ## What the catalog number means
 
-I could not corroborate the exact “450K device types” number in the primary sources inspected. The current OEM page advertises **365,000+ products**, **76,000+ brands**, **74,000+ operating systems**, and **5 million+ software entries**. These are publisher claims, not measurements of detection accuracy. Product models, broad device categories, OS records and fingerprint records are different units. [Lansweeper OEM recognition](https://www.lansweeper.com/partners/technology-partners/embed/device-recognition/)
+Fing's homepage explicitly advertises **450K device models in its catalog**, verified on 2026-09-09. The earlier version of this report missed that primary source and incorrectly left the 450K claim unverified. [Fing homepage](https://www.fing.com/)
+
+The separate Lansweeper OEM page advertises **365,000+ products**, **76,000+ brands**, **74,000+ operating systems**, and **5 million+ software entries**. The pages do not explain the difference between the product/model counts; their scope or update timing should not be assumed identical. For Fing's advertised model coverage, use its explicit **450K** figure. These are publisher catalog counts, not measurements of detection accuracy. Product models, broad device categories, OS records and fingerprint records are different units. [Lansweeper OEM recognition](https://www.lansweeper.com/partners/technology-partners/embed/device-recognition/)
 
 The developer introduction separately describes over 100 device types in eight groups. A catalog can contain many product models within one type, such as smartphone. Neither count implies that every model can be distinguished from a silent host on an arbitrary LAN. [Developer introduction](https://developer.lansweeper.com/docs/device-recognition-api/get-started/welcome)
 

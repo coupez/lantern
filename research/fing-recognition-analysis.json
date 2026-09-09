@@ -324,5 +324,12 @@
     "Selected direct calls only; indirect dispatch and all paths not reconstructed",
     "Schema fields do not establish collector availability in a particular edition",
     "No proprietary fingerprint corpus, server classifier, weights or accuracy evaluation recovered"
-  ]
+  ],
+  "catalog_count_correction": {
+    "verified_on": "2026-09-09",
+    "source": "https://www.fing.com/",
+    "publisher_claim_device_models": 450000,
+    "source_label": "450K device models in catalog",
+    "correction": "Earlier report missed the Fing homepage and left this claim unverified; corrected to the explicit homepage figure. Difference from separate OEM product count is unexplained."
+  }
 }
