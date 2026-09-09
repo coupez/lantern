@@ -29,6 +29,7 @@ lantern watch --interval 10s --save latest.json
 lantern scan --json > network.json
 lantern scan --jsonl               # streaming discovery events + final report
 lantern scan --csv > network.csv
+lantern observe --read capture.pcap --jsonl # offline DHCPv4/v6 fingerprint evidence
 lantern diff before.json after.json
 lantern lookup 00:00:0c:12:34:56
 lantern fingerprint http 'Apache/2.4.65'

@@ -464,3 +464,12 @@ Companion fixtures withhold service enumeration, require the new direct question
 Roku fixtures reply only to `ST: roku:ecp`, then require a single fixed-path GET on the observed peer. They verify model/name/vendor/software claims, separate model number, shared request limits, IPv4/IPv6, failed/slow/unauthorized/oversized responses, redirects, off-device URLs, malformed XML, strict booleans, normalization-changing selectors and competing endpoint metadata. New identity text containing controls/format characters is not repaired into a model/name; raw observations remain available. An independent review found and verified fixes for that issue and cross-endpoint Roku metadata mixing.
 
 `FuzzRokuDescription` completed 453,802 executions over a 15-second fuzz window with two workers, with no failure. These are bounded parser and protocol tests, not a broad accuracy study or proof of physical Roku/Mac/phone interoperability. CI runs the new socket fixtures on both macOS and Linux; existing release archives remain rc.7 without these source changes.
+
+
+## Offline DHCP evidence import
+
+The `observe` source addition reads bounded PCAP/PCAPNG captures into timestamped DHCPv4/v6 evidence. Focused protocol, capture, decapsulation and CLI tests pass, as do `go vet ./...` and `go test -race ./...` on macOS arm64 with Go 1.26.8. Four compiled-CLI Python fixture tests verify binary option preservation, separate server/client addresses, mixed-endian PCAPNG sections, nanosecond timestamps, DHCPv6 ordered requests, JSON/JSONL partial output and human output. The fixture script is included in both CI platform jobs.
+
+Four 15-second fuzz targets completed 17,383,539 executions in passing runs. An initial concurrent decapsulation run ended with a harness context-deadline error and no reported crashing input; an isolated rerun passed with the saved coverage corpus. This bounded fuzzing is not exhaustive proof. Regression tests cover lengths, option overload and relay depth, padding, timestamp metadata, callback/cancellation behavior and FIFO input rejection. Details are in [verification metadata](../research/results/dhcp-observation-verification.json).
+
+Fixtures are synthetic protocol exchanges, not a labeled physical-device benchmark. There is no bundled DHCP classifier and no new measured exact-model accuracy claim. The importer preserves raw evidence and visibility limits; see [DHCP observations](dhcp-observations.md). The rc.7 release archives predate this source addition.

@@ -46,6 +46,8 @@ func run(args []string) error {
 	case "version":
 		fmt.Println("lantern", buildVersion())
 		return nil
+	case "observe":
+		return observeCommand(args)
 	case "interfaces":
 		n, err := scanner.Networks()
 		if err != nil {
@@ -147,6 +149,7 @@ func help() {
   lantern scan [CIDR | IP]        Scan a network or single host
   lantern inspect IP              Detailed device and service inspection
   lantern watch [CIDR]            Live dashboard and network changes
+  lantern observe --read FILE    Import DHCP evidence from PCAP/PCAPNG offline
   lantern interfaces              List available IPv4/IPv6 networks
   lantern lookup MAC              Identify a MAC vendor offline
   lantern fingerprint [TYPE TEXT] Offline service recognition

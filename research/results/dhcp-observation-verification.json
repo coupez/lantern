@@ -1,0 +1,79 @@
+{
+  "date": "2026-09-09",
+  "base_commit": "26d2c3d",
+  "platform": "macOS arm64",
+  "toolchain": "go1.26.8",
+  "checks": {
+    "focused_packages": "pass",
+    "go_vet_all": "pass",
+    "go_test_race_all": "pass",
+    "compiled_cli_python_fixtures": {
+      "status": "pass",
+      "tests": 4
+    },
+    "git_diff_check": "pass",
+    "four_platform_release_archives": {
+      "status": "pass",
+      "version": "dhcp-archive-check",
+      "native_runtime": "darwin/arm64",
+      "checks": [
+        "checksums",
+        "architecture",
+        "licensing",
+        "provenance",
+        "offline documentation links"
+      ],
+      "note": "Initial CI found missing archive inclusion for linked DHCP research reports; added explicit archive inputs and verified all four archives locally."
+    }
+  },
+  "fuzz": [
+    {
+      "target": "pkg/capture.FuzzRead",
+      "seconds": 15,
+      "executions": 12429926,
+      "status": "pass",
+      "reported_by": "Sol agent; root reviewed target and regression tests"
+    },
+    {
+      "target": "pkg/dhcp.FuzzParse4",
+      "seconds": 15,
+      "executions": 1456958,
+      "status": "pass"
+    },
+    {
+      "target": "pkg/dhcp.FuzzParse6",
+      "seconds": 15,
+      "executions": 1035987,
+      "status": "pass"
+    },
+    {
+      "target": "pkg/observe.FuzzDecode",
+      "seconds": 15,
+      "executions": 2460668,
+      "status": "pass",
+      "note": "Initial concurrent run ended with context deadline exceeded at 15s, without a reported crashing input; isolated rerun passed with all saved coverage seeds."
+    }
+  ],
+  "evidence_boundaries": [
+    "Synthetic fixtures only; no physical-device precision or coverage claim.",
+    "No Fing proprietary catalog or DHCP classifier embedded.",
+    "Captures stay local; importer sends no network requests.",
+    "Device claims remain separate from wire sender, time and section/interface scope.",
+    "rc.7 release archives predate this feature."
+  ],
+  "review_fixes": [
+    "Preserve binary optional DHCP fields without inventing text hints.",
+    "Retain nonzero future DHCP message types.",
+    "Accept PCAPNG nonzero alignment padding and obsolete packet blocks.",
+    "Reject ambiguous timestamp metadata and out-of-range times.",
+    "Nonblocking open rejects FIFO before waiting for a writer.",
+    "Retain partial structured output and summary on limits/errors."
+  ],
+  "sources": [
+    "https://www.rfc-editor.org/rfc/rfc2131.html",
+    "https://www.rfc-editor.org/rfc/rfc3396.html",
+    "https://www.rfc-editor.org/rfc/rfc9915.html",
+    "https://www.rfc-editor.org/rfc/rfc4704.html",
+    "https://www.ietf.org/archive/id/draft-ietf-opsawg-pcapng-05.html"
+  ]
+}

@@ -21,7 +21,7 @@ These changes increase the information used from eligible devices. They do not i
 
 | Approach | Observable input and useful output | Decision |
 | --- | --- | --- |
-| DHCP/DHCPv6 capture import | Ordered options, request lists, vendor classes and names can support OS/family candidates despite private MAC addresses | Next broad collector experiment: bounded offline capture import first, then passive live/router adapters. Preserve time/network scope and ambiguous results |
+| DHCP/DHCPv6 capture import | Ordered options, request lists, vendor classes and names can support OS/family candidates despite private MAC addresses | Implemented bounded offline PCAP/PCAPNG import with timestamp, section/interface, relay and raw-option provenance. No classifier bundled. Next: validated catalog adapters and passive live/router collection; see [usage and boundaries](dhcp-observations.md) |
 | IPP printer identity | Get-Printer-Attributes can supply printer make/model beyond sparse Bonjour TXT | Implement a bounded binary response parser, exact discovery endpoint selection and limited requested attributes |
 | ONVIF camera identity | GetDeviceInformation can supply manufacturer, model and firmware beyond discovery scopes | Use discovered same-device service endpoints; add explicit credential handling where required |
 | Authorized host inventory / user confirmation | Mac hardware model, managed Apple model identifier, or an owner's phone model selection | Strong route for quiet devices. Keep inventory/user assertions distinct from network-inferred identity and bind them to a scan/time |

@@ -37,6 +37,7 @@ host = (platform.system().lower(), {'aarch64':'arm64','x86_64':'amd64'}.get(plat
 if args.macos_amd64 and host[0] != 'darwin':
     raise SystemExit('--macos-amd64 requires macOS')
 required = {'lantern','LICENSE','NOTICE','THIRD_PARTY_LICENSES','README.md','docs/install.md',
+            'docs/dhcp-observations.md','research/results/dhcp-catalog-review.md','research/results/dhcp-observation-verification.json',
             'docs/snapshots.md','docs/discovery.md','docs/recognition.md','docs/verification.md',
             'docs/STATUS.md','docs/fing-research.md','research/fing-inventory.json',
             'pkg/models/data/sources.json','pkg/vendors/data/sources.json','pkg/scanner/data/sources.json',
