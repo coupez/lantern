@@ -51,7 +51,7 @@ Use `watch --plain` for appended reports or `watch --jsonl` for a machine-readab
 
 ## Discovery and speed
 
-Lantern combines ICMP echo, TCP connect/refusal, the OS neighbor table, mDNS/DNS-SD, SSDP, and WS-Discovery. It scans common discovery ports across the target first, then checks requested ports on discovered devices. A single-IP target always checks all requested ports; `--all-hosts` does the same for every address in a subnet.
+Lantern combines ICMP echo, TCP connect/refusal, the OS neighbor table, mDNS/DNS-SD, SSDP, and WS-Discovery. Ordinary subnet scans check common discovery ports first, then requested ports on discovered devices. A single-IP target and `--all-hosts` combine requested ports and liveness probes into one bounded pass, starting requested services immediately. Each target still receives all requested ports in those modes.
 
 The TCP worker pool defaults to 512 concurrent probes. Deadlines bound TCP and ICMP sends; large port ranges are produced incrementally rather than allocated as a host × port matrix. Each address/port pair runs once, and open-port collection avoids repeated searches through the growing result list. DNS enrichment uses its own bounded pool. Ctrl-C cancels sockets and returns partial results. Fatal TCP failures preserve available results with a JSON `error` field and exit status 1. A broken JSONL pipe cancels work promptly and still attempts `--save`. Unicast ICMP finishes early when every target replies. Local send-queue failures get one bounded retry; JSON reports `icmp` counters for attempted/sent/failed addresses, retries, recovered sends, and responders.
 

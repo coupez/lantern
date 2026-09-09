@@ -22,7 +22,7 @@ The default destination is `$HOME/.local/bin/lantern`. Add `$HOME/.local/bin` to
 
 ## Versioned Go installation
 
-The module path is `github.com/coupez/lantern`. The current CLI integration is available on `integration/cli-release-candidate`, with [draft PR #1](https://github.com/coupez/lantern/pull/1) tracking its review. Install that branch without a checkout:
+The module path is `github.com/coupez/lantern`. An earlier CLI integration is available on `integration/cli-release-candidate`, with [draft PR #1](https://github.com/coupez/lantern/pull/1) tracking its review. Local branches contain additional changes awaiting upload authorization; installing the remote branch does not include those changes. Install that remote branch without a checkout:
 
 ```sh
 GOPRIVATE=github.com/coupez/lantern go install github.com/coupez/lantern/cmd/lantern@integration/cli-release-candidate
@@ -36,7 +36,7 @@ Go installs commands into `GOBIN` when set, otherwise into the first `GOPATH` en
 
 ## Install a release archive
 
-Local archives are generated with `make release VERSION=v0.1.0-rc.3`. They support macOS and Linux on ARM64 and x86-64; choose `darwin-arm64` for Apple Silicon, `darwin-amd64` for Intel Macs, and the corresponding Linux architecture.
+Local archives are generated with `make release VERSION=dev` (choose a release version when preparing a candidate). They support macOS and Linux on ARM64 and x86-64; choose `darwin-arm64` for Apple Silicon, `darwin-amd64` for Intel Macs, and the corresponding Linux architecture.
 
 When release downloads become available, place the archive and its checksum file in the same directory. Archive names use `lantern-VERSION-OS-ARCH.tar.gz`. Verify the archives listed in the checksum file using `shasum -a 256 -c lantern-VERSION-checksums.txt` (or `sha256sum -c` on Linux). That command expects all listed archives to be present; for a single downloaded archive, compare its `shasum -a 256 ARCHIVE` output with the matching line in the checksum file.
 

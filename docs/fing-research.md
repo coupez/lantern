@@ -49,9 +49,11 @@ Local research artifacts are under `research/downloads/` and `research/extracted
 | AppleDB (MIT) | Hardware identifiers → product candidates | 606 identifiers, 886 assignments; ambiguity preserved |
 | aioshelly (Apache-2.0) | Shelly model identifiers + generation → product names | 155 records; generation-aware matching and offline lookup |
 | Reverse DNS | PTR names | Bounded optional lookup |
-| SSH / HTTP / FTP / SMTP responses | Device-reported software banners | Bounded explicit/deep inspection |
+| SSH / HTTP / FTP / SMTP / IMAP / POP3 responses | Device-reported software banners | Bounded explicit/deep inspection, including HTTPS and implicit TLS mail greetings |
 | Wireshark manufacturer / well-known-address sources | IEEE-derived prefixes and protocol address roles | Pinned comparison found no additional global-unicast manufacturer prefixes; [review and provenance](manufacturer-source-review.md). No data imported |
 | Nmap MAC / service-probe catalogs | MAC prefixes and probe-dependent service matches | Pinned NPSL review; four extra MAC prefixes are virtual-NIC labels. No import; [review](banner-catalog-review.md#nmap) |
-| Rapid7 Recog SSH / HTTP catalogs | 608 patterns over collected banner fields | BSD-2-Clause; all 608 patterns integrated as scoped port claims, with 979 examples and 1,234 expected fields verified; [recognition](recognition.md#banner-fingerprints) and [initial review](banner-catalog-review.md#recog) |
+| Rapid7 Recog SSH / HTTP / FTP / SMTP / IMAP / POP3 catalogs | 946 patterns over six collected banner fields | BSD-2-Clause; scoped port claims, with 1,597 examples and 2,411 expected fields verified; [recognition](recognition.md#banner-fingerprints), [initial review](banner-catalog-review.md#recog), and [mail review](mail-access-catalog-review.md) |
+| SmartThings Edge Matter catalog (Apache-2.0) | Exact Matter vendor/product identifiers → product candidates | 998 pairs embedded; [recognition and provenance](recognition.md) |
+| Matter and HomeKit protocol categories | Advertised type/category → device-type hints | 65 Matter types and 36 HomeKit categories; separate from exact product identity |
 
 MAC assignment alone cannot identify every device model or undo a randomized MAC. Lantern keeps protocol evidence distinct from inferred device types.
