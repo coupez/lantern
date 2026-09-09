@@ -42,7 +42,8 @@ required = {'lantern','LICENSE','NOTICE','THIRD_PARTY_LICENSES','README.md','doc
             'pkg/models/data/sources.json','pkg/vendors/data/sources.json','pkg/scanner/data/sources.json',
             'pkg/scanner/data/cast-models.json','pkg/models/data/shelly-models.json',
             'pkg/models/data/shelly-sources.json','pkg/scanner/data/matter-types.json',
-            'pkg/models/data/matter-sources.json','pkg/fingerprints/data/sources.json','research/fing-static-analysis.json'}
+            'pkg/models/data/matter-sources.json','pkg/fingerprints/data/sources.json','research/fing-static-analysis.json',
+            'research/mail-access-catalog-review.json'}
 for system,arch in targets:
     filename = f'lantern-{version}-{system}-{arch}.tar.gz'
     path = dist/filename
@@ -64,6 +65,12 @@ for system,arch in targets:
         assert b'Rapid7 Recog' in content['NOTICE'] and b'Copyright (c) 2014-2015, Rapid7' in content['THIRD_PARTY_LICENSES']
         recog = json.loads(content['pkg/fingerprints/data/sources.json'])
         assert recog['license'] == 'BSD-2-Clause' and sum(recog['patterns'].values()) == 946
+        mail_review = json.loads(content['research/mail-access-catalog-review.json'])
+        assert mail_review['license'] == recog['license'] and mail_review['catalog_revision'] == recog['revision']
+        source_hashes = {entry['path']: entry['sha256'] for entry in recog['sources']}
+        assert {entry['path'] for entry in mail_review['sources']} == {'xml/imap_banners.xml','xml/pop_banners.xml'}
+        assert all(source_hashes[entry['path']] == entry['sha256'] for entry in mail_review['sources'])
+        assert sum(entry['patterns'] for entry in mail_review['compatibility']) == 48
         assert b'AppleDB' in content['NOTICE']
         assert b'aioshelly' in content['NOTICE'] and b'Apache License' in content['THIRD_PARTY_LICENSES']
         shelly_source = json.loads(content['pkg/models/data/shelly-sources.json'])
@@ -101,6 +108,7 @@ for system,arch in targets:
                 def run(*args):
                     return subprocess.run([str(exe),*args],check=True,capture_output=True,text=True,timeout=10).stdout
                 assert run('version').strip()==f'lantern {version}'
+                assert json.loads(run('fingerprint', 'sources')) == recog
                 assert '4 devices' in run('demo','--no-color')
                 assert 'cisco' in json.loads(run('lookup','00:00:0c:12:34:56'))['name'].lower()
                 for mac, prefix, identifier in [
@@ -133,7 +141,7 @@ for system,arch in targets:
         # Transfer only the verified binary through stdin; no host mounts,
         # capabilities, or external networking are needed for these fixtures.
         verify = r"""
-import json, os
+import hashlib, json, os
 from pathlib import Path
 import subprocess, sys, tempfile
 with tempfile.TemporaryDirectory(prefix='lantern-archive-') as tmp:
@@ -143,6 +151,7 @@ with tempfile.TemporaryDirectory(prefix='lantern-archive-') as tmp:
     def run(*args):
         return subprocess.run([str(exe), *args], check=True, capture_output=True, text=True, timeout=15).stdout
     assert run('version').strip() == 'lantern ' + os.environ['LANTERN_EXPECT_VERSION']
+    assert hashlib.sha256(run('fingerprint','sources').encode()).hexdigest() == os.environ['LANTERN_EXPECT_FINGERPRINT_SOURCES_SHA256']
     assert '4 devices' in run('demo', '--no-color')
     assert 'cisco' in json.loads(run('lookup', '00:00:0c:12:34:56'))['name'].lower()
     for mac, prefix, identifier in [
@@ -170,6 +179,7 @@ with tempfile.TemporaryDirectory(prefix='lantern-archive-') as tmp:
         result = subprocess.run(['docker', 'run', '--rm', '-i', '--platform', f'linux/{arch}',
                                  '--network', 'none', '--cap-drop', 'ALL', '--sysctl', 'net.ipv4.ip_unprivileged_port_start=0',
                                  '-e', f'LANTERN_EXPECT_VERSION={version}', '-e', f'LANTERN_EXPECT_GOARCH={arch}',
+                                 '-e', 'LANTERN_EXPECT_FINGERPRINT_SOURCES_SHA256=' + hashlib.sha256(content['pkg/fingerprints/data/sources.json']).hexdigest(),
                                  image, 'python3', '-c', verify], input=binary, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=180)
         sys.stdout.buffer.write(result.stdout)
         sys.stdout.flush()
