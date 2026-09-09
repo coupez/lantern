@@ -103,6 +103,18 @@ for system,arch in targets:
                 assert run('version').strip()==f'lantern {version}'
                 assert '4 devices' in run('demo','--no-color')
                 assert 'cisco' in json.loads(run('lookup','00:00:0c:12:34:56'))['name'].lower()
+                for mac, prefix, identifier in [
+                    ('00:00:5e:00:01:2a', '00:00:5e:00:01:00/40', 42),
+                    ('00:00:5e:00:02:2a', '00:00:5e:00:02:00/40', 42),
+                    ('00:00:0c:07:ac:00', '00:00:0c:07:ac:00/40', 0),
+                    ('00:00:0c:9f:ff:ff', '00:00:0c:9f:f0:00/36', 4095),
+                    ('00:05:73:a0:0f:ff', '00:05:73:a0:00:00/36', 4095),
+                ]:
+                    vendor = json.loads(run('lookup', mac))
+                    role = vendor['address_role']
+                    assert vendor['name'] and not vendor['private'] and not vendor['multicast'], vendor
+                    assert role['prefix'] == prefix and role['identifier'] == identifier and role['references'], role
+                assert 'address_role' not in json.loads(run('lookup', '00:00:5e:00:01:00'))
                 assert json.loads(run('models','Mac16,9'))
                 assert json.loads(run('models','SNSW-001X16EU'))[0]['name'] == 'Shelly Plus 1'
                 assert len(json.loads(run('models','sources'))) == 3
@@ -133,6 +145,18 @@ with tempfile.TemporaryDirectory(prefix='lantern-archive-') as tmp:
     assert run('version').strip() == 'lantern ' + os.environ['LANTERN_EXPECT_VERSION']
     assert '4 devices' in run('demo', '--no-color')
     assert 'cisco' in json.loads(run('lookup', '00:00:0c:12:34:56'))['name'].lower()
+    for mac, prefix, identifier in [
+        ('00:00:5e:00:01:2a', '00:00:5e:00:01:00/40', 42),
+        ('00:00:5e:00:02:2a', '00:00:5e:00:02:00/40', 42),
+        ('00:00:0c:07:ac:00', '00:00:0c:07:ac:00/40', 0),
+        ('00:00:0c:9f:ff:ff', '00:00:0c:9f:f0:00/36', 4095),
+        ('00:05:73:a0:0f:ff', '00:05:73:a0:00:00/36', 4095),
+    ]:
+        vendor = json.loads(run('lookup', mac))
+        role = vendor['address_role']
+        assert vendor['name'] and not vendor['private'] and not vendor['multicast'], vendor
+        assert role['prefix'] == prefix and role['identifier'] == identifier and role['references'], role
+    assert 'address_role' not in json.loads(run('lookup', '00:00:5e:00:01:00'))
     assert json.loads(run('models', 'Mac16,9'))
     assert json.loads(run('models', 'SNSW-001X16EU'))[0]['name'] == 'Shelly Plus 1'
     assert len(json.loads(run('models', 'sources'))) == 3
