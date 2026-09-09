@@ -12,6 +12,8 @@ Start with the deliberately [synthetic truth](../examples/identification/truth.j
 
 Add `--json` for every case outcome, class/state breakdowns, exact input SHA-256 hashes and scan duration. These fixture scores are arithmetic examples, not physical-device accuracy measurements. The example has five labeled cases, four observed devices and three responsive devices. Two addresses map to the same printer; conflicting retail names yield an ambiguous result.
 
+Saved Android/SNMP attachments are ignored by default. With `--scan`, add `--include-inventory` to union their reported-model claims with network model predictions. Conflicts remain ambiguous, retail/type fields and presence counts are unchanged, the system becomes `lantern+inventory`, and duration is omitted because inventory collection is not timed by the scan. See [attachment provenance and example](inventory-snapshots.md).
+
 ## Prepare a physical benchmark
 
 Create the truth file before examining either scanner's predictions. Set `kind` to `physical`, choose a stable dataset `id`, and include every independently known device within the chosen scope, including devices that may be missed. A case has a stable `id`, a `class`, a list of `states`, and independently known `truth` fields. For example:

@@ -56,6 +56,7 @@ func validateSnapshot(r Report) error {
 		return fmt.Errorf("unsupported snapshot schema %d", r.Schema)
 	}
 	seen := make(map[netip.Addr]int, len(r.Devices))
+	inventoryCount, inventoryBytes := 0, 0
 	for i, device := range r.Devices {
 		ip := device.IP
 		if !ip.IsValid() || ip.Is4In6() || ip.WithZone("").IsUnspecified() || ip.IsMulticast() {
@@ -65,6 +66,30 @@ func validateSnapshot(r Report) error {
 			return fmt.Errorf("snapshot device %d repeats IP %q from device %d", i+1, ip.String(), previous)
 		}
 		seen[ip] = i + 1
+		if len(device.Inventory) > 8 {
+			return fmt.Errorf("snapshot device %d has too many inventories", i+1)
+		}
+		ids := map[string]bool{}
+		for _, observation := range device.Inventory {
+			if err := ValidateInventoryObservation(observation); err != nil {
+				return fmt.Errorf("snapshot device %d inventory: %w", i+1, err)
+			}
+			if observation.BindingAddress != ip.String() || ids[observation.ID] {
+				return fmt.Errorf("snapshot device %d has a mismatched or repeated inventory binding", i+1)
+			}
+			ids[observation.ID] = true
+			inventoryCount++
+			for _, c := range observation.Claims {
+				inventoryBytes += len(c.Value) + len(c.Key) + len(c.Reference)
+			}
+		}
+		if inventoryCount > 2048 || inventoryBytes > 4<<20 {
+			return fmt.Errorf("snapshot inventory exceeds aggregate limit")
+		}
 	}
 	return nil
 }
+
+// ValidateSnapshot checks snapshot addresses and attached inventory invariants
+// without filesystem access or network activity.
+func ValidateSnapshot(r Report) error { return validateSnapshot(r) }

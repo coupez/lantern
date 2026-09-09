@@ -8,6 +8,10 @@ import (
 // Clone returns an independently mutable device, including advertisements and
 // identity claims. Immutable strings and value types are copied by value.
 func (d Device) Clone() Device {
+	d.Inventory = slices.Clone(d.Inventory)
+	for i := range d.Inventory {
+		d.Inventory[i].Claims = slices.Clone(d.Inventory[i].Claims)
+	}
 	if d.Vendor.AddressRole != nil {
 		role := *d.Vendor.AddressRole
 		role.References = slices.Clone(role.References)

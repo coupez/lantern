@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "bindings": [
+    {
+      "id": "synthetic-phone",
+      "kind": "android",
+      "path": "android.json",
+      "addresses": [
+        "192.0.2.2"
+      ]
+    },
+    {
+      "id": "synthetic-router",
+      "kind": "snmp",
+      "path": "snmp.json",
+      "observed_at": "2026-09-09T00:00:00Z",
+      "addresses": [
+        "192.0.2.4"
+      ]
+    }
+  ]
+}

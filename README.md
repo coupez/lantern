@@ -89,6 +89,8 @@ Computer names, workgroups, registration flags, and reported unit IDs remain in 
 
 `lantern android --transport-id ID --json` reads four model-related properties from an explicitly selected, already-authorized device through an existing local ADB server. It preserves manufacturer/model, device codename and raw build fingerprint as separate fields with source keys. It neither starts ADB nor infers a LAN address; see [Android setup and evidence boundaries](docs/android-inventory.md).
 
+`lantern enrich --scan scan.json --inventory inventory.json --save enriched.json --details` attaches saved Android/SNMP evidence to explicitly bound existing addresses. It preserves network observations, source hashes and conflicting claims. See the [manifest and runnable example](docs/inventory-snapshots.md). The evaluator includes inventory only with `--include-inventory`.
+
 ## Check local capabilities
 
 `lantern doctor` checks actual ICMP, multicast, ARP/NDP, neighbor-table, and automatic target-selection access without sending discovery packets. Use `--interface en0` to select a network or `--json` for scripts. Optional failures include a reason and next step; socket access alone does not prove device reachability. See [diagnostics](docs/diagnostics.md).

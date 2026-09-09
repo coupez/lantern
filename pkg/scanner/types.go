@@ -16,16 +16,17 @@ type Port struct {
 	Banner      string              `json:"banner,omitempty"`
 }
 type Device struct {
-	Identity       *Identity       `json:"identity,omitempty"`
-	Advertisements []Advertisement `json:"advertisements,omitempty"`
-	IP             netip.Addr      `json:"ip"`
-	MAC            string          `json:"mac,omitempty"`
-	Vendor         vendors.Match   `json:"vendor"`
-	Names          []string        `json:"names,omitempty"`
-	Ports          []Port          `json:"ports,omitempty"`
-	Kind           string          `json:"kind,omitempty"`
-	Evidence       []string        `json:"evidence"`
-	LatencyMS      float64         `json:"latency_ms,omitempty"`
+	Inventory      []InventoryObservation `json:"inventory,omitempty"`
+	Identity       *Identity              `json:"identity,omitempty"`
+	Advertisements []Advertisement        `json:"advertisements,omitempty"`
+	IP             netip.Addr             `json:"ip"`
+	MAC            string                 `json:"mac,omitempty"`
+	Vendor         vendors.Match          `json:"vendor"`
+	Names          []string               `json:"names,omitempty"`
+	Ports          []Port                 `json:"ports,omitempty"`
+	Kind           string                 `json:"kind,omitempty"`
+	Evidence       []string               `json:"evidence"`
+	LatencyMS      float64                `json:"latency_ms,omitempty"`
 }
 
 // ScanCoverage records requested probes/enrichment, not successful responses.
