@@ -72,6 +72,7 @@ func TestMDNSSplitReplyNetworkIntegration(t *testing.T) {
 	for _, address := range []string{"127.0.0.1", "::1"} {
 		t.Run(address, func(t *testing.T) {
 			t.Run("unknown-service", func(t *testing.T) { testMDNSSplitReply(t, address, "_lantern-test._tcp", "Protocol Fixture") })
+			t.Run("companion-model", func(t *testing.T) { testMDNSSplitReply(t, address, "_companion-link._tcp", "Mac16,9") })
 			t.Run("catalog-model", func(t *testing.T) { testMDNSSplitReply(t, address, "_device-info._tcp", "Mac16,9") })
 			t.Run("esphome", func(t *testing.T) { testMDNSSplitReply(t, address, "_esphomelib._tcp", "2026.8.1") })
 			t.Run("shelly", func(t *testing.T) { testMDNSSplitReply(t, address, "_shelly._tcp", "2") })
@@ -172,6 +173,9 @@ func testMDNSSplitReply(t *testing.T, address, service, model string, options ..
 	if service == "_esphomelib._tcp" {
 		modelKey = "version"
 	}
+	if service == "_companion-link._tcp" {
+		modelKey = "rpmd"
+	}
 	if service == "_hap._tcp" {
 		modelKey = "md"
 	}
@@ -216,7 +220,7 @@ func testMDNSSplitReply(t *testing.T, address, service, model string, options ..
 				var body dnsmessage.ResourceBody
 				switch strings.ToLower(q.Name.String()) {
 				case "_services._dns-sd._udp.local.":
-					if service == "_esphomelib._tcp" || service == "_shelly._tcp" || matterRole(service) != "" {
+					if service == "_esphomelib._tcp" || service == "_shelly._tcp" || service == "_companion-link._tcp" || matterRole(service) != "" {
 						continue
 					} // Verify direct service discovery without enumeration.
 					body = &dnsmessage.PTRResource{PTR: dnsmessage.MustNewName(service + ".local.")}
@@ -227,6 +231,9 @@ func testMDNSSplitReply(t *testing.T, address, service, model string, options ..
 						body = &dnsmessage.SRVResource{Target: dnsmessage.MustNewName("Office.local."), Port: port}
 					} else if q.Type == dnsmessage.TypeTXT {
 						txt := []string{modelKey + "=" + model}
+						if service == "_companion-link._tcp" {
+							txt = []string{"rpMd=" + model, "RPMD=Unknown9,9", "rpVr=715.2", "rpBA=02:00:00:00:00:01"}
+						}
 						if service == "_esphomelib._tcp" {
 							txt = append(txt, "FRIENDLY_NAME=Workshop Air", "board=esp32dev", "platform=ESP32", "project_name=example.air-monitor", "mac=001122334455")
 						}
@@ -314,7 +321,7 @@ func testMDNSSplitReply(t *testing.T, address, service, model string, options ..
 			t.Fatal("packet-to-ESPHome integration", d)
 		}
 	}
-	if service == "_device-info._tcp" {
+	if service == "_device-info._tcp" || service == "_companion-link._tcp" {
 		id := identify(hits[0].Ads)
 		if id == nil || id.Model != "Mac16,9" || len(id.ModelNames) != 1 || id.ModelNames[0] != "Mac Studio (M4 Max, 2025)" {
 			t.Fatal("packet-to-catalog integration", id)

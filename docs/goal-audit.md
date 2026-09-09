@@ -1,5 +1,7 @@
 # Original-goal audit — 2026-09-09
 
+This is a historical pre-publication audit. Publication was subsequently completed; see [current status](STATUS.md) and the [expanded identification roadmap](device-identification-roadmap.md).
+
 The goal remains a modern, simple, fast open-source network-scanner CLI with a reusable core and broad device recognition, including inspection of the Fing Mac application. The persistent service and graphical application remain out of scope. This audit does not declare the broad goal complete.
 
 The runtime audited here is `88fa7ce` (direct-target TCP overlap). Prepared rc.6 is based on `4373c5e` and predates that optimization; its four archived executables retain their separate verification record. Later source changes must not be represented as part of those archives.

@@ -167,3 +167,19 @@ Correlated WS-Discovery ProbeMatches retain endpoint references, expanded QName 
 Exact `onvif://www.onvif.org/name/…` and `/hardware/…` scopes supply source-attributed `name` and `hardware` claims, with percent-decoding applied once to the path value. Multiple distinct claims remain visible. The hardware description does not automatically become a model number, manufacturer, MAC mapping, or catalog lookup. Names can populate the device name and search results. Other scope schemes/authorities/categories are preserved as metadata without an inferred identity. Query strings, fragments, user information, and decoded control text are not recognized as ONVIF scope claims.
 
 These semantics follow section 7 of the [ONVIF Core Specification 19.12](https://www.onvif.org/specs/core/ONVIF-Core-Specification-v1912.pdf). They are device-reported discovery claims, not proof of physical hardware or ONVIF certification. Discovery sends no authentication or device-control requests; endpoint URLs are not fetched.
+
+## Companion model recognition
+
+Discovery now directly queries `_companion-link._tcp`. Its `rpMd` TXT key (normalized case-insensitively by the DNS-SD parser) supplies an advertised model claim and an exact lookup in the existing AppleDB namespace. The [pinned pyatv implementation](https://github.com/postlund/pyatv/blob/b277a4c8222ecdcbaab8a24e3e713ca44765adb4/pyatv/protocols/companion/__init__.py) provides the field interpretation; no upstream code is incorporated.
+
+Existing device-info/AirPlay/RAOP model fields retain precedence. Competing Companion candidates remain in the claims, but their catalog names/manufacturer cannot attach to another selected model. Unknown or malformed identifiers do not gain a catalog match. Companion instance names, `rpVr`, `rpBA` and rotating identifiers do not become a device name, OS version, observed MAC or device type. No pairing or Companion connection occurs. The extra initial question shares the existing deadline, retry policy and 128-query limit.
+
+The primary implementation evidence covers Apple TV. Retained local Mac observations contained Companion service records without a model field; exact Mac/phone gains need physical validation. Synthetic Mac-code fixtures verify the code path without claiming those devices advertise that code. `_rdlink._tcp` receives no new interpretation. The embedded catalog count is unchanged.
+
+## Roku device information
+
+SSDP now sends the exact `roku:ecp` search alongside `ssdp:all`, sharing the original timeout and 512-datagram cap. An exact ECP advertisement enables one GET to `/query/device-info` on its validated same-device HTTP endpoint. The advertised path/query is ignored. This shares the four-request per-device description budget with UPnP/Shelly; `--no-descriptions` disables the read. [Roku ECP documentation](https://developer.roku.com/dev/docs/external-control-api)
+
+The response supplies reported names, vendor, model name/number and software version/build. Model number remains a separate claim; it is the selected model only when model name is missing. The protocol supplies a Roku OS label; version selection stays tied to its endpoint. `is-tv=true` supplies a television hint, otherwise the device-info service supplies a media hint. No MAC, serial, account identifier, installed-app or playback data is retained by this reader. Reported vendor is not inferred from the Roku brand or a model catalog.
+
+Reads use the shared pinned-IP transport without proxies/redirects. Headers are capped at 16 KiB, XML at 32 KiB, nesting at 16, and selected fields at 2 KiB. Duplicate selected fields, nested markup, directives, invalid UTF-8, bad booleans and incomplete identities are rejected. Original discovery survives read failure. Advertised ports do not become verified TCP results. These are unauthenticated device claims; real Roku hardware interoperability remains unverified.

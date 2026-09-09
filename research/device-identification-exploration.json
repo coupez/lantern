@@ -1,0 +1,49 @@
+{
+  "date": "2026-09-09",
+  "objective": "Improve measured device-identification accuracy and coverage; preserve fast CLI/reusable core",
+  "exploration": [
+    {
+      "model": "gpt-5.6-luna",
+      "task": "Catalog survey and Android data-provenance follow-up"
+    },
+    {
+      "model": "gpt-5.6-sol",
+      "task": "Fingerprint techniques; independent implementation review"
+    },
+    {
+      "model": "gpt-5.6-terra",
+      "task": "Code feasibility; bounded Roku parser and unit tests"
+    }
+  ],
+  "parent_work": "Primary-source verification, selection, Companion implementation, Roku integration, protocol tests, review fixes and synthesis",
+  "selected": [
+    "Companion rpMd via existing AppleDB",
+    "Roku discovery-triggered GET /query/device-info"
+  ],
+  "new_catalog_records": 0,
+  "primary_sources": [
+    {
+      "url": "https://github.com/postlund/pyatv/blob/b277a4c8222ecdcbaab8a24e3e713ca44765adb4/pyatv/protocols/companion/__init__.py",
+      "local_sha256": "f848575fe5363bf6184a133fca17e0f10f5870bdf13bdf5b1e2df622d4571de9"
+    },
+    {
+      "url": "https://github.com/postlund/pyatv/blob/b277a4c8222ecdcbaab8a24e3e713ca44765adb4/docs/documentation/protocols.md",
+      "local_sha256": "4dcf8895bf0c8852945a71031bd95c46ca7213f4090d0e2eb48f9eaf4387d6da"
+    },
+    {
+      "url": "https://developer.roku.com/dev/docs/external-control-api",
+      "retrieved": "2026-09-09"
+    }
+  ],
+  "validation": {
+    "platform": "darwin/arm64",
+    "go": "1.26.8",
+    "vet": "passed",
+    "all_packages_race": "passed",
+    "ipv4_ipv6_network_race": "passed",
+    "roku_parser_fuzz_executions": 453802,
+    "independent_review": "material findings fixed and re-reviewed",
+    "physical_accuracy": "not established"
+  },
+  "roadmap": "docs/device-identification-roadmap.md"
+}

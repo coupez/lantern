@@ -2,6 +2,8 @@
 
 Analysis date: 2026-09-09. Scope: the previously downloaded macOS Fing 4.0.5 native binaries, the 3.10.1 Electron package, public Fing/Lansweeper technical documentation, and Lantern rc.7 source. This is a reconstruction of observable architecture, not a recovery of the complete proprietary classifier or catalog. Neither Fing application was executed during this inspection.
 
+The subsequent [identification roadmap](device-identification-roadmap.md) evaluates alternative approaches and records implemented improvements.
+
 ## What the catalog number means
 
 Fing's homepage explicitly advertises **450K device models in its catalog**, verified on 2026-09-09. The earlier version of this report missed that primary source and incorrectly left the 450K claim unverified. [Fing homepage](https://www.fing.com/)
