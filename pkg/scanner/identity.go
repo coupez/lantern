@@ -2,6 +2,7 @@ package scanner
 
 import (
 	"github.com/coupez/lantern/pkg/models"
+	"github.com/coupez/lantern/pkg/ubiquiti"
 	"sort"
 	"strconv"
 	"strings"
@@ -104,6 +105,31 @@ func identifyWithLocalModel(ads []Advertisement, localModel string) *Identity {
 	}
 	for _, a := range ads {
 		switch a.Protocol {
+		case "ubiquiti":
+			if a.Service != ubiquitiDiscoveryService {
+				continue
+			}
+			source := "ubiquiti:" + a.Properties["location"] + "#" + a.Instance
+			addUbiquiti := func(field, key string) {
+				value := identityText(a.Properties[key])
+				if field == "model" && strings.EqualFold(value, "unknown") {
+					return
+				}
+				if value != "" {
+					claims = append(claims, IdentityClaim{Field: field, Value: value, Source: source, Key: key, Basis: "advertised", Reference: ubiquiti.ProtocolReference})
+				}
+			}
+			// These are protocol-tagged observations. Platform is intentionally
+			// retained separately and cannot stand in for a model identifier.
+			addUbiquiti("name", "0x0b")
+			addUbiquiti("firmware_build", "0x03")
+			addUbiquiti("platform", "0x0c")
+			addUbiquiti("model", "0x14")
+			addUbiquiti("model", "0x15")
+			addUbiquiti("firmware_version", "0x16")
+			if a.Properties["protocol_version"] != "" {
+				claims = append(claims, IdentityClaim{Field: "manufacturer", Value: "Ubiquiti", Source: source, Key: "protocol_version", Basis: "protocol", Reference: ubiquiti.ProtocolReference, Identifier: a.Properties["protocol_version"]})
+			}
 		case "onvif":
 			if a.Service != "device-information" {
 				continue
@@ -255,7 +281,7 @@ func identifyWithLocalModel(ads []Advertisement, localModel string) *Identity {
 			return 4
 		}
 		switch c.Key {
-		case "Model", "Manufacturer", "device-id-model", "device-id-manufacturer", "printer-make-and-model":
+		case "Model", "Manufacturer", "device-id-model", "device-id-manufacturer", "printer-make-and-model", "0x14", "0x15":
 			return 0
 		case "manufacturer", "friendlyName", "friendly_name", "name", "modelName", "usb_mfg", "usb_mdl", "vendor-name", "model-name", "user-device-name":
 			return 0
@@ -324,18 +350,23 @@ func identifyWithLocalModel(ads []Advertisement, localModel string) *Identity {
 		// A competing Roku endpoint cannot contribute a display name/vendor to
 		// another model. Keep its original claim available for inspection.
 		rokuLinked := !strings.HasPrefix(c.Source, "roku:") || c.Source == selectedModel.Source
+		// Ubiquiti's protocol manufacturer is meaningful only for a model from
+		// the same discovery endpoint. Conversely, a selected Ubiquiti model
+		// must not inherit an unrelated advertised manufacturer.
+		ubiquitiLinked := (!strings.HasPrefix(c.Source, "ubiquiti:") && !strings.HasPrefix(selectedModel.Source, "ubiquiti:")) || c.Source == selectedModel.Source
 		if c.Field == "name" && result.Name == "" && rokuLinked {
 			result.Name = c.Value
 		}
 		onvifVersion := result.Firmware == "" && strings.HasPrefix(selectedModel.Source, "onvif:") && c.Source == selectedModel.Source
-		if c.Field == "firmware_version" && (c.Source == selectedFirmware.Source || onvifVersion) && result.FirmwareVersion == "" {
+		ubiquitiVersion := result.Firmware == "" && strings.HasPrefix(selectedModel.Source, "ubiquiti:") && c.Source == selectedModel.Source
+		if c.Field == "firmware_version" && (c.Source == selectedFirmware.Source || onvifVersion || ubiquitiVersion) && result.FirmwareVersion == "" {
 			result.FirmwareVersion = c.Value
 		}
 		linked := c.Source == selectedModel.Source && c.Key == selectedModel.Key && strings.EqualFold(c.Identifier, result.Model)
 		localLinked := selectedModel.Basis != "local-system" || c.Source == selectedModel.Source
 		ippLinked := (!strings.HasPrefix(c.Source, "ipp:") && !strings.HasPrefix(selectedModel.Source, "ipp:")) || c.Source == selectedModel.Source
 		onvifLinked := (!strings.HasPrefix(c.Source, "onvif:") && !strings.HasPrefix(selectedModel.Source, "onvif:")) || c.Source == selectedModel.Source
-		if c.Field == "manufacturer" && result.Manufacturer == "" && onvifLinked && ippLinked && localLinked && rokuLinked && (c.Basis != "catalog" || linked) {
+		if c.Field == "manufacturer" && result.Manufacturer == "" && onvifLinked && ippLinked && localLinked && rokuLinked && ubiquitiLinked && (c.Basis != "catalog" || linked) {
 			result.Manufacturer = c.Value
 		}
 		if c.Field == "model_name" && c.Basis == "catalog" && c.Source == selectedModel.Source && c.Key == selectedModel.Key && strings.EqualFold(c.Identifier, modelIdentifier) && !contains(result.ModelNames, c.Value) {

@@ -13,6 +13,8 @@ import (
 )
 
 type Engine struct {
+	// UbiquitiSource optionally replaces finite-target UDP discovery.
+	UbiquitiSource func(context.Context, []netip.Addr, time.Duration, string) (UbiquitiResult, error)
 	Dialer         Dialer
 	NeighborSource func(context.Context) (map[netip.Addr]string, error)
 	// NetBIOSSource optionally replaces the UDP node-status exchange.
@@ -46,6 +48,9 @@ func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, 
 	}
 	if o.NDP && !o.Target.Addr().Is6() {
 		return r, fmt.Errorf("NDP requires an IPv6 target; IPv4 uses ARP")
+	}
+	if o.Ubiquiti && (!o.Target.Addr().Is4() || o.MaxHosts > 4096) {
+		return r, fmt.Errorf("Ubiquiti discovery requires IPv4 and max-hosts <=4096")
 	}
 	if o.NetBIOS && !o.Target.Addr().Is4() {
 		return r, fmt.Errorf("NetBIOS discovery requires an IPv4 target")
@@ -212,6 +217,23 @@ func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, 
 			}(sweep)
 		}
 	}
+	var ubiquitiWG sync.WaitGroup
+	var ubiquitiResult UbiquitiResult
+	if o.Ubiquiti {
+		ubiquitiWG.Add(1)
+		go func() {
+			defer ubiquitiWG.Done()
+			source := e.UbiquitiSource
+			if source == nil {
+				source = ubiquitiSweep
+			}
+			var err error
+			ubiquitiResult, err = source(ctx, hosts, o.Timeout, o.Interface)
+			if ctx.Err() == nil {
+				warn("ubiquiti", err)
+			}
+		}()
+	}
 	var netbiosWG sync.WaitGroup
 	var netbiosResult NetBIOSResult
 	if o.NetBIOS {
@@ -359,6 +381,17 @@ func (e Engine) Scan(ctx context.Context, o Options, emit func(Event)) (Report, 
 	arpWG.Wait()
 	ndpWG.Wait()
 	netbiosWG.Wait()
+	ubiquitiWG.Wait()
+	for _, ip := range ubiquitiResult.Probed {
+		if targeted[ip] {
+			markAttempt(ip)
+		}
+	}
+	for _, reply := range ubiquitiResult.Replies {
+		if targeted[reply.IP] {
+			discovered = append(discovered, ubiquitiHit(reply.IP, reply.Observation))
+		}
+	}
 	for _, ip := range netbiosResult.Probed {
 		if targeted[ip] {
 			markAttempt(ip)
