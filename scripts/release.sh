@@ -19,6 +19,7 @@ with open(sys.argv[2],'wb') as raw:
     with gzip.GzipFile(filename='',fileobj=raw,mode='wb',mtime=0) as compressed:
         with tarfile.open(fileobj=compressed,mode='w') as tar:
             paths = [Path(name) for name in ['LICENSE','NOTICE','THIRD_PARTY_LICENSES','README.md','research/fing-inventory.json','research/fing-static-analysis.json','research/mail-access-catalog-review.json']]
+            paths += [Path(name) for name in ['research/results/dhcp-catalog-review.md','research/results/dhcp-observation-verification.json']]
             paths += sorted(Path('docs').glob('*.md'))
             paths += sorted(Path('pkg').glob('*/data/*.json'))
             inputs = [(Path('lantern'),stage/'lantern')] + [(p,p) for p in paths]

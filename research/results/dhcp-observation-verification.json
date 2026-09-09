@@ -11,7 +11,20 @@
       "status": "pass",
       "tests": 4
     },
-    "git_diff_check": "pass"
+    "git_diff_check": "pass",
+    "four_platform_release_archives": {
+      "status": "pass",
+      "version": "dhcp-archive-check",
+      "native_runtime": "darwin/arm64",
+      "checks": [
+        "checksums",
+        "architecture",
+        "licensing",
+        "provenance",
+        "offline documentation links"
+      ],
+      "note": "Initial CI found missing archive inclusion for linked DHCP research reports; added explicit archive inputs and verified all four archives locally."
+    }
   },
   "fuzz": [
     {

@@ -1,6 +1,6 @@
 # DHCP/DHCPv6 catalog review
 
-Reviewed 2026-09-09. Bounded source files are in the ignored directory [`research/downloads/dhcp-catalog-review`](../downloads/dhcp-catalog-review). Counts below come from parsing XML/section records, not line counts.
+Reviewed 2026-09-09. Bounded source files are retained locally in the ignored directory `research/downloads/dhcp-catalog-review`; they are not redistributed in release archives. Immutable upstream links and hashes appear below. Counts come from parsing XML/section records, not line counts.
 
 ## Candidate A: xnih/satori fingerprints
 
